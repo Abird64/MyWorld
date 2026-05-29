@@ -1,3 +1,5 @@
+use chrono::Datelike;
+use lunardate::LunarDate;
 use rusqlite::{params, Connection, Row};
 use serde::{Deserialize, Serialize};
 
@@ -335,4 +337,101 @@ pub fn search_contacts(conn: &Connection, query: &str) -> Result<Vec<Contact>, S
 
     fill_methods(conn, &mut contacts)?;
     Ok(contacts)
+}
+
+#[derive(Debug, Serialize)]
+pub struct BirthdayInfo {
+    pub contact_id: String,
+    pub name: String,
+    pub birthday_year: Option<i32>,
+    pub birthday_month: i32,
+    pub birthday_day: i32,
+    pub birthday_calendar: String,
+    pub upcoming_date: String,
+    pub upcoming_month: i32,
+    pub upcoming_day: i32,
+    pub upcoming_age: Option<i32>,
+    pub days_remaining: i32,
+}
+
+/// 列出所有有生日信息的联系人
+pub fn list_all_birthdays(conn: &Connection) -> Result<Vec<BirthdayInfo>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, birthday_year, birthday_month, birthday_day, birthday_calendar
+             FROM contacts
+             WHERE birthday_month IS NOT NULL AND birthday_day IS NOT NULL
+             ORDER BY birthday_month ASC, birthday_day ASC",
+        )
+        .map_err(|e| format!("Failed to prepare list_all_birthdays: {}", e))?;
+
+    let today = chrono::Local::now().date_naive();
+    let current_year = today.year();
+
+    let rows = stmt
+        .query_map([], |row| {
+            let id: String = row.get(0)?;
+            let name: String = row.get(1)?;
+            let year: Option<i32> = row.get(2)?;
+            let month: i32 = row.get(3)?;
+            let day: i32 = row.get(4)?;
+            let cal: Option<String> = row.get(5)?;
+            Ok((id, name, year, month, day, cal))
+        })
+        .map_err(|e| format!("Failed to query birthdays: {}", e))?;
+
+    let mut results = Vec::new();
+    for row in rows {
+        let (id, name, year, month, day, cal) = row.map_err(|e| format!("Failed to read row: {}", e))?;
+        let calendar = cal.as_deref().unwrap_or("solar").to_string();
+        let is_lunar = calendar == "lunar";
+
+        // 计算即将到来的生日（公历日期）
+        let solar_this = if is_lunar {
+            LunarDate::new(current_year, month as u32, day as u32, false)
+                .to_solar_date().ok()
+        } else {
+            chrono::NaiveDate::from_ymd_opt(current_year, month as u32, day as u32)
+        };
+
+        let solar_next = if is_lunar {
+            LunarDate::new(current_year + 1, month as u32, day as u32, false)
+                .to_solar_date().ok()
+        } else {
+            chrono::NaiveDate::from_ymd_opt(current_year + 1, month as u32, day as u32)
+        };
+
+        let upcoming = match (solar_this, solar_next) {
+            (Some(d), _) if d >= today => d,
+            (_, Some(d)) => d,
+            (Some(d), None) => d,
+            (None, None) => continue,
+        };
+
+        let days_remaining = (upcoming - today).num_days() as i32;
+        let upcoming_age = year.map(|y| upcoming.year() - y);
+
+        results.push(BirthdayInfo {
+            contact_id: id,
+            name,
+            birthday_year: year,
+            birthday_month: month,
+            birthday_day: day,
+            birthday_calendar: calendar,
+            upcoming_date: upcoming.to_string(),
+            upcoming_month: upcoming.month() as i32,
+            upcoming_day: upcoming.day() as i32,
+            upcoming_age,
+            days_remaining,
+        });
+    }
+
+    results.sort_by(|a, b| a.days_remaining.cmp(&b.days_remaining));
+    Ok(results)
+}
+
+/// 获取未来 N 天内过生日的联系人
+pub fn list_upcoming_birthdays(conn: &Connection, days_ahead: i32) -> Result<Vec<BirthdayInfo>, String> {
+    let all = list_all_birthdays(conn)?;
+    Ok(all.into_iter().filter(|b| b.days_remaining <= days_ahead).collect())
 }

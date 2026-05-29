@@ -29,6 +29,13 @@ export const TOOL_LABELS: Record<string, { group: string; label: string; color: 
   record_memory:     { group: '创建', label: '记录记忆', color: '#58A968' },
   search_memories:   { group: '查询', label: '搜索记忆', color: '#6B9BD2' },
   delete_memory:     { group: '删除', label: '删除记忆', color: '#E65C5C' },
+  // 倒数日
+  list_countdowns:   { group: '查询', label: '查看倒数日', color: '#6B9BD2' },
+  // 习惯
+  list_habits:       { group: '查询', label: '查看习惯', color: '#6B9BD2' },
+  create_habit:      { group: '创建', label: '创建习惯', color: '#58A968' },
+  check_habit:       { group: '执行', label: '习惯打卡', color: '#7CB342' },
+  uncheck_habit:     { group: '执行', label: '取消打卡', color: '#E65C5C' },
 };
 
 /** 状态中文映射 */

@@ -43,3 +43,27 @@ export async function deleteContact(
 export async function searchContacts(query: string): Promise<Contact[]> {
   return tauriInvoke<Contact[]>('search_contacts', { input: { query } });
 }
+
+export interface BirthdayInfo {
+  contact_id: string;
+  name: string;
+  birthday_year: number | null;
+  birthday_month: number;
+  birthday_day: number;
+  birthday_calendar: string;
+  upcoming_date: string;
+  upcoming_month: number;
+  upcoming_day: number;
+  upcoming_age: number | null;
+  days_remaining: number;
+}
+
+/** 获取近期生日 */
+export async function listUpcomingBirthdays(daysAhead?: number): Promise<BirthdayInfo[]> {
+  return tauriInvoke<BirthdayInfo[]>('list_upcoming_birthdays', { days_ahead: daysAhead ?? 30 });
+}
+
+/** 获取所有生日 */
+export async function listAllBirthdays(): Promise<BirthdayInfo[]> {
+  return tauriInvoke<BirthdayInfo[]>('list_all_birthdays');
+}

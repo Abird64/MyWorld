@@ -47,9 +47,11 @@ pub fn build_system_prompt(personality: &str, memories: &[Memory]) -> String {
 
 ## 各模块
 - **任务**：标题5-15字。优先级默认none，用户说紧急才设high。没提时间就别编。标签按类型推断（作业→学习，报告→工作，跑步→运动）
-- **日程**：全天事件 is_all_day=true。"每周三五"→rrule="FREQ=WEEKLY;BYDAY=WE,FR"。"每隔两周周一"→rrule="FREQ=WEEKLY;INTERVAL=2;BYDAY=MO"。查看日程用 list_schedules_in_range 一查到底不拆分。操作日程用返回结果中的 id
+- **日程**：全天事件 is_all_day=true。"每周三五"→rrule="FREQ=WEEKLY;BYDAY=WE,FR"。"每隔两周周一"→rrule="FREQ=WEEKLY;INTERVAL=2;BYDAY=MO"。"每年6月1日"→rrule="FREQ=YEARLY"。查看日程用 list_schedules_in_range 一查到底不拆分。操作日程用返回结果中的 id
+- **倒数日**：查看用 list_countdowns。创建倒数日用 create_schedule 并设 event_type="countdown"，start_at 填目标日期
 - **日记**：口语整理为通顺Markdown但保留原意。mood/tags根据内容推断。不过度评判
-- **人脉**：批量场景（查生日、列全员）用 list_contacts 一次拿全部，**绝对不要**逐个搜
+- **人脉**：批量场景（查生日、列全员）用 list_contacts 一次拿全部，**绝对不要**逐个搜。查联系人生日用 list_contacts 拿全部（含生日字段），或 search_contacts 精确搜人
+- **习惯**：查看用 list_habits（含连续打卡天数）。打卡用 check_habit，取消打卡用 uncheck_habit。创建习惯用 create_habit
 - **技能**：查看属性面板，不可修改。XP由你通过完成任务/日记结算来分配
 
 ## XP 经验值规则
@@ -209,19 +211,30 @@ pub fn build_contact_extraction_prompt(diary_content: &str) -> String {
     let diary = if diary_content.trim().is_empty() { "（暂无内容）" } else { diary_content };
 
     format!(
-        r#"从以下日记中提取所有被提及的人物，以及与该人物相关的关键事件（一句话概括）。
+        r#"从以下日记中提取：1) 被提及的人物及事件；2) 整体心情；3) 标签。
 
 ## 日记
 {diary}
 
-## 规则
+## 提取规则
+
+### 人物
 - 只提取真实人物（家人、朋友、同学、同事等），不提取虚拟角色或泛指
 - 每个人物的 event_summary 一句话说清"和这个人发生了什么"
-- 没提到任何人则返回空数组
+- 没提到任何人则 contacts 为空数组
+
+### 心情 mood
+- 从以下词中选一个最贴切的：开心、平静、焦虑、疲惫、低落、愤怒、感动、兴奋、无聊、迷茫
+- 如果无法判断，填 null
+
+### 标签 tags
+- 提取 1-5 个关键词作为标签，概括当天主题
+- 如：["学习","运动"],["工作","加班"],["旅行","见朋友"]
+- 如果内容太少无法提炼，填空数组
 
 ## 输出格式
-返回纯 JSON 数组，不要 markdown 代码块，不要解释：
-[{{"name":"人物名","event_summary":"一句话事件概括"}}]
+返回纯 JSON 对象，不要 markdown 代码块，不要解释：
+{{"contacts":[{{"name":"人物名","event_summary":"一句话事件概括"}}],"mood":"心情","tags":["标签1","标签2"]}}
 "#,
         diary = diary,
     )

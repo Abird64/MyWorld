@@ -425,4 +425,9 @@ const FIELD_LABELS: Record<string, string> = {
   contact_methods: '联系方式',
   year: '年',
   month: '月',
+  event_type: '事件类型',
+  frequency_type: '频率',
+  icon: '图标',
+  color: '颜色',
+  habit_id: '习惯ID',
 };
