@@ -66,3 +66,8 @@ export async function importIcsEvents(
 export async function exportIcsEvents(calendarId?: string): Promise<string> {
   return tauriInvoke<string>('export_ics_events', { calendar_id: calendarId ?? null });
 }
+
+/** 查询所有倒数日 */
+export async function listCountdowns(): Promise<Schedule[]> {
+  return tauriInvoke<Schedule[]>('list_countdowns');
+}

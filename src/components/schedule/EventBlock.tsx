@@ -1,6 +1,5 @@
-import { useRef, useState } from 'react';
 import type { Schedule } from '@/types/schedule';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 
 
 interface EventBlockProps {
@@ -10,89 +9,55 @@ interface EventBlockProps {
   left: number;      // 百分比
   width: number;     // 百分比
   onClick: (event: Schedule) => void;
-  onDragStart?: (event: Schedule, startY: number) => void;
+  taskSyncEvents?: Schedule[];
+  onTaskSyncClick?: (event: Schedule) => void;
 }
 
-export function EventBlock({ event, top, height, left, width, onClick, onDragStart }: EventBlockProps) {
-  const t = usePageTheme('schedule');
+export function EventBlock({ event, top, height, left, width, onClick, taskSyncEvents, onTaskSyncClick }: EventBlockProps) {
   const isTaskSync = event.source_type === 'task_sync';
-  const bgColor = event.color || t.accent;
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef<{ y: number; time: number } | null>(null);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (isTaskSync || !onDragStart) return;
-
-    e.preventDefault(); // 阻止浏览器原生文字选择/拖拽
-    dragStartRef.current = {
-      y: e.clientY,
-      time: Date.now(),
-    };
-    setIsDragging(false);
-
-    const handleMouseMove = (moveE: MouseEvent) => {
-      if (!dragStartRef.current) return;
-
-      const deltaY = Math.abs(moveE.clientY - dragStartRef.current.y);
-      const deltaTime = Date.now() - dragStartRef.current.time;
-
-      // 移动超过 5px 或持续超过 200ms 才认为是拖拽
-      if (deltaY > 5 || deltaTime > 200) {
-        setIsDragging(true);
-        onDragStart(event, moveE.clientY);
-      }
-    };
-
-    const handleMouseUp = () => {
-      dragStartRef.current = null;
-      // 延迟重置 isDragging，让 click 事件能正确判断
-      setTimeout(() => setIsDragging(false), 10);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
-  const handleClick = () => {
-    if (!isDragging) {
-      onClick(event);
-    }
-  };
+  const bgColor = event.color || appTheme.primary;
 
   return (
     <div
-      className={`absolute rounded-lg overflow-hidden transition-opacity select-none ${isTaskSync ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
+      className="absolute rounded-lg overflow-hidden select-none cursor-pointer"
       style={{
         top: `${top}%`,
         height: `${Math.max(height, 2)}%`,
         left: `${left}%`,
         width: `${width}%`,
         backgroundColor: isTaskSync ? 'transparent' : bgColor,
-        border: isTaskSync ? `2px dashed ${bgColor}` : `1px solid ${t.cardText}14`,
-        boxShadow: isDragging ? `0 4px 12px ${t.cardText}33` : `0 1px 3px ${t.cardText}1A`,
-        opacity: isTaskSync ? 0.7 : isDragging ? 0.8 : 1,
-        zIndex: isDragging ? 100 : 10,
-        userSelect: 'none',
+        border: isTaskSync ? `2px dashed ${bgColor}` : `1px solid ${appTheme.ink}14`,
+        opacity: isTaskSync ? 0.7 : 1,
+        zIndex: 10,
       }}
-      onMouseDown={handleMouseDown}
-      onClick={handleClick}
+      onClick={() => onClick(event)}
     >
-      <div className="px-1.5 py-0.5 h-full flex flex-col overflow-hidden">
+      <div className="px-1.5 py-0.5 h-full flex flex-col overflow-hidden relative">
         <span
-          className="text-xs font-medium leading-tight truncate"
+          className="text-xs font-medium leading-tight break-all"
           style={{ color: isTaskSync ? bgColor : getContrastColor(bgColor) }}
         >
           {event.title}
         </span>
         {height > 6 && (
           <span
-            className="text-[10px] leading-tight truncate mt-0.5"
+            className="text-[10px] leading-tight mt-0.5"
             style={{ color: isTaskSync ? bgColor : getContrastColor(bgColor), opacity: 0.7 }}
           >
             {formatTimeRange(event.start_at, event.end_at)}
           </span>
+        )}
+        {/* 任务同步指示线 */}
+        {taskSyncEvents && taskSyncEvents.length > 0 && (
+          <div
+            className="absolute bottom-0 left-0 right-0 flex items-center gap-1 px-1 cursor-pointer"
+            style={{ height: 3, backgroundColor: '#58A968' }}
+            title={taskSyncEvents.map((t) => t.title).join('、')}
+            onClick={(e) => {
+              e.stopPropagation();
+              onTaskSyncClick?.(taskSyncEvents[0]);
+            }}
+          />
         )}
       </div>
     </div>

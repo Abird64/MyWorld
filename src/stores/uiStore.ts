@@ -1,15 +1,20 @@
 import { create } from 'zustand';
 
+export type MainTab = 'chat' | 'relations' | 'schedule' | 'mine';
+export type SubPage = 'tasks' | 'diary' | 'habits' | 'skills' | 'settings' | null;
+
 interface UIState {
-  activeTab: string;
-  menuOpen: boolean;
-  setActiveTab: (tab: string) => void;
-  setMenuOpen: (open: boolean) => void;
+  activeTab: MainTab;
+  activeSubPage: SubPage;
+  setActiveTab: (tab: MainTab) => void;
+  setActiveSubPage: (page: SubPage) => void;
+  goBack: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  activeTab: 'lantern',
-  menuOpen: false,
-  setActiveTab: (tab) => set({ activeTab: tab }),
-  setMenuOpen: (open) => set({ menuOpen: open }),
+  activeTab: 'chat',
+  activeSubPage: null,
+  setActiveTab: (tab) => set({ activeTab: tab, activeSubPage: null }),
+  setActiveSubPage: (page) => set({ activeSubPage: page }),
+  goBack: () => set({ activeSubPage: null }),
 }));

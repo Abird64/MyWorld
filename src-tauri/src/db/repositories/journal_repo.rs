@@ -206,6 +206,7 @@ pub fn update_journal_metadata(
     id: &str,
     title: Option<&str>,
     mood: Option<&str>,
+    tags: Option<&str>,
     word_count: i32,
 ) -> Result<Journal, String> {
     let time = now();
@@ -219,6 +220,10 @@ pub fn update_journal_metadata(
     }
     if let Some(v) = mood {
         sets.push("mood = ?".to_string());
+        param_values.push(Box::new(v.to_string()));
+    }
+    if let Some(v) = tags {
+        sets.push("tags = ?".to_string());
         param_values.push(Box::new(v.to_string()));
     }
 

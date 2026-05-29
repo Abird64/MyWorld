@@ -5,7 +5,7 @@ import { TimelineDropdown } from '@/components/diary/TimelineDropdown';
 import { ReflectionPanel } from '@/components/diary/ReflectionPanel';
 import { useJournalStore } from '@/stores/journalStore';
 import { SKILL_COLORS } from '@/styles/theme';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 import type { CompleteResult } from '@/types/task';
 
 
@@ -17,7 +17,6 @@ function formatDisplayDate(dateStr: string): string {
 }
 
 export function DiaryPage() {
-  const t = usePageTheme('diary');
   const {
     currentDate,
     content,
@@ -31,6 +30,8 @@ export function DiaryPage() {
     aiContent,
     xpResult,
     contacts,
+    reflectionMood,
+    reflectionTags,
     updateContent,
     loadToday,
     saveNow,
@@ -76,26 +77,26 @@ export function DiaryPage() {
   };
 
   return (
-    <PageContainer className="relative" bgColor={t.bg}>
-      <NavBar title="日记" navColor={t.nav} quote="人闲桂花落，夜景春山空" />
+    <PageContainer className="relative" bgColor={appTheme.canvasParchment}>
+      <NavBar title="日记" />
 
       {/* 固定控制区：日期胶囊 */}
       <div className="flex-shrink-0 flex flex-col items-center pt-6 pb-3">
         {/* 日期胶囊 - 可点击打开时间线 */}
-        <div className="flex justify-center px-8 w-full">
+        <div className="flex justify-center px-4 sm:px-8 w-full">
           <div className="max-w-[1000px] flex-1">
             <div className="flex items-center gap-4">
               <button
                 onClick={toggleTimeline}
                 className="min-w-[200px] py-4 rounded-full px-10 flex items-center justify-center transition-colors cursor-pointer"
-                style={{ backgroundColor: t.card }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#d9c9a5')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = t.card)}
+                style={{ backgroundColor: appTheme.canvas }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = appTheme.canvasParchment)}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = appTheme.canvas)}
               >
                 {isLoading ? (
-                  <span className="font-zhuque text-xl" style={{ color: `${t.cardText}80` }}>加载中...</span>
+                  <span className=" text-xl" style={{ color: `${appTheme.ink}80` }}>加载中...</span>
                 ) : (
-                  <span className="font-zhuque text-xl" style={{ color: t.cardText }}>
+                  <span className=" text-xl" style={{ color: appTheme.ink }}>
                     {formatDisplayDate(currentDate)}
                   </span>
                 )}
@@ -110,21 +111,21 @@ export function DiaryPage() {
                   useJournalStore.getState().setShowReflectionPanel(true);
                 }}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-full transition-colors text-sm"
-                style={{ color: `${t.cardText}66` }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = t.cardText)}
-                onMouseLeave={(e) => (e.currentTarget.style.color = `${t.cardText}66`)}
+                style={{ color: `${appTheme.ink}66` }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = appTheme.ink)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = `${appTheme.ink}66`)}
                 title="查看日省详情"
               >
                 <span className="text-base">✨</span>
-                <span className="font-zhuque">日省详情</span>
+                <span className="">日省详情</span>
               </button>
 
               {/* 保存状态指示 */}
               {isSaving && (
-                <span className="font-zhuque text-sm" style={{ color: `${t.cardText}4D` }}>保存中...</span>
+                <span className=" text-sm" style={{ color: `${appTheme.ink}4D` }}>保存中...</span>
               )}
               {!isSaving && lastSaved && (
-                <span className="font-zhuque text-sm" style={{ color: `${t.cardText}4D` }}>已保存</span>
+                <span className=" text-sm" style={{ color: `${appTheme.ink}4D` }}>已保存</span>
               )}
             </div>
           </div>
@@ -142,18 +143,18 @@ export function DiaryPage() {
       )}
 
       {/* 日记正文 */}
-      <div className="flex-1 flex justify-center items-center px-8 pb-20">
+      <div className="flex-1 flex justify-center items-center px-4 sm:px-8 pb-20">
         <style>{`
-          .diary-textarea::placeholder { color: ${t.cardText}4D; }
+          .diary-textarea::placeholder { color: ${appTheme.ink}4D; }
         `}</style>
         <Card
           variant="diary"
-          className="w-full max-w-[1000px] h-[600px]"
-          style={{ backgroundColor: t.card }}
+          className="w-full max-w-[1000px] h-[400px] sm:h-[600px]"
+          style={{ backgroundColor: appTheme.canvas }}
         >
           <textarea
-            className="diary-textarea w-full h-full bg-transparent resize-none font-zhuque text-xl focus:outline-none p-4"
-            style={{ color: t.cardText, caretColor: t.accent }}
+            className="diary-textarea w-full h-full bg-transparent resize-none text-xl focus:outline-none p-4"
+            style={{ color: appTheme.ink, caretColor: appTheme.primary }}
             placeholder="在此记录今日点滴..."
             value={content}
             onChange={(e) => updateContent(e.target.value)}
@@ -162,16 +163,16 @@ export function DiaryPage() {
       </div>
 
       {/* 日省按钮 */}
-      <div className="absolute right-20 bottom-16">
+      <div className="absolute right-4 sm:right-20 bottom-4 sm:bottom-20">
         <button
-          className="w-[100px] h-[60px] rounded-full flex items-center justify-center transition-colors shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-          style={{ backgroundColor: t.accent }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#d14545')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = t.accent)}
+          className="w-[100px] h-[60px] rounded-full flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{ backgroundColor: appTheme.primary }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = appTheme.primaryFocus)}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = appTheme.primary)}
           onClick={handleRixing}
           disabled={isReflecting}
         >
-          <span className="font-zhuque text-xl text-white">
+          <span className=" text-xl text-white">
             {isReflecting ? '思考中...' : '日省'}
           </span>
         </button>
@@ -179,7 +180,7 @@ export function DiaryPage() {
 
       {/* 错误提示 */}
       {error && (
-        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-2xl shadow-lg text-sm cursor-pointer"
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-2xl text-sm cursor-pointer"
           onClick={() => useJournalStore.setState({ error: null })}
         >
           {error}
@@ -190,11 +191,11 @@ export function DiaryPage() {
       {xpToast && (
         <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
           <div
-            className="pointer-events-auto rounded-2xl px-8 py-6 shadow-2xl animate-in fade-in zoom-in duration-300"
-            style={{ backgroundColor: t.nav }}
+            className="pointer-events-auto rounded-2xl px-8 py-6 animate-in fade-in zoom-in duration-300"
+            style={{ backgroundColor: appTheme.surfaceBlack }}
             onClick={() => setXpToast(null)}
           >
-            <p className="font-zhuque text-xl text-white/90 text-center mb-4 tracking-widest">
+            <p className=" text-xl text-white/90 text-center mb-4 tracking-widest">
               日省完成
             </p>
             <div className="flex flex-wrap gap-3 justify-center mb-3">
@@ -206,13 +207,13 @@ export function DiaryPage() {
                     className="rounded-full px-4 py-1.5 flex items-center gap-2"
                     style={{ backgroundColor: `${color}30` }}
                   >
-                    <span className="font-zhuque text-sm" style={{ color }}>{s.skill_name}</span>
-                    <span className="font-zhuque text-sm text-white/80">+{s.xp}</span>
+                    <span className=" text-sm" style={{ color }}>{s.skill_name}</span>
+                    <span className=" text-sm text-white/80">+{s.xp}</span>
                   </div>
                 );
               })}
             </div>
-            <p className="font-zhuque text-sm text-white/40 text-center">
+            <p className=" text-sm text-white/40 text-center">
               共获得 {xpToast.xp_earned} XP · 点击关闭
             </p>
           </div>
@@ -226,6 +227,8 @@ export function DiaryPage() {
         xpResult={xpResult}
         reflection={aiContent}
         contacts={contacts}
+        mood={reflectionMood}
+        tags={reflectionTags}
         onClose={() => setShowReflectionPanel(false)}
         onContactSync={(index) => removeContact(index)}
         onContactIgnore={(index) => removeContact(index)}

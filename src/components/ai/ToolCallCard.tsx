@@ -3,7 +3,7 @@ import { Check, X, Trash2, Loader2, CircleCheck, Search, Send, Pencil, Zap } fro
 import type { ToolCallDef } from '@/types/ai';
 import { parseGenericArgs } from '@/utils/aiParsers';
 import { TOOL_LABELS } from '@/utils/aiLabels';
-import { SKILL_COLORS } from '@/styles/theme';
+import { SKILL_COLORS, appTheme } from '@/styles/theme';
 
 /** skill_id → 中文名 */
 const SKILL_NAME_MAP: Record<string, string> = {};
@@ -26,7 +26,7 @@ export function ToolCallCard(props: ToolCallCardProps) {
   const info = TOOL_LABELS[toolCall.function.name];
   if (!info) {
     return (
-      <div className="mt-2 p-3 rounded-xl bg-white/5 border border-white/10 text-white/60 text-xs">
+      <div className="mt-2 p-3 rounded-xl border text-xs" style={{ backgroundColor: appTheme.canvas, borderColor: appTheme.hairline, color: appTheme.inkMuted48 }}>
         未知操作: {toolCall.function.name}
       </div>
     );
@@ -59,12 +59,12 @@ function CreateCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info
   const detailLines = buildDetailLines(toolCall.function.name, params);
 
   return (
-    <div className={`mt-2 rounded-xl bg-[#1E2A1E]/60 border overflow-hidden`} style={{ borderColor: `${info?.color || '#58A968'}30` }}>
+    <div className="mt-2 rounded-xl border overflow-hidden" style={{ backgroundColor: appTheme.canvas, borderColor: `${info?.color || '#58A968'}30` }}>
       <CardHeader icon={<Check size={12} />} color={info?.color || '#58A968'} title={info?.label || '创建'} />
       <div className="px-4 py-3 space-y-2">
-        {title ? <div><span className="text-white/80 text-sm font-medium">{title}</span></div> : null}
+        {title ? <div><span className="text-sm font-medium" style={{ color: appTheme.ink }}>{title}</span></div> : null}
         {detailLines.map((line, i) => (
-          <p key={i} className="text-xs text-white/40">{line}</p>
+          <p key={i} className="text-xs" style={{ color: appTheme.inkMuted48 }}>{line}</p>
         ))}
       </div>
       {modifyMode ? (
@@ -89,17 +89,17 @@ function ExecuteCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, inf
   const detailLines = buildDetailLines(toolCall.function.name, params);
 
   return (
-    <div className={`mt-2 rounded-xl bg-[#232C1E]/60 border overflow-hidden`} style={{ borderColor: `${info?.color || '#7CB342'}30` }}>
+    <div className="mt-2 rounded-xl border overflow-hidden" style={{ backgroundColor: appTheme.canvas, borderColor: `${info?.color || '#7CB342'}30` }}>
       <CardHeader icon={<CircleCheck size={12} />} color={info?.color || '#7CB342'} title={info?.label || '执行'} />
       <div className="px-4 py-3 space-y-2">
         {query ? (
           <div className="flex items-center gap-2">
-            <span className="text-white/50 text-xs">搜索：</span>
-            <span className="text-white/80 text-sm font-medium">"{query}"</span>
+            <span className="text-xs" style={{ color: appTheme.inkMuted48 }}>搜索：</span>
+            <span className="text-sm font-medium" style={{ color: appTheme.ink }}>"{query}"</span>
           </div>
         ) : null}
         {detailLines.map((line, i) => (
-          <p key={i} className="text-xs text-white/40">{line}</p>
+          <p key={i} className="text-xs" style={{ color: appTheme.inkMuted48 }}>{line}</p>
         ))}
       </div>
       {modifyMode ? (
@@ -123,16 +123,16 @@ function DeleteCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info
   const query = (params.query as string) || '';
 
   return (
-    <div className={`mt-2 rounded-xl bg-[#2A1E1E]/60 border overflow-hidden`} style={{ borderColor: `${info?.color || '#E65C5C'}30` }}>
+    <div className="mt-2 rounded-xl border overflow-hidden" style={{ backgroundColor: appTheme.canvas, borderColor: `${info?.color || '#E65C5C'}30` }}>
       <CardHeader icon={<Trash2 size={12} />} color={info?.color || '#E65C5C'} title={info?.label || '删除'} />
       <div className="px-4 py-3 space-y-2">
         {query ? (
           <div className="flex items-center gap-2">
-            <span className="text-white/50 text-xs">搜索：</span>
-            <span className="text-white/80 text-sm font-medium">"{query}"</span>
+            <span className="text-xs" style={{ color: appTheme.inkMuted48 }}>搜索：</span>
+            <span className="text-sm font-medium" style={{ color: appTheme.ink }}>"{query}"</span>
           </div>
         ) : null}
-        <p className="text-xs text-red-400/60">此操作不可撤销，请确认</p>
+        <p className="text-xs" style={{ color: '#E65C5C' }}>此操作不可撤销，请确认</p>
       </div>
       {modifyMode ? (
         <CardModifyInput onSubmit={(text) => { onModify?.(text); setModifyMode(false); }} onBack={() => setModifyMode(false)} />
@@ -156,17 +156,17 @@ function UpdateCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info
   const detailLines = buildDetailLines(toolCall.function.name, params);
 
   return (
-    <div className={`mt-2 rounded-xl bg-[#2A2416]/60 border overflow-hidden`} style={{ borderColor: `${info?.color || '#E8B959'}30` }}>
+    <div className="mt-2 rounded-xl border overflow-hidden" style={{ backgroundColor: appTheme.canvas, borderColor: `${info?.color || '#E8B959'}30` }}>
       <CardHeader icon={<Pencil size={12} />} color={info?.color || '#E8B959'} title={info?.label || '修改'} />
       <div className="px-4 py-3 space-y-2">
         {query ? (
           <div className="flex items-center gap-2">
-            <span className="text-white/50 text-xs">搜索：</span>
-            <span className="text-white/80 text-sm font-medium">"{query}"</span>
+            <span className="text-xs" style={{ color: appTheme.inkMuted48 }}>搜索：</span>
+            <span className="text-sm font-medium" style={{ color: appTheme.ink }}>"{query}"</span>
           </div>
         ) : null}
         {detailLines.map((line, i) => (
-          <p key={i} className="text-xs text-white/40">{line}</p>
+          <p key={i} className="text-xs" style={{ color: appTheme.inkMuted48 }}>{line}</p>
         ))}
       </div>
       {modifyMode ? (
@@ -191,16 +191,16 @@ function QueryCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info 
   const detailLines = buildDetailLines(toolCall.function.name, params);
 
   return (
-    <div className={`mt-2 rounded-xl bg-[#1E2432]/60 border overflow-hidden`} style={{ borderColor: `${info?.color || '#6B9BD2'}30` }}>
+    <div className="mt-2 rounded-xl border overflow-hidden" style={{ backgroundColor: appTheme.canvas, borderColor: `${info?.color || '#6B9BD2'}30` }}>
       <CardHeader icon={<Search size={12} />} color={info?.color || '#6B9BD2'} title={info?.label || '查询'} />
       <div className="px-4 py-3 space-y-2">
         {query ? (
-          <span className="text-white/80 text-sm font-medium">"{query}"</span>
+          <span className="text-sm font-medium" style={{ color: appTheme.ink }}>"{query}"</span>
         ) : (
-          <span className="text-white/50 text-sm">查询</span>
+          <span className="text-sm" style={{ color: appTheme.inkMuted48 }}>查询</span>
         )}
         {detailLines.map((line, i) => (
-          <p key={i} className="text-xs text-white/40">{line}</p>
+          <p key={i} className="text-xs" style={{ color: appTheme.inkMuted48 }}>{line}</p>
         ))}
       </div>
       {modifyMode ? (
@@ -223,11 +223,11 @@ function GenericCard({ toolCall, isExecuting, onConfirm, onCancel, info }: ToolC
   const detailLines = buildDetailLines(toolCall.function.name, params);
 
   return (
-    <div className="mt-2 rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+    <div className="mt-2 rounded-xl border overflow-hidden" style={{ backgroundColor: appTheme.canvas, borderColor: appTheme.hairline }}>
       <CardHeader icon={<Zap size={12} />} color={info?.color || '#888'} title={info?.label || toolCall.function.name} />
       <div className="px-4 py-3 space-y-2">
         {detailLines.map((line, i) => (
-          <p key={i} className="text-xs text-white/40">{line}</p>
+          <p key={i} className="text-xs" style={{ color: appTheme.inkMuted48 }}>{line}</p>
         ))}
       </div>
       <CardActions
@@ -242,8 +242,8 @@ function GenericCard({ toolCall, isExecuting, onConfirm, onCancel, info }: ToolC
 
 function CardHeader({ icon, color, title }: { icon: React.ReactNode; color: string; title: string }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/5" style={{ backgroundColor: `${color}10` }}>
-      <div className="w-5 h-5 flex items-center justify-center rounded" style={{ backgroundColor: `${color}20` }}>
+    <div className="flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: `${color}12`, borderBottom: `1px solid ${color}20` }}>
+      <div className="w-5 h-5 flex items-center justify-center rounded" style={{ backgroundColor: `${color}18` }}>
         <span style={{ color }}>{icon}</span>
       </div>
       <span className="text-sm font-medium" style={{ color }}>{title}</span>
@@ -262,34 +262,42 @@ function CardActions({
   confirmColor: string;
 }) {
   return (
-    <div className="flex border-t" style={{ borderColor: `rgba(255,255,255,0.06)` }}>
+    <div className="flex" style={{ borderTop: `1px solid ${appTheme.hairline}` }}>
       <button
         onClick={onConfirm}
         disabled={isExecuting}
-        className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm hover:bg-white/5 transition-colors disabled:opacity-50"
+        className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm transition-colors disabled:opacity-50"
         style={{ color: confirmColor }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = `${confirmColor}0D`)}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
       >
         {isExecuting ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
         {confirmLabel}
       </button>
       {onModifyClick && (
         <>
-          <div className="w-px" style={{ backgroundColor: `rgba(255,255,255,0.06)` }} />
+          <div className="w-px" style={{ backgroundColor: appTheme.hairline }} />
           <button
             onClick={onModifyClick}
             disabled={isExecuting}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm text-amber-400/80 hover:bg-white/5 transition-colors disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm transition-colors disabled:opacity-50"
+            style={{ color: '#C08B30' }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#C08B30' + '0D')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
             <Pencil size={14} />
             修改
           </button>
         </>
       )}
-      <div className="w-px" style={{ backgroundColor: `rgba(255,255,255,0.06)` }} />
+      <div className="w-px" style={{ backgroundColor: appTheme.hairline }} />
       <button
         onClick={onCancel}
         disabled={isExecuting}
-        className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm text-white/40 hover:bg-white/5 transition-colors disabled:opacity-50"
+        className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm transition-colors disabled:opacity-50"
+        style={{ color: appTheme.inkMuted48 }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = `${appTheme.ink}0D`)}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
       >
         <X size={14} />
         取消
@@ -309,7 +317,7 @@ function CardModifyInput({ onSubmit, onBack }: { onSubmit: (text: string) => voi
   };
 
   return (
-    <div className="border-t border-white/5 px-4 py-3 space-y-2.5">
+    <div className="px-4 py-3 space-y-2.5" style={{ borderTop: `1px solid ${appTheme.hairline}` }}>
       <input
         type="text"
         value={text}
@@ -317,20 +325,27 @@ function CardModifyInput({ onSubmit, onBack }: { onSubmit: (text: string) => voi
         onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
         placeholder="补充你的意见，让 AI 重新生成..."
         autoFocus
-        className="w-full bg-white/8 rounded-lg px-3 py-2 text-sm text-white/80 placeholder:text-white/25 focus:outline-none focus:bg-white/12 transition-colors"
+        className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none transition-colors"
+        style={{ backgroundColor: `${appTheme.ink}08`, color: appTheme.ink }}
       />
       <div className="flex items-center gap-2">
         <button
           onClick={handleSubmit}
           disabled={!text.trim()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 text-xs hover:bg-amber-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ backgroundColor: '#C08B30' + '18', color: '#C08B30' }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#C08B30' + '28')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#C08B30' + '18')}
         >
           <Send size={12} />
           发送
         </button>
         <button
           onClick={() => { setText(''); onBack(); }}
-          className="px-3 py-1.5 rounded-lg text-xs text-white/30 hover:text-white/50 hover:bg-white/5 transition-colors"
+          className="px-3 py-1.5 rounded-lg text-xs transition-colors"
+          style={{ color: appTheme.inkMuted48 }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = appTheme.ink)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = appTheme.inkMuted48)}
         >
           返回
         </button>

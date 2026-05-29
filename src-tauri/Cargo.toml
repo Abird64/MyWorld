@@ -1,6 +1,6 @@
 [package]
 name = "myworld"
-version = "1.4.0"
+version = "1.5.0"
 description = "拾阶 (MyWorld) - 拾级而上，提灯而行。A local-first AI-powered life management desktop app."
 authors = ["鹏子"]
 license = "MIT"

@@ -1,14 +1,7 @@
-// UI 组件统一导出
-// 使用方式: import { Card, CapsuleTabs } from '@/components/ui';
-
 export { Card } from './Card';
 export { CapsuleTabs } from './CapsuleTabs';
 export { NavBar } from './NavBar';
 export { LanternSvg } from './LanternSvg';
-export { MascotModal } from './MascotModal';
 export { Input, Textarea } from './Input';
-export { ThemeCard } from './ThemeCard';
+export { Button } from './Button';
 export { Container, Section } from './Layout';
-
-// 设计系统导出
-export * from '@/styles/theme';

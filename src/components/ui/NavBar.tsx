@@ -1,50 +1,66 @@
-import { Menu } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
-import { navbar } from '@/styles/theme';
+import { appTheme } from '@/styles/theme';
 import { WindowControls } from '@/components/layout/WindowControls';
 
 interface NavBarProps {
   title: string;
   navColor?: string;
-  navTitle?: string;
-  quote?: string;
+  showBack?: boolean;
+  onBack?: () => void;
 }
 
 export function NavBar({
   title,
-  navColor = '#2D3A32',
-  navTitle,
-  quote
+  navColor = appTheme.surfaceBlack,
+  showBack,
+  onBack,
 }: NavBarProps) {
-  const { setMenuOpen } = useUIStore();
+  const goBack = useUIStore((s) => s.goBack);
+  const activeSubPage = useUIStore((s) => s.activeSubPage);
+  const shouldShowBack = showBack ?? !!activeSubPage;
+  const handleBack = onBack ?? goBack;
 
   return (
     <div
       data-tauri-drag-region
-      className={`
-        h-[72px] flex items-center justify-between
-        ${navbar.padding.x}
-        border-b border-white/10
-        flex-shrink-0 -mx-4 md:-mx-6 lg:-mx-8
-      `}
-      style={{ backgroundColor: navColor }}
+      className="flex items-center justify-between px-4 flex-shrink-0"
+      style={{
+        height: 44,
+        backgroundColor: navColor,
+        borderBottom: '0.5px solid rgba(255,255,255,0.1)',
+      }}
     >
-      {/* 左上角 - 菜单按钮 */}
-      <button
-        onClick={() => setMenuOpen(true)}
-        className="w-[120px] h-10 rounded-full bg-[#666] flex items-center justify-center hover:bg-[#777] transition-colors"
-      >
-        <Menu size={20} className="text-white mr-2" />
-        <span className="font-zhuque text-white text-xl">{navTitle || title}</span>
-      </button>
+      {/* 左侧 */}
+      <div className="flex items-center gap-1 min-w-[80px]">
+        {shouldShowBack && (
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-0.5 text-sm btn-press"
+            style={{ color: appTheme.primaryOnDark }}
+          >
+            <ChevronLeft size={20} />
+            <span>返回</span>
+          </button>
+        )}
+        {!shouldShowBack && (
+          <span className="text-[15px] font-semibold" style={{ color: appTheme.onDark }}>
+            {title}
+          </span>
+        )}
+      </div>
 
-      {/* 中央 - 诗句/标题 */}
-      <h1 className="absolute left-1/2 -translate-x-1/2 text-2xl tracking-widest text-white/85 font-light">
-        {quote}
-      </h1>
+      {/* 中央 — 子页面标题 */}
+      {shouldShowBack && (
+        <span className="text-[15px] font-semibold" style={{ color: appTheme.onDark }}>
+          {title}
+        </span>
+      )}
 
-      {/* 右侧 - 窗口控制按钮 */}
-      <WindowControls />
+      {/* 右侧 — 窗口控制 */}
+      <div className="min-w-[80px] flex justify-end">
+        <WindowControls />
+      </div>
     </div>
   );
 }

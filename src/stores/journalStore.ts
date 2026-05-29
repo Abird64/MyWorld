@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Journal, ExtractedContact } from '@/types/journal';
 import type { CompleteResult } from '@/types/task';
 import * as journalService from '@/services/journalService';
+import * as contactService from '@/services/contactService';
 import type { DailyReflectionResult } from '@/services/journalService';
 
 interface JournalState {
@@ -26,6 +27,8 @@ interface JournalState {
   // 日省面板
   showReflectionPanel: boolean;
   contacts: ExtractedContact[];
+  reflectionMood: string | null;
+  reflectionTags: string | null;
 
   // 状态
   isLoading: boolean;
@@ -92,6 +95,8 @@ export const useJournalStore = create<JournalState>((set, get) => {
     showAiPanel: false,
     showReflectionPanel: false,
     contacts: [],
+    reflectionMood: null,
+    reflectionTags: null,
     isLoading: false,
     isSaving: false,
     isReflecting: false,
@@ -231,6 +236,8 @@ export const useJournalStore = create<JournalState>((set, get) => {
           aiContent: result.reflection,
           aiExists: !!result.reflection,
           contacts: result.contacts || [],
+          reflectionMood: result.mood,
+          reflectionTags: result.tags,
           isReflecting: false,
           showReflectionPanel: true,
         });
@@ -246,7 +253,20 @@ export const useJournalStore = create<JournalState>((set, get) => {
       set({ contacts: contacts.filter((_, i) => i !== index) });
     },
 
-    confirmAllContacts: () => {
+    confirmAllContacts: async () => {
+      const { contacts } = get();
+      for (const c of contacts) {
+        if (c.existing_contact_id) {
+          await contactService.updateContact(c.existing_contact_id, {
+            notes: `[${new Date().toISOString().slice(0, 10)}] ${c.event_summary}`,
+          });
+        } else {
+          await contactService.createContact({
+            name: c.name,
+            notes: c.event_summary,
+          });
+        }
+      }
       set({ contacts: [] });
     },
 

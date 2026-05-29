@@ -1,14 +1,10 @@
-import { useState, useRef, useCallback } from 'react';
-import type { Schedule, UpdateScheduleInput } from '@/types/schedule';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import type { Schedule } from '@/types/schedule';
+import { appTheme } from '@/styles/theme';
 import { EventBlock } from './EventBlock';
 import {
   HOUR_START,
   HOUR_END,
   hourToPercent,
-  percentToHour,
-  snapToGrid,
-  pad,
   layoutOverlappingEvents,
 } from '@/utils/scheduleLayout';
 
@@ -17,77 +13,17 @@ interface WeekViewProps {
   weekStart: Date;
   schedules: Schedule[];
   onEventClick: (event: Schedule) => void;
-  onSlotClick: (date: Date, hour: number) => void;
-  onEventUpdate?: (id: string, input: UpdateScheduleInput) => void;
 }
 
 const weekDayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
-export function WeekView({ weekStart, schedules, onEventClick, onSlotClick, onEventUpdate }: WeekViewProps) {
-  const t = usePageTheme('schedule');
+export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) {
   // 生成 7 天的日期
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
     return d;
   });
-
-  // 拖拽状态
-  const [draggingEvent, setDraggingEvent] = useState<Schedule | null>(null);
-  const [dragY, setDragY] = useState(0);
-  const gridRef = useRef<HTMLDivElement>(null);
-
-  // 将 Y 坐标转换为小时（考虑夜间压缩）
-  const yToHour = useCallback((clientY: number): number => {
-    if (!gridRef.current) return 0;
-    const rect = gridRef.current.getBoundingClientRect();
-    const ratio = (clientY - rect.top) / rect.height;
-    return percentToHour(ratio);
-  }, []);
-
-  // 处理拖拽开始
-  const handleDragStart = useCallback((event: Schedule, startY: number) => {
-    if (event.source_type === 'task_sync') return;
-    setDraggingEvent(event);
-    setDragY(startY);
-  }, []);
-
-  // 处理拖拽中
-  const handleDragMove = useCallback((e: React.MouseEvent) => {
-    if (!draggingEvent) return;
-    setDragY(e.clientY);
-  }, [draggingEvent]);
-
-  // 处理拖拽结束
-  const handleDragEnd = useCallback(() => {
-    if (!draggingEvent || !onEventUpdate) {
-      setDraggingEvent(null);
-      return;
-    }
-
-    const newHour = snapToGrid(yToHour(dragY));
-
-    // 计算新的开始时间
-    const oldStart = new Date(draggingEvent.start_at);
-    const newStart = new Date(oldStart);
-    newStart.setHours(Math.floor(newHour), (newHour % 1) * 60, 0, 0);
-
-    // 计算新的结束时间（保持原有时长）
-    let newEnd: Date | undefined;
-    if (draggingEvent.end_at) {
-      const oldEnd = new Date(draggingEvent.end_at);
-      const duration = oldEnd.getTime() - oldStart.getTime();
-      newEnd = new Date(newStart.getTime() + duration);
-    }
-
-    // 更新事件
-    onEventUpdate(draggingEvent.id, {
-      start_at: newStart.toISOString(),
-      end_at: newEnd?.toISOString(),
-    });
-
-    setDraggingEvent(null);
-  }, [draggingEvent, dragY, yToHour, snapToGrid, onEventUpdate]);
 
   // 今天日期
   const today = new Date();
@@ -128,11 +64,12 @@ export function WeekView({ weekStart, schedules, onEventClick, onSlotClick, onEv
   const hasAllDayEvents = allDayEventsByDay.some((events) => events.length > 0);
 
   return (
-    <div className="w-full rounded-2xl relative overflow-hidden flex flex-col" style={{ backgroundColor: t.card }}>
+    <div className="w-full rounded-2xl relative" style={{ backgroundColor: appTheme.canvas }}>
+      <div className="flex flex-col">
       {/* ========== 表头：星期标签 + 日期 ========== */}
-      <div className="flex flex-shrink-0" style={{ borderBottom: `1px solid ${t.accent}66` }}>
+      <div className="flex flex-shrink-0" style={{ borderBottom: `1px solid ${appTheme.primary}66` }}>
         {/* 时间轴占位 */}
-        <div className="w-[52px] flex-shrink-0" />
+        <div className="w-[36px] sm:w-[52px] flex-shrink-0" />
         {/* 7 列标题 */}
         {days.map((day, idx) => {
           const isToday = day.getTime() === today.getTime();
@@ -142,16 +79,16 @@ export function WeekView({ weekStart, schedules, onEventClick, onSlotClick, onEv
               className={`flex-1 py-2 text-center ${
                 isToday ? '' : ''
               }`}
-              style={isToday ? { backgroundColor: `${t.accent}1A` } : undefined}
+              style={isToday ? { backgroundColor: `${appTheme.primary}1A` } : undefined}
             >
-              <div className="text-xs" style={{ color: `${t.cardText}80` }}>{weekDayNames[idx]}</div>
+              <div className="text-xs" style={{ color: `${appTheme.ink}80` }}>{weekDayNames[idx]}</div>
               <div
                 className={`text-lg font-light mt-0.5 w-8 h-8 flex items-center justify-center mx-auto ${
                   isToday ? 'rounded-full' : ''
                 }`}
                 style={isToday
-                  ? { color: t.cardText, backgroundColor: t.accent }
-                  : { color: `${t.cardText}CC` }
+                  ? { color: appTheme.ink, backgroundColor: appTheme.primary }
+                  : { color: `${appTheme.ink}CC` }
                 }
               >
                 {day.getDate()}
@@ -163,19 +100,19 @@ export function WeekView({ weekStart, schedules, onEventClick, onSlotClick, onEv
 
       {/* ========== 全天事件区域 ========== */}
       {hasAllDayEvents && (
-        <div className="flex flex-shrink-0 min-h-[32px]" style={{ borderBottom: `1px solid ${t.accent}33` }}>
-          <div className="w-[52px] flex-shrink-0 flex items-center justify-center">
-            <span className="text-[10px]" style={{ color: `${t.cardText}66` }}>全天</span>
+        <div className="flex flex-shrink-0 min-h-[32px]" style={{ borderBottom: `1px solid ${appTheme.primary}33` }}>
+          <div className="w-[36px] sm:w-[52px] flex-shrink-0 flex items-center justify-center">
+            <span className="text-[10px]" style={{ color: `${appTheme.ink}66` }}>全天</span>
           </div>
           {allDayEventsByDay.map((dayEvents, dayIdx) => (
             <div key={dayIdx} className="flex-1 flex flex-col gap-1 py-1 px-0.5">
               {dayEvents.map((event) => {
-                const bgColor = event.color || t.accent;
+                const bgColor = event.color || appTheme.primary;
                 const isTaskSync = event.source_type === 'task_sync';
                 return (
                   <div
                     key={event.id}
-                    className="rounded px-1.5 py-0.5 text-xs truncate cursor-pointer transition-opacity hover:opacity-80"
+                    className="rounded px-1.5 py-0.5 text-xs break-all cursor-pointer transition-opacity hover:opacity-80"
                     style={{
                       backgroundColor: isTaskSync ? 'transparent' : bgColor,
                       border: isTaskSync ? `1px dashed ${bgColor}` : 'none',
@@ -195,27 +132,23 @@ export function WeekView({ weekStart, schedules, onEventClick, onSlotClick, onEv
 
       {/* ========== 网格主体 ========== */}
       <div
-        ref={gridRef}
         className="flex"
         style={{ height: 1200 }}
-        onMouseMove={handleDragMove}
-        onMouseUp={handleDragEnd}
-        onMouseLeave={handleDragEnd}
       >
         {/* 时间轴 */}
-        <div className="w-[52px] flex-shrink-0 relative" style={{ height: '100%' }}>
+        <div className="w-[36px] sm:w-[52px] flex-shrink-0 relative" style={{ height: '100%' }}>
           {hours.map((hour) => (
             <div
               key={hour}
               className="absolute w-full text-right pr-2 text-[10px] -translate-y-1/2"
-              style={{ top: `${hourToPercent(hour)}%`, color: `${t.cardText}66` }}
+              style={{ top: `${hourToPercent(hour)}%`, color: `${appTheme.ink}66` }}
             >
               {hour.toString().padStart(2, '0')}:00
             </div>
           ))}
           {/* 夜间压缩区标记 */}
           <div
-            className="absolute left-0 right-0 border-t border-dashed" style={{ borderColor: `${t.accent}4D`, top: `${hourToPercent(7)}%` }}
+            className="absolute left-0 right-0 border-t border-dashed" style={{ borderColor: `${appTheme.primary}4D`, top: `${hourToPercent(7)}%` }}
           />
         </div>
 
@@ -225,7 +158,7 @@ export function WeekView({ weekStart, schedules, onEventClick, onSlotClick, onEv
           {hours.map((hour) => (
             <div
               key={hour}
-              className="absolute w-full h-[1px] left-0" style={{ top: `${hourToPercent(hour)}%`, backgroundColor: `${t.accent}33` }}
+              className="absolute w-full h-[1px] left-0" style={{ top: `${hourToPercent(hour)}%`, backgroundColor: `${appTheme.primary}33` }}
             />
           ))}
 
@@ -233,7 +166,7 @@ export function WeekView({ weekStart, schedules, onEventClick, onSlotClick, onEv
           {Array.from({ length: 6 }, (_, i) => (
             <div
               key={i}
-              className="absolute top-0 h-full w-[1px]" style={{ left: `${((i + 1) / 7) * 100}%`, backgroundColor: `${t.accent}33` }}
+              className="absolute top-0 h-full w-[1px]" style={{ left: `${((i + 1) / 7) * 100}%`, backgroundColor: `${appTheme.primary}33` }}
             />
           ))}
 
@@ -244,94 +177,114 @@ export function WeekView({ weekStart, schedules, onEventClick, onSlotClick, onEv
             return (
               <div
                 key={`today-${idx}`}
-                className="absolute top-0 h-full" style={{ left: `${(idx / 7) * 100}%`, width: `${100 / 7}%`, backgroundColor: `${t.accent}0D` }}
+                className="absolute top-0 h-full" style={{ left: `${(idx / 7) * 100}%`, width: `${100 / 7}%`, backgroundColor: `${appTheme.primary}0D` }}
               />
             );
           })}
-
-          {/* 点击空白区域创建事件 */}
-          {days.map((day, dayIdx) => (
-            <div
-              key={`click-${dayIdx}`}
-              className="absolute top-0 h-full cursor-pointer"
-              style={{
-                left: `${(dayIdx / 7) * 100}%`,
-                width: `${100 / 7}%`,
-              }}
-              onClick={(e) => {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                const y = e.clientY - rect.top;
-                const ratio = y / rect.height;
-                const hour = Math.floor(percentToHour(ratio));
-                const clickDate = new Date(day);
-                clickDate.setHours(hour, 0, 0, 0);
-                onSlotClick(clickDate, hour);
-              }}
-            />
-          ))}
 
           {/* 事件色块 */}
           {eventsByDay.map((dayEvents, dayIdx) => {
             if (dayEvents.length === 0) return null;
 
-            const layouts = layoutOverlappingEvents(dayEvents);
+            const { layouts, taskSyncOverlap } = layoutOverlappingEvents(dayEvents);
 
-            // 渲染事件
-            return layouts.map(({ event, col, totalCols }) => {
-              const colWidthPercent = (100 / 7) / totalCols;
-              const colLeft = (dayIdx / 7) * 100 + col * colWidthPercent;
-              const gap = 1.2; // 卡片两侧留白，视觉居中
-              const cardLeft = colLeft + gap / 2;
-              const cardWidth = colWidthPercent - gap;
+            // 收集已被关联到普通日程的 task_sync id
+            const linkedTaskIds = new Set<string>();
+            for (const tasks of taskSyncOverlap.values()) {
+              for (const t of tasks) linkedTaskIds.add(t.id);
+            }
 
-              // 计算 top 和 height（考虑夜间压缩）
-              const startDate = new Date(event.start_at);
-              const startHour = startDate.getHours() + startDate.getMinutes() / 60;
-              const top = hourToPercent(startHour);
+            // 独立的 task_sync 事件（没有重叠的普通日程）
+            const standaloneTasks = dayEvents.filter(
+              (e) => e.source_type === 'task_sync' && !linkedTaskIds.has(e.id)
+            );
 
-              let height: number;
-              if (event.end_at) {
-                const endDate = new Date(event.end_at);
-                const endHour = endDate.getHours() + endDate.getMinutes() / 60;
-                height = hourToPercent(endHour) - top;
-              } else {
-                height = hourToPercent(startHour + 1) - top;
-              }
+            const dayLeft = (dayIdx / 7) * 100;
+            const dayWidth = 100 / 7;
+            const gap = 1.2;
 
-              // 跳过超出显示范围的事件
-              if (startHour >= HOUR_END || top >= 100) return null;
-              const maxHeight = 100 - top;
-              const clampedHeight = Math.min(height, maxHeight);
+            return (
+              <div key={dayIdx}>
+                {/* 普通日程 */}
+                {layouts.map(({ event, col, totalCols }) => {
+                  const colWidthPercent = dayWidth / totalCols;
+                  const colLeft = dayLeft + col * colWidthPercent;
+                  const cardLeft = colLeft + gap / 2;
+                  const cardWidth = colWidthPercent - gap;
 
-              return (
-                <EventBlock
-                  key={event.id}
-                  event={event}
-                  top={top}
-                  height={clampedHeight}
-                  left={cardLeft}
-                  width={cardWidth}
-                  onClick={onEventClick}
-                  onDragStart={handleDragStart}
-                />
-              );
-            });
+                  const startDate = new Date(event.start_at);
+                  const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+                  const top = hourToPercent(startHour);
+
+                  let height: number;
+                  if (event.end_at) {
+                    const endDate = new Date(event.end_at);
+                    const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+                    height = hourToPercent(endHour) - top;
+                  } else {
+                    height = hourToPercent(startHour + 1) - top;
+                  }
+
+                  if (startHour >= HOUR_END || top >= 100) return null;
+                  const maxHeight = 100 - top;
+                  const clampedHeight = Math.min(height, maxHeight);
+
+                  return (
+                    <EventBlock
+                      key={event.id}
+                      event={event}
+                      top={top}
+                      height={clampedHeight}
+                      left={cardLeft}
+                      width={cardWidth}
+                      onClick={onEventClick}
+                      taskSyncEvents={taskSyncOverlap.get(event.id)}
+                      onTaskSyncClick={onEventClick}
+                    />
+                  );
+                })}
+
+                {/* 独立 task_sync 事件 */}
+                {standaloneTasks.map((event) => {
+                  const startDate = new Date(event.start_at);
+                  const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+                  const top = hourToPercent(startHour);
+
+                  let height: number;
+                  if (event.end_at) {
+                    const endDate = new Date(event.end_at);
+                    const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+                    height = hourToPercent(endHour) - top;
+                  } else {
+                    height = hourToPercent(startHour + 1) - top;
+                  }
+
+                  if (startHour >= HOUR_END || top >= 100) return null;
+                  const maxHeight = 100 - top;
+                  const clampedHeight = Math.min(height, maxHeight);
+
+                  return (
+                    <EventBlock
+                      key={event.id}
+                      event={event}
+                      top={top}
+                      height={clampedHeight}
+                      left={dayLeft + gap / 2}
+                      width={dayWidth - gap}
+                      onClick={onEventClick}
+                    />
+                  );
+                })}
+              </div>
+            );
           })}
 
           {/* 当前时间指示线 */}
           <CurrentTimeLine />
 
-          {/* 拖拽指示器 */}
-          {draggingEvent && (
-            <DragIndicator
-              y={dragY}
-              gridRef={gridRef}
-              yToHour={yToHour}
-              snapToGrid={snapToGrid}
-            />
-          )}
         </div>
       </div>
+      </div>{/* end min-w wrapper */}
     </div>
   );
 }
@@ -356,37 +309,3 @@ function CurrentTimeLine() {
   );
 }
 
-/** 拖拽指示器 */
-function DragIndicator({
-  y,
-  gridRef,
-  yToHour,
-  snapToGrid,
-}: {
-  y: number;
-  gridRef: React.RefObject<HTMLDivElement | null>;
-  yToHour: (y: number) => number;
-  snapToGrid: (hour: number) => number;
-}) {
-  const t = usePageTheme('schedule');
-  if (!gridRef.current) return null;
-
-  const hour = snapToGrid(yToHour(y));
-  const top = hourToPercent(hour);
-
-  const timeStr = `${pad(Math.floor(hour))}:${pad(Math.round((hour % 1) * 60))}`;
-
-  return (
-    <div
-      className="absolute left-0 right-0 z-30 pointer-events-none"
-      style={{ top: `${top}%` }}
-    >
-      {/* 时间标签 */}
-      <div className="absolute -left-12 -top-3 text-xs px-2 py-1 rounded shadow-lg" style={{ backgroundColor: t.accent, color: t.cardText }}>
-        {timeStr}
-      </div>
-      {/* 指示线 */}
-      <div className="w-full h-[2px] shadow-lg" style={{ backgroundColor: t.accent }} />
-    </div>
-  );
-}

@@ -1,5 +1,3 @@
-export { DropdownMenu } from './DropdownMenu';
-export { GridBackground } from './GridBackground';
-
+export { BottomTabBar } from './BottomTabBar';
 export { PageContainer } from './PageContainer';
 export { WindowControls } from './WindowControls';

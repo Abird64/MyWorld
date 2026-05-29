@@ -148,3 +148,22 @@ pub fn search_contacts(
     let contacts = contact_repo::search_contacts(&conn, &input.query)?;
     serde_json::to_value(contacts).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn list_upcoming_birthdays(
+    state: State<'_, DbState>,
+    days_ahead: Option<i32>,
+) -> Result<serde_json::Value, String> {
+    let conn = state.conn.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+    let birthdays = contact_repo::list_upcoming_birthdays(&conn, days_ahead.unwrap_or(30))?;
+    serde_json::to_value(birthdays).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_all_birthdays(
+    state: State<'_, DbState>,
+) -> Result<serde_json::Value, String> {
+    let conn = state.conn.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+    let birthdays = contact_repo::list_all_birthdays(&conn)?;
+    serde_json::to_value(birthdays).map_err(|e| e.to_string())
+}

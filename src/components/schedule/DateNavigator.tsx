@@ -1,4 +1,4 @@
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 
 
 interface DateNavigatorProps {
@@ -10,15 +10,13 @@ interface DateNavigatorProps {
 }
 
 export function DateNavigator({ weekLabel, onPrev, onNext, onToday, onImportIcs }: DateNavigatorProps) {
-  const t = usePageTheme('schedule');
-
-  const btnBg = `${t.accent}4D`;
-  const btnHoverBg = `${t.accent}80`;
-  const textColor = t.cardText;
+  const btnBg = `${appTheme.primary}4D`;
+  const btnHoverBg = `${appTheme.primary}80`;
+  const textColor = appTheme.ink;
 
   return (
-    <div className="flex items-center justify-between w-full">
-      <div className="flex items-center gap-2">
+    <div className="flex items-center justify-between w-full flex-nowrap">
+      <div className="flex items-center gap-2 min-w-0">
         {onPrev && (
           <button
             onClick={onPrev}
@@ -32,7 +30,7 @@ export function DateNavigator({ weekLabel, onPrev, onNext, onToday, onImportIcs 
             </svg>
           </button>
         )}
-        <span className="text-base font-light tracking-wider min-w-[140px] text-center" style={{ color: textColor }}>
+        <span className="text-base font-light tracking-wider text-center whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: textColor }}>
           {weekLabel}
         </span>
         {onNext && (
@@ -58,11 +56,11 @@ export function DateNavigator({ weekLabel, onPrev, onNext, onToday, onImportIcs 
           今天
         </button>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-shrink-0">
         {onImportIcs && (
           <button
             onClick={onImportIcs}
-            className="px-3 py-1.5 rounded-full text-sm font-light transition-colors"
+            className="px-3 py-1.5 rounded-full text-sm font-light transition-colors whitespace-nowrap"
             style={{ backgroundColor: btnBg, color: textColor }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = btnHoverBg)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = btnBg)}

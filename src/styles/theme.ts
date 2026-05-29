@@ -1,17 +1,64 @@
 /**
- * MyWorld - 设计系统主题配置
- * 
- * 本文件统一管理所有页面的设计 Token
- * 包含：颜色、间距、字体、圆角、阴影等
+ * MyWorld - 设计系统
+ *
+ * Apple-inspired design tokens: single accent (#0066cc),
+ * system-ui typography, 8px spacing grid, pill buttons.
  */
 
-// ========== 页面主题配置 ==========
-/**
- * 页面主题接口
- *
- * - isDark: 描述内容区域的明暗，控制网格线颜色、overlay 色等。
- *   所有页面的 nav 栏始终为深色（类似 macOS 深色菜单栏），与 isDark 无关。
- */
+// ========== 新主题系统 ==========
+
+export interface AppTheme {
+  primary: string;
+  primaryFocus: string;
+  primaryOnDark: string;
+  ink: string;
+  canvas: string;
+  canvasParchment: string;
+  surfacePearl: string;
+  surfaceDark: string;
+  surfaceDark2: string;
+  surfaceDark3: string;
+  surfaceBlack: string;
+  onPrimary: string;
+  onDark: string;
+  bodyMuted: string;
+  inkMuted80: string;
+  inkMuted48: string;
+  hairline: string;
+  divider: string;
+  danger: string;
+  success: string;
+  warning: string;
+}
+
+/** 统一的 Apple 风格主题 */
+export const appTheme: AppTheme = {
+  primary: '#0066cc',
+  primaryFocus: '#0071e3',
+  primaryOnDark: '#2997ff',
+  ink: '#1d1d1f',
+  canvas: '#ffffff',
+  canvasParchment: '#f5f5f7',
+  surfacePearl: '#fafafc',
+  surfaceDark: '#272729',
+  surfaceDark2: '#2a2a2c',
+  surfaceDark3: '#252527',
+  surfaceBlack: '#000000',
+  onPrimary: '#ffffff',
+  onDark: '#ffffff',
+  bodyMuted: '#cccccc',
+  inkMuted80: '#333333',
+  inkMuted48: '#7a7a7a',
+  hairline: '#e0e0e0',
+  divider: '#f0f0f0',
+  danger: '#ff3b30',
+  success: '#34c759',
+  warning: '#ff9500',
+};
+
+// ========== 兼容旧接口 ==========
+// 保留旧 PageTheme 以支持渐进迁移，由 usePageTheme 提供映射值
+
 export interface PageTheme {
   id: string;
   name: string;
@@ -23,150 +70,44 @@ export interface PageTheme {
   card: string;
   cardText: string;
   isDark: boolean;
-  /** 语义色：删除/危险操作 */
   danger: string;
-  /** 语义色：警告 */
   warning: string;
-  /** 语义色：成功/完成 */
   success: string;
 }
 
+/** 旧主题兼容映射 — 所有页面统一使用新主题 */
 export const themes: Record<string, PageTheme> = {
-  tasks: {
-    id: 'tasks',
-    name: '苔痕青',
-    bg: '#C8C8C0',
-    nav: '#2D352F',
-    accent: '#58A968',
-    accentLight: '#58A96866',
-    text: '#1A1A1A',
-    card: '#D4DCD0',
-    cardText: '#1A1A1A',
-    isDark: false,
-    danger: '#E74C3C',
-    warning: '#F39C12',
-    success: '#58A968',
-  },
-  diary: {
-    id: 'diary',
-    name: '桂花纸',
-    bg: '#F7F3E9',
-    nav: '#3D3530',
-    accent: '#E65C5C',
-    accentLight: '#E65C5C66',
-    text: '#1A1A1A',
-    card: '#E6D9B8',
-    cardText: '#1A1A1A',
-    isDark: false,
-    danger: '#E74C3C',
-    warning: '#F39C12',
-    success: '#27AE60',
-  },
-  schedule: {
-    id: 'schedule',
-    name: '墙角梅',
-    bg: '#7A3A3A',
-    nav: '#3A2020',
-    accent: '#F2C94C',
-    accentLight: '#F2C94C50',
-    text: '#FFFFFF',
-    card: '#F8F5F0',
-    cardText: '#1A1A1A',
-    isDark: true,
-    danger: '#FF5F57',
-    warning: '#F2C94C',
-    success: '#28C840',
-  },
-  relations: {
-    id: 'relations',
-    name: '西窗烛',
-    bg: '#2D3742',
-    nav: '#3A4652',
-    accent: '#D98B58',
-    accentLight: '#D98B5850',
-    text: '#F2E9E0',
-    card: '#3A4652',
-    cardText: '#F2E9E0',
-    isDark: true,
-    danger: '#FF5F57',
-    warning: '#F39C12',
-    success: '#28C840',
-  },
   lantern: {
     id: 'lantern',
-    name: '江船夜',
-    bg: '#1B1B1B',
-    nav: '#2D3A32',
-    accent: '#4CAF7A',
-    accentLight: '#4CAF7A50',
-    text: '#EBEBE6',
-    card: '#2D3A32',
-    cardText: '#EBEBE6',
-    isDark: true,
-    danger: '#FF5F57',
-    warning: '#F2C94C',
-    success: '#4CAF7A',
-  },
-  settings: {
-    id: 'settings',
-    name: '设置',
-    bg: '#1B1A1B',
-    nav: '#2D3A32',
-    accent: '#58A968',
-    accentLight: '#58A96850',
-    text: '#E8E0D0',
-    card: '#252525',
-    cardText: '#E8E0D0',
-    isDark: true,
-    danger: '#FF5F57',
-    warning: '#F2C94C',
-    success: '#58A968',
-  },
-  skills: {
-    id: 'skills',
-    name: '修行紫',
-    bg: '#1B1B2F',
-    nav: '#2A2A3E',
-    accent: '#9B7DB8',
-    accentLight: '#9B7DB850',
-    text: '#E8E0D0',
-    card: '#252540',
-    cardText: '#E8E0D0',
-    isDark: true,
-    danger: '#FF5F57',
-    warning: '#F2C94C',
-    success: '#27AE60',
-  },
-  memories: {
-    id: 'memories',
-    name: '宣纸黄',
-    bg: '#F5F0E8',
-    nav: '#3D3530',
-    accent: '#B8860B',
-    accentLight: '#B8860B50',
-    text: '#2D2D2D',
-    card: '#FDF8F0',
-    cardText: '#2D2D2D',
+    name: '拾阶',
+    bg: appTheme.canvas,
+    nav: appTheme.surfaceBlack,
+    accent: appTheme.primary,
+    accentLight: appTheme.primary + '33',
+    text: appTheme.ink,
+    card: appTheme.canvas,
+    cardText: appTheme.ink,
     isDark: false,
-    danger: '#E74C3C',
-    warning: '#F39C12',
-    success: '#27AE60',
+    danger: appTheme.danger,
+    warning: appTheme.warning,
+    success: appTheme.success,
   },
+  // 保留 key 以防旧代码引用，值都映射到新主题
+  tasks: { id: 'tasks', name: '拾阶', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  diary: { id: 'diary', name: '拾阶', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  schedule: { id: 'schedule', name: '拾阶', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  relations: { id: 'relations', name: '拾阶', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  settings: { id: 'settings', name: '设置', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  skills: { id: 'skills', name: '拾阶', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  memories: { id: 'memories', name: '拾阶', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  habits: { id: 'habits', name: '拾阶', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
 };
 
-/** 可供统一模式选择的主题（排除设置页自身配色） */
-export const selectableThemes: PageTheme[] = [
-  themes.lantern,
-  themes.tasks,
-  themes.schedule,
-  themes.diary,
-  themes.relations,
-  themes.skills,
-];
+export const selectableThemes: PageTheme[] = [themes.lantern];
 
 // ========== 主题辅助函数 ==========
 
-/** 返回叠加在主题背景上的半透明颜色（暗色主题返回白色，浅色主题返回黑色） */
+/** 返回叠加在主题背景上的半透明颜色 */
 export function overlay(theme: PageTheme, opacity: number): string {
   const o = Math.round(opacity * 100) / 100;
   return theme.isDark
@@ -174,7 +115,6 @@ export function overlay(theme: PageTheme, opacity: number): string {
     : `rgba(0,0,0,${o})`;
 }
 
-/** 返回网格背景线颜色 */
 export function gridColor(theme: PageTheme, opacity = 0.08): string {
   return overlay(theme, opacity);
 }
@@ -194,65 +134,74 @@ export const SKILL_COLORS: Record<string, SkillColorInfo> = {
   cultivation:  { hex: '#8A6DA7', name: '修为' },
 };
 
-/** 按固定顺序排列的技能ID */
 export const SKILL_ORDER = ['knowledge', 'physique', 'charm', 'talent', 'worldliness', 'cultivation'];
 
-// 兼容旧名
 export const xpColors = {
   knowledge: SKILL_COLORS.knowledge.hex,
   talent: SKILL_COLORS.talent.hex,
   physique: SKILL_COLORS.physique.hex,
 };
 
-// ========== 间距系统 (8px 基准) ==========
+// ========== 设计 Token ==========
+
+/** Apple 风格间距系统 (8px 基准) */
 export const spacing = {
-  xs: '4px',
-  sm: '8px',
-  md: '16px',
+  xxs: '4px',
+  xs: '8px',
+  sm: '12px',
+  md: '17px',
   lg: '24px',
   xl: '32px',
-  '2xl': '48px',
-  section: '24px', // 页面区块间隔
-  component: '16px', // 组件内间隔
+  xxl: '48px',
+  section: '80px',
+  component: '16px',
 };
 
-// ========== 圆角系统 ==========
+/** Apple 风格圆角系统 */
 export const borderRadius = {
   none: '0',
+  xs: '5px',
   sm: '8px',
-  md: '16px',
-  lg: '24px',
-  xl: '32px',
-  '2xl': '40px',
-  '3xl': '50px', // 胶囊/卡片
-  full: '9999px', // 圆形/胶囊按钮
+  md: '11px',
+  lg: '18px',
+  pill: '9999px',
+  full: '9999px',
 };
 
-// ========== 字体系统 ==========
+/** Apple 风格字体系统 */
 export const typography = {
   fontFamily: {
-    zhueque: '"Zhuque Fangsong", "STKaiti", "KaiTi", serif',
-    xiaowei: '"Microsoft YaHei", "SimHei", sans-serif',
+    display: 'SF Pro Display, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+    body: 'SF Pro Text, system-ui, -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif',
   },
   sizes: {
-    xs: '14px',
-    sm: '16px',
+    xs: '10px',
+    sm: '12px',
+    caption: '14px',
+    body: '17px',
     md: '18px',
-    lg: '20px',
-    xl: '24px',
-    '2xl': '28px',
-    hero: '32px',
+    tagline: '21px',
+    lg: '24px',
+    lead: '28px',
+    xl: '34px',
+    '2xl': '40px',
+    hero: '56px',
   },
   weights: {
     light: '300',
     normal: '400',
-    medium: '500',
+    semibold: '600',
+  },
+  letterSpacing: {
+    tight: '-0.374px',
+    normal: '0',
+    wide: '0.196px',
   },
 };
 
 // ========== 导航栏 ==========
 export const navbar = {
-  height: '72px',
+  height: '44px',
   padding: {
     x: 'px-4 md:px-6 lg:px-8',
   },
@@ -272,16 +221,16 @@ export const capsuleTab = {
 
 // ========== 卡片 ==========
 export const card = {
-  borderRadius: 'rounded-[50px]',
+  borderRadius: 'rounded-[18px]',
   padding: {
     sm: 'p-4',
     md: 'p-6',
     lg: 'p-8',
   },
   shadows: {
-    sm: 'shadow-sm',
-    md: 'shadow-md',
-    lg: 'shadow-lg',
+    sm: '',
+    md: '',
+    lg: '',
   },
 };
 
@@ -290,8 +239,8 @@ export const button = {
   borderRadius: 'rounded-full',
   padding: {
     sm: 'px-3 py-1 text-sm',
-    md: 'px-5 py-2 text-base',
-    lg: 'px-8 py-3 text-lg',
+    md: 'px-5 py-2.5 text-base',
+    lg: 'px-6 py-3 text-lg',
   },
   transition: 'transition-all duration-200',
 };
@@ -307,23 +256,10 @@ export const windowControls = {
   gap: 'gap-3',
 };
 
-// ========== 通用网格背景 ==========
-export const gridBackground = {
-  dark: `
-    linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)
-  `,
-  light: `
-    linear-gradient(rgba(0,0,0,0.15) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.15) 1px, transparent 1px)
-  `,
-  size: '40px 40px',
-};
-
 // ========== 布局容器 ==========
 export const container = {
-  maxWidth: 'max-w-[1000px]',
+  maxWidth: 'max-w-[980px]',
   padding: {
-    x: 'px-8',
+    x: 'px-4 md:px-6 lg:px-8',
   },
 };

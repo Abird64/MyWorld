@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavBar } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
 import { useMemoryStore } from '@/stores/memoryStore';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 import { MEMORY_TYPE_LABELS, MEMORY_TYPE_ICONS } from '@/types/memory';
 import type { Memory } from '@/types/memory';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
@@ -39,7 +39,6 @@ function groupByType(memories: Memory[]): Map<string, Memory[]> {
 }
 
 export function MemoriesPage() {
-  const t = usePageTheme('memories');
   const { memories, loading, selectedType, fetchMemories, deleteMemory, setSelectedType } =
     useMemoryStore();
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
@@ -78,8 +77,8 @@ export function MemoriesPage() {
   ];
 
   return (
-    <PageContainer className="flex flex-col" bgColor={t.bg}>
-      <NavBar title="小本本" navColor={t.nav} quote="提灯对你的了解" />
+    <PageContainer className="flex flex-col" bgColor={appTheme.canvasParchment}>
+      <NavBar title="小本本" />
 
       {/* 类型筛选栏 */}
       <div className="px-6 py-3 flex gap-2 overflow-x-auto">
@@ -91,9 +90,9 @@ export function MemoriesPage() {
               onClick={() => setSelectedType(pill.key)}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-all"
               style={{
-                backgroundColor: isActive ? t.accent : 'transparent',
-                color: isActive ? '#fff' : t.text,
-                border: `1px solid ${isActive ? t.accent : t.isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}`,
+                backgroundColor: isActive ? appTheme.primary : 'transparent',
+                color: isActive ? '#fff' : appTheme.ink,
+                border: `1px solid ${isActive ? appTheme.primary : 'rgba(0,0,0,0.15)'}`,
                 opacity: isActive ? 1 : 0.7,
               }}
             >
@@ -107,11 +106,11 @@ export function MemoriesPage() {
       {/* 内容区域 */}
       <div className="flex-1 overflow-y-auto px-6 pb-8">
         {loading ? (
-          <div className="flex items-center justify-center h-40" style={{ color: t.text }}>
+          <div className="flex items-center justify-center h-40" style={{ color: appTheme.ink }}>
             加载中...
           </div>
         ) : memories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-60 gap-4" style={{ color: t.text }}>
+          <div className="flex flex-col items-center justify-center h-60 gap-4" style={{ color: appTheme.ink }}>
             <span className="text-4xl">📒</span>
             <p className="text-center opacity-60">
               提灯还没有在小本本里写任何东西。
@@ -126,7 +125,7 @@ export function MemoriesPage() {
               if (!items || items.length === 0) return null;
               return (
                 <div key={tp}>
-                  <h3 className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: t.text, opacity: 0.6 }}>
+                  <h3 className="text-sm font-medium mb-3 flex items-center gap-2" style={{ color: appTheme.ink, opacity: 0.6 }}>
                     <span>{MEMORY_TYPE_ICONS[tp]}</span>
                     <span>{MEMORY_TYPE_LABELS[tp]}</span>
                     <span>({items.length})</span>
@@ -137,8 +136,8 @@ export function MemoriesPage() {
                         key={m.id}
                         className="rounded-2xl p-4 transition-all"
                         style={{
-                          backgroundColor: t.card,
-                          color: t.cardText,
+                          backgroundColor: appTheme.canvas,
+                          color: appTheme.ink,
                         }}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -146,7 +145,7 @@ export function MemoriesPage() {
                           <button
                             onClick={() => setConfirmDelete(m.id)}
                             className="p-1 rounded-lg opacity-50 hover:opacity-100 transition-opacity flex-shrink-0"
-                            style={{ color: t.danger }}
+                            style={{ color: appTheme.danger }}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -157,7 +156,7 @@ export function MemoriesPage() {
                             <button
                               onClick={() => toggleSource(m.id)}
                               className="flex items-center gap-1 text-xs opacity-50 hover:opacity-80 transition-opacity"
-                              style={{ color: t.cardText }}
+                              style={{ color: appTheme.ink }}
                             >
                               {expandedSources.has(m.id) ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                               来源
@@ -166,8 +165,8 @@ export function MemoriesPage() {
                               <p
                                 className="mt-1 text-xs px-3 py-2 rounded-xl opacity-70"
                                 style={{
-                                  backgroundColor: t.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                                  color: t.cardText,
+                                  backgroundColor: 'rgba(0,0,0,0.03)',
+                                  color: appTheme.ink,
                                 }}
                               >
                                 {m.source_text}
@@ -176,20 +175,20 @@ export function MemoriesPage() {
                           </div>
                         )}
 
-                        <div className="mt-2 text-xs opacity-40" style={{ color: t.cardText }}>
+                        <div className="mt-2 text-xs opacity-40" style={{ color: appTheme.ink }}>
                           {formatRelativeTime(m.created_at)}
                         </div>
 
                         {/* 删除确认 */}
                         {confirmDelete === m.id && (
                           <div className="mt-3 flex items-center gap-2">
-                            <span className="text-xs opacity-60" style={{ color: t.cardText }}>
+                            <span className="text-xs opacity-60" style={{ color: appTheme.ink }}>
                               确定删除这条记忆？
                             </span>
                             <button
                               onClick={() => handleDelete(m.id)}
                               className="px-3 py-1 rounded-lg text-xs text-white"
-                              style={{ backgroundColor: t.danger }}
+                              style={{ backgroundColor: appTheme.danger }}
                             >
                               确认
                             </button>
@@ -197,8 +196,8 @@ export function MemoriesPage() {
                               onClick={() => setConfirmDelete(null)}
                               className="px-3 py-1 rounded-lg text-xs"
                               style={{
-                                backgroundColor: t.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
-                                color: t.cardText,
+                                backgroundColor: 'rgba(0,0,0,0.06)',
+                                color: appTheme.ink,
                               }}
                             >
                               取消

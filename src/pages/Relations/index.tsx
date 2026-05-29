@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, X, Trash2, Phone, MessageCircle, AtSign, Globe } from 'lucide-react';
 import { NavBar, CapsuleTabs } from '@/components/ui';
-import { GridBackground, PageContainer } from '@/components/layout';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { PageContainer } from '@/components/layout';
+import { BirthdayBar } from '@/components/relations/BirthdayBar';
+import { appTheme } from '@/styles/theme';
 import { useContactStore } from '@/stores/contactStore';
 import type { Contact, ContactMethodInput } from '@/types/contact';
 
@@ -24,13 +25,13 @@ const groupIdToLabel: Record<string, string> = {
   teacher: '老师',
 };
 
-/** 头像色板（按分组固定颜色） */
+/** 头像色板（按分组固定颜色 — 柔和协调） */
 const groupColors: Record<string, string> = {
-  family: '#D98B58',
-  friend: '#F2C94C',
-  classmate: '#7A93AC',
-  colleague: '#58A968',
-  teacher: '#2A8CB7',
+  family: '#C17F59',
+  friend: '#D4A84B',
+  classmate: '#6B8BA4',
+  colleague: '#5A9468',
+  teacher: '#3478A0',
 };
 
 
@@ -159,7 +160,6 @@ function MethodRow({
 }
 
 export function RelationsPage() {
-  const theme = usePageTheme('relations');
   const { contacts, isLoading, fetchContacts, createContact, updateContact, deleteContact } = useContactStore();
   const [activeCategory, setActiveCategory] = useState('all');
 
@@ -315,55 +315,47 @@ export function RelationsPage() {
   }
 
   function getGroupColor(groupName: string | null): string {
-    if (!groupName) return theme.accent;
+    if (!groupName) return appTheme.primary;
     const entry = Object.entries(groupIdToLabel).find(([, label]) => label === groupName);
-    return entry ? groupColors[entry[0]] : theme.accent;
+    return entry ? groupColors[entry[0]] : appTheme.primary;
   }
 
   return (
-    <PageContainer className="relative" bgColor={theme.bg}>
-      {/* 网格背景 */}
-      <GridBackground isDark={theme.isDark} />
-
-      {/* 顶部导航栏 */}
-      <NavBar
-        title="相识"
-        navColor={theme.nav}
-        quote="何当共剪西窗烛，却话巴山夜雨时"
-      />
+    <PageContainer className="relative">
+      <NavBar title="相识" />
 
       {/* 固定控制区：胶囊分类 */}
-      <div className="flex-shrink-0 flex flex-col items-center px-8 pt-6 pb-4 relative z-10">
-        <div className="w-full max-w-[1000px]">
+      <div className="flex-shrink-0 flex flex-col items-center px-4 sm:px-8 pt-6 pb-4 relative z-10">
+        <div className="w-full max-w-[1000px] space-y-4">
+          <BirthdayBar />
           <CapsuleTabs
             items={categories}
             activeId={activeCategory}
             onChange={setActiveCategory}
-            accentColor={theme.accent}
-            isDark={theme.isDark}
+            accentColor={appTheme.primary}
           />
         </div>
       </div>
 
       {/* 可滚动内容区：联系人列表 */}
-      <div className="flex-1 overflow-y-auto flex flex-col items-center px-8 pb-8 relative z-10">
+      <div className="flex-1 overflow-y-auto flex flex-col items-center px-4 sm:px-8 pb-8 relative z-10">
         <div className="max-w-[1000px] mx-auto w-full">
           {isLoading && contacts.length === 0 ? (
-            <div className="text-center py-20" style={{ color: `${theme.text}66` }}>
+            <div className="text-center py-20" style={{ color: `${appTheme.ink}66` }}>
               加载中...
             </div>
           ) : filteredContacts.length === 0 ? (
-            <div className="text-center py-20" style={{ color: `${theme.text}66` }}>
+            <div className="text-center py-20" style={{ color: `${appTheme.ink}66` }}>
               暂无联系人
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {filteredContacts.map((contact) => (
                 <div
                   key={contact.id}
                   onClick={() => openDetail(contact)}
-                  className="rounded-[24px] p-4 flex items-center gap-4 hover:opacity-90 transition-colors cursor-pointer h-[110px] overflow-hidden"
-                  style={{ backgroundColor: theme.card }}
+                  className="rounded-[18px] p-4 flex items-center gap-4 hover:opacity-90 transition-colors cursor-pointer h-[110px] overflow-hidden"
+                  style={{ backgroundColor: appTheme.canvas }}
                 >
                   {/* 头像 */}
                   <div
@@ -373,18 +365,18 @@ export function RelationsPage() {
 
                   <div className="flex flex-col min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-zhuque text-lg truncate" style={{ color: theme.cardText }}>
+                      <span className=" text-lg truncate" style={{ color: appTheme.ink }}>
                         {contact.name}
                       </span>
                       {contact.nickname && (
-                        <span className="font-zhuque text-sm truncate" style={{ color: `${theme.cardText}55` }}>
+                        <span className=" text-sm truncate" style={{ color: `${appTheme.ink}55` }}>
                           ({splitTags(contact.nickname)[0]}{splitTags(contact.nickname).length > 1 ? '...' : ''})
                         </span>
                       )}
                     </div>
                     {contact.group_name && (
                       <span
-                        className="font-zhuque text-sm mt-1 px-2 py-0.5 rounded-full w-fit"
+                        className=" text-sm mt-1 px-2 py-0.5 rounded-full w-fit"
                         style={{
                           backgroundColor: `${getGroupColor(contact.group_name)}30`,
                           color: getGroupColor(contact.group_name),
@@ -401,17 +393,17 @@ export function RelationsPage() {
                             <span
                               key={m.id}
                               className="inline-flex items-center gap-1 text-xs"
-                              style={{ color: `${theme.cardText}80` }}
+                              style={{ color: `${appTheme.ink}80` }}
                             >
                               <Icon size={11} />
-                              <span className="font-zhuque">{getMethodLabel(m.method_type)}</span>
+                              <span className="">{getMethodLabel(m.method_type)}</span>
                             </span>
                           );
                         })}
                       </div>
                     )}
                     {contact.notes && (
-                      <span className="font-zhuque text-sm mt-1 truncate" style={{ color: `${theme.cardText}99` }}>
+                      <span className=" text-sm mt-1 truncate" style={{ color: `${appTheme.ink}99` }}>
                         {contact.notes}
                       </span>
                     )}
@@ -426,8 +418,8 @@ export function RelationsPage() {
       {/* 右下角加号按钮 */}
       <button
         onClick={() => setShowCreate(true)}
-        className="fixed bottom-8 right-8 z-30 w-14 h-14 rounded-full text-white shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center"
-        style={{ backgroundColor: theme.accent }}
+        className="fixed bottom-[72px] right-8 z-30 w-14 h-14 rounded-full text-white active:scale-95 transition-all flex items-center justify-center"
+        style={{ backgroundColor: appTheme.primary }}
       >
         <Plus size={28} strokeWidth={2.5} />
       </button>
@@ -440,8 +432,8 @@ export function RelationsPage() {
             onClick={() => { setShowCreate(false); resetCreateForm(); }}
           />
           <div
-            className="relative w-full max-w-[600px] rounded-3xl shadow-2xl p-8 mx-4"
-            style={{ backgroundColor: theme.card }}
+            className="relative w-full max-w-[600px] rounded-[18px] p-8 mx-4"
+            style={{ backgroundColor: appTheme.canvas }}
           >
             <input
               ref={createInputRef}
@@ -452,27 +444,27 @@ export function RelationsPage() {
               placeholder="姓名（必填）"
               className="w-full text-xl bg-transparent border-b pb-3 mb-5 focus:outline-none"
               style={{
-                color: theme.cardText,
-                borderColor: newName ? theme.accent : `${theme.cardText}20`,
+                color: appTheme.ink,
+                borderColor: newName ? appTheme.primary : `${appTheme.ink}20`,
               }}
             />
 
             {/* 别称/昵称（多值） */}
             <div className="mb-4">
-              <label className="block text-sm mb-1.5" style={{ color: `${theme.cardText}80` }}>别称 / 昵称</label>
+              <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}80` }}>别称 / 昵称</label>
               <TagInput
                 tags={newNicknames}
                 onTagsChange={setNewNicknames}
                 inputVal={newNicknameInput}
                 onInputChange={setNewNicknameInput}
                 placeholder="输入后回车添加，可多个"
-                accentColor={theme.accent}
+                accentColor={appTheme.primary}
               />
             </div>
 
             {/* 分组 */}
             <div className="mb-4">
-              <label className="block text-sm mb-1.5" style={{ color: `${theme.cardText}80` }}>分组</label>
+              <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}80` }}>分组</label>
               <div className="flex gap-2 flex-wrap">
                 {Object.entries(groupIdToLabel).map(([id, label]) => (
                   <button
@@ -480,8 +472,8 @@ export function RelationsPage() {
                     onClick={() => setNewGroupName(newGroupName === label ? '' : label)}
                     className="px-3 py-1.5 rounded-full text-sm transition-all"
                     style={{
-                      backgroundColor: newGroupName === label ? groupColors[id] : `${theme.cardText}10`,
-                      color: newGroupName === label ? '#fff' : `${theme.cardText}99`,
+                      backgroundColor: newGroupName === label ? groupColors[id] : `${appTheme.ink}10`,
+                      color: newGroupName === label ? '#fff' : `${appTheme.ink}99`,
                     }}
                   >
                     {label}
@@ -492,24 +484,24 @@ export function RelationsPage() {
 
             {/* 生日 */}
             <div className="mb-4">
-              <label className="block text-sm mb-1.5" style={{ color: `${theme.cardText}80` }}>生日</label>
+              <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}80` }}>生日</label>
               <div className="flex items-center gap-2 flex-wrap">
                 {/* 日历类型切换 */}
-                <div className="flex rounded-lg overflow-hidden" style={{ backgroundColor: `${theme.cardText}08` }}>
+                <div className="flex rounded-lg overflow-hidden" style={{ backgroundColor: `${appTheme.ink}08` }}>
                   <button
                     onClick={() => setNewBirthdayCalendar('solar')}
                     className="px-3 py-1.5 text-xs transition-colors"
                     style={{
-                      backgroundColor: newBirthdayCalendar === 'solar' ? theme.accent : 'transparent',
-                      color: newBirthdayCalendar === 'solar' ? '#fff' : `${theme.cardText}60`,
+                      backgroundColor: newBirthdayCalendar === 'solar' ? appTheme.primary : 'transparent',
+                      color: newBirthdayCalendar === 'solar' ? '#fff' : `${appTheme.ink}60`,
                     }}
                   >阳历</button>
                   <button
                     onClick={() => setNewBirthdayCalendar('lunar')}
                     className="px-3 py-1.5 text-xs transition-colors"
                     style={{
-                      backgroundColor: newBirthdayCalendar === 'lunar' ? theme.accent : 'transparent',
-                      color: newBirthdayCalendar === 'lunar' ? '#fff' : `${theme.cardText}60`,
+                      backgroundColor: newBirthdayCalendar === 'lunar' ? appTheme.primary : 'transparent',
+                      color: newBirthdayCalendar === 'lunar' ? '#fff' : `${appTheme.ink}60`,
                     }}
                   >农历</button>
                 </div>
@@ -521,41 +513,41 @@ export function RelationsPage() {
                   placeholder="年份"
                   min="1900" max="2100"
                   className="w-20 text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                  style={{ color: theme.cardText, backgroundColor: `${theme.cardText}08` }}
+                  style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}08` }}
                 />
-                <span className="text-sm" style={{ color: `${theme.cardText}40` }}>年</span>
+                <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>年</span>
                 {/* 月份 */}
                 <select
                   value={newBirthdayMonth}
                   onChange={(e) => setNewBirthdayMonth(e.target.value)}
                   className="custom-select text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                  style={{ color: theme.cardText, backgroundColor: `${theme.cardText}0D` }}
+                  style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}0D` }}
                 >
                   <option value="">月</option>
                   {Array.from({ length: 12 }, (_, i) => (
                     <option key={i + 1} value={i + 1}>{i + 1}</option>
                   ))}
                 </select>
-                <span className="text-sm" style={{ color: `${theme.cardText}40` }}>月</span>
+                <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>月</span>
                 {/* 日期 */}
                 <select
                   value={newBirthdayDay}
                   onChange={(e) => setNewBirthdayDay(e.target.value)}
                   className="custom-select text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                  style={{ color: theme.cardText, backgroundColor: `${theme.cardText}0D` }}
+                  style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}0D` }}
                 >
                   <option value="">日</option>
                   {Array.from({ length: 31 }, (_, i) => (
                     <option key={i + 1} value={i + 1}>{i + 1}</option>
                   ))}
                 </select>
-                <span className="text-sm" style={{ color: `${theme.cardText}40` }}>日</span>
+                <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>日</span>
               </div>
             </div>
 
             {/* 联系方式 */}
             <div className="mb-4">
-              <label className="block text-sm mb-1.5" style={{ color: `${theme.cardText}80` }}>联系方式</label>
+              <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}80` }}>联系方式</label>
               <div className="space-y-2">
                 {newContactMethods.map((m, i) => (
                   <MethodRow
@@ -567,15 +559,15 @@ export function RelationsPage() {
                       setNewContactMethods(next);
                     }}
                     onRemove={() => setNewContactMethods(newContactMethods.filter((_, j) => j !== i))}
-                    textColor={theme.cardText}
-                    bgColor={`${theme.cardText}08`}
+                    textColor={appTheme.ink}
+                    bgColor={`${appTheme.ink}08`}
                   />
                 ))}
               </div>
               <button
                 onClick={() => setNewContactMethods([...newContactMethods, { method_type: 'phone', value: '' }])}
                 className="mt-2 text-sm flex items-center gap-1 transition-colors hover:opacity-80"
-                style={{ color: theme.accent }}
+                style={{ color: appTheme.primary }}
               >
                 <Plus size={14} /> 添加联系方式
               </button>
@@ -590,8 +582,8 @@ export function RelationsPage() {
                 rows={2}
                 className="w-full text-base rounded-2xl px-4 py-3 focus:outline-none resize-none"
                 style={{
-                  backgroundColor: `${theme.cardText}08`,
-                  color: theme.cardText,
+                  backgroundColor: `${appTheme.ink}08`,
+                  color: appTheme.ink,
                 }}
               />
             </div>
@@ -601,7 +593,7 @@ export function RelationsPage() {
               <button
                 onClick={() => { setShowCreate(false); resetCreateForm(); }}
                 className="flex-1 py-3 rounded-full transition-colors"
-                style={{ color: `${theme.cardText}80`, backgroundColor: `${theme.cardText}10` }}
+                style={{ color: `${appTheme.ink}80`, backgroundColor: `${appTheme.ink}10` }}
               >
                 取消
               </button>
@@ -609,7 +601,7 @@ export function RelationsPage() {
                 onClick={handleCreate}
                 disabled={!newName.trim()}
                 className="flex-1 py-3 rounded-full text-white transition-colors disabled:opacity-30"
-                style={{ backgroundColor: theme.accent }}
+                style={{ backgroundColor: appTheme.primary }}
               >
                 添加
               </button>
@@ -628,18 +620,18 @@ export function RelationsPage() {
           />
           {/* 详情面板 */}
           <div
-            className="relative w-full max-w-[480px] shadow-2xl flex flex-col animate-slide-in"
-            style={{ backgroundColor: theme.bg }}
+            className="relative w-full max-w-[480px] flex flex-col animate-slide-in"
+            style={{ backgroundColor: appTheme.canvas }}
           >
             {/* 头部 */}
-            <div className="flex items-center justify-between p-6" style={{ borderBottom: `1px solid ${theme.text}15` }}>
-              <h2 className="text-xl font-zhuque" style={{ color: theme.text }}>联系人详情</h2>
+            <div className="flex items-center justify-between p-6" style={{ borderBottom: `1px solid ${appTheme.ink}15` }}>
+              <h2 className="text-xl " style={{ color: appTheme.ink }}>联系人详情</h2>
               <button
                 onClick={closeDetail}
                 className="w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80 transition-colors"
-                style={{ backgroundColor: `${theme.text}15` }}
+                style={{ backgroundColor: `${appTheme.ink}15` }}
               >
-                <X size={16} style={{ color: `${theme.text}99` }} />
+                <X size={16} style={{ color: `${appTheme.ink}99` }} />
               </button>
             </div>
 
@@ -654,32 +646,32 @@ export function RelationsPage() {
 
               {/* 姓名 */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${theme.text}60` }}>姓名</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>姓名</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   className="w-full text-lg rounded-2xl px-4 py-3 focus:outline-none"
-                  style={{ color: theme.text, backgroundColor: `${theme.text}08` }}
+                  style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}08` }}
                 />
               </div>
 
               {/* 别称/昵称（多值） */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${theme.text}60` }}>别称 / 昵称</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>别称 / 昵称</label>
                 <TagInput
                   tags={editNicknames}
                   onTagsChange={setEditNicknames}
                   inputVal={editNicknameInput}
                   onInputChange={setEditNicknameInput}
                   placeholder="输入后回车添加"
-                  accentColor={theme.accent}
+                  accentColor={appTheme.primary}
                 />
               </div>
 
               {/* 分组 */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${theme.text}60` }}>分组</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>分组</label>
                 <div className="flex gap-2 flex-wrap">
                   {Object.entries(groupIdToLabel).map(([id, label]) => (
                     <button
@@ -687,8 +679,8 @@ export function RelationsPage() {
                       onClick={() => setEditGroupName(editGroupName === label ? '' : label)}
                       className="px-4 py-1.5 rounded-full text-sm transition-all"
                       style={{
-                        backgroundColor: editGroupName === label ? groupColors[id] : `${theme.text}10`,
-                        color: editGroupName === label ? '#fff' : `${theme.text}99`,
+                        backgroundColor: editGroupName === label ? groupColors[id] : `${appTheme.ink}10`,
+                        color: editGroupName === label ? '#fff' : `${appTheme.ink}99`,
                       }}
                     >
                       {label}
@@ -699,24 +691,24 @@ export function RelationsPage() {
 
               {/* 生日 */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${theme.text}60` }}>生日</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>生日</label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* 日历类型切换 */}
-                  <div className="flex rounded-lg overflow-hidden" style={{ backgroundColor: `${theme.text}08` }}>
+                  <div className="flex rounded-lg overflow-hidden" style={{ backgroundColor: `${appTheme.ink}08` }}>
                     <button
                       onClick={() => setEditBirthdayCalendar('solar')}
                       className="px-3 py-1.5 text-xs transition-colors"
                       style={{
-                        backgroundColor: editBirthdayCalendar === 'solar' ? theme.accent : 'transparent',
-                        color: editBirthdayCalendar === 'solar' ? '#fff' : `${theme.text}60`,
+                        backgroundColor: editBirthdayCalendar === 'solar' ? appTheme.primary : 'transparent',
+                        color: editBirthdayCalendar === 'solar' ? '#fff' : `${appTheme.ink}60`,
                       }}
                     >阳历</button>
                     <button
                       onClick={() => setEditBirthdayCalendar('lunar')}
                       className="px-3 py-1.5 text-xs transition-colors"
                       style={{
-                        backgroundColor: editBirthdayCalendar === 'lunar' ? theme.accent : 'transparent',
-                        color: editBirthdayCalendar === 'lunar' ? '#fff' : `${theme.text}60`,
+                        backgroundColor: editBirthdayCalendar === 'lunar' ? appTheme.primary : 'transparent',
+                        color: editBirthdayCalendar === 'lunar' ? '#fff' : `${appTheme.ink}60`,
                       }}
                     >农历</button>
                   </div>
@@ -728,41 +720,41 @@ export function RelationsPage() {
                     placeholder="年份"
                     min="1900" max="2100"
                     className="w-20 text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                    style={{ color: theme.text, backgroundColor: `${theme.text}08` }}
+                    style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}08` }}
                   />
-                  <span className="text-sm" style={{ color: `${theme.text}40` }}>年</span>
+                  <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>年</span>
                   {/* 月份 */}
                   <select
                     value={editBirthdayMonth}
                     onChange={(e) => setEditBirthdayMonth(e.target.value)}
                     className="custom-select text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                    style={{ color: theme.text, backgroundColor: `${theme.text}0D` }}
+                    style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}0D` }}
                   >
                     <option value="">月</option>
                     {Array.from({ length: 12 }, (_, i) => (
                       <option key={i + 1} value={i + 1}>{i + 1}</option>
                     ))}
                   </select>
-                  <span className="text-sm" style={{ color: `${theme.text}40` }}>月</span>
+                  <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>月</span>
                   {/* 日期 */}
                   <select
                     value={editBirthdayDay}
                     onChange={(e) => setEditBirthdayDay(e.target.value)}
                     className="custom-select text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                    style={{ color: theme.text, backgroundColor: `${theme.text}0D` }}
+                    style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}0D` }}
                   >
                     <option value="">日</option>
                     {Array.from({ length: 31 }, (_, i) => (
                       <option key={i + 1} value={i + 1}>{i + 1}</option>
                     ))}
                   </select>
-                  <span className="text-sm" style={{ color: `${theme.text}40` }}>日</span>
+                  <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>日</span>
                 </div>
               </div>
 
               {/* 联系方式 */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${theme.text}60` }}>联系方式</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>联系方式</label>
                 <div className="space-y-2">
                   {editContactMethods.map((m, i) => (
                     <MethodRow
@@ -774,15 +766,15 @@ export function RelationsPage() {
                         setEditContactMethods(next);
                       }}
                       onRemove={() => setEditContactMethods(editContactMethods.filter((_, j) => j !== i))}
-                      textColor={theme.text}
-                      bgColor={`${theme.text}08`}
+                      textColor={appTheme.ink}
+                      bgColor={`${appTheme.ink}08`}
                     />
                   ))}
                 </div>
                 <button
                   onClick={() => setEditContactMethods([...editContactMethods, { method_type: 'phone', value: '' }])}
                   className="mt-2 text-sm flex items-center gap-1 transition-colors hover:opacity-80"
-                  style={{ color: theme.accent }}
+                  style={{ color: appTheme.primary }}
                 >
                   <Plus size={14} /> 添加联系方式
                 </button>
@@ -790,24 +782,24 @@ export function RelationsPage() {
 
               {/* 备注 */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${theme.text}60` }}>备注</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>备注</label>
                 <textarea
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
                   placeholder="备注..."
                   rows={3}
                   className="w-full text-base rounded-2xl px-4 py-3 focus:outline-none resize-none"
-                  style={{ color: theme.text, backgroundColor: `${theme.text}08` }}
+                  style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}08` }}
                 />
               </div>
             </div>
 
             {/* 底部按钮 */}
-            <div className="p-6 flex gap-3" style={{ borderTop: `1px solid ${theme.text}15` }}>
+            <div className="p-6 flex gap-3" style={{ borderTop: `1px solid ${appTheme.ink}15` }}>
               <button
                 onClick={handleDelete}
                 className="px-5 py-3 rounded-full flex items-center gap-2 transition-colors"
-                style={{ color: theme.danger, backgroundColor: `${theme.danger}20` }}
+                style={{ color: appTheme.danger, backgroundColor: `${appTheme.danger}20` }}
               >
                 <Trash2 size={16} />
                 删除
@@ -815,7 +807,7 @@ export function RelationsPage() {
               <button
                 onClick={closeDetail}
                 className="flex-1 py-3 rounded-full transition-colors"
-                style={{ backgroundColor: theme.accent, color: '#fff' }}
+                style={{ backgroundColor: appTheme.primary, color: '#fff' }}
               >
                 完成
               </button>
@@ -826,7 +818,7 @@ export function RelationsPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] bg-black/80 text-white px-6 py-3 rounded-2xl shadow-lg text-sm max-w-[500px]">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] bg-black/80 text-white px-6 py-3 rounded-2xl text-sm max-w-[500px]">
           {toast}
         </div>
       )}
@@ -854,7 +846,7 @@ export function RelationsPage() {
         .date-input::-webkit-calendar-picker-indicator {
           opacity: 0.4;
           cursor: pointer;
-          filter: grayscale(1) brightness(${theme.isDark ? '2' : '1'});
+          filter: grayscale(1);
         }
         .date-input::-webkit-calendar-picker-indicator:hover {
           opacity: 0.7;
@@ -863,8 +855,8 @@ export function RelationsPage() {
           cursor: pointer;
         }
         select.custom-select option {
-          color: ${theme.cardText};
-          background: ${theme.card};
+          color: ${appTheme.ink};
+          background: ${appTheme.canvas};
         }
       `}</style>
     </PageContainer>

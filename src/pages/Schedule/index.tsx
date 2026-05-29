@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { PageContainer, GridBackground } from '@/components/layout';
+import { PageContainer } from '@/components/layout';
 import { NavBar } from '@/components/ui';
 import { WeekView } from '@/components/schedule/WeekView';
 import { MonthView } from '@/components/schedule/MonthView';
@@ -11,6 +11,7 @@ import { EventDetail } from '@/components/schedule/EventDetail';
 import { CalendarList } from '@/components/schedule/CalendarList';
 import { CalendarManagerModal } from '@/components/schedule/CalendarManagerModal';
 import { ImportDialog } from '@/components/schedule/ImportDialog';
+import { CountdownList } from '@/components/schedule/CountdownList';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { parseIcs } from '@/utils/icsParser';
@@ -18,12 +19,12 @@ import * as scheduleService from '@/services/scheduleService';
 import { startNotificationChecker, stopNotificationChecker, setNotificationEnabled } from '@/services/notificationService';
 import { useSettingStore } from '@/stores/settingStore';
 import { addExdate } from '@/services/scheduleService';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 import { Plus } from 'lucide-react';
 import type { Schedule, CreateScheduleInput, UpdateScheduleInput } from '@/types/schedule';
 import type { ParsedIcsEvent } from '@/utils/icsParser';
 
-type ViewMode = 'week' | 'month' | 'agenda' | 'day';
+type ViewMode = 'week' | 'month' | 'agenda' | 'day' | 'countdown';
 
 /** 获取某天所在周的周一 */
 function getWeekMonday(date: Date): Date {
@@ -38,12 +39,15 @@ function getWeekMonday(date: Date): Date {
 function formatWeekLabel(weekMonday: Date): string {
   const end = new Date(weekMonday);
   end.setDate(end.getDate() + 6);
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${weekMonday.getFullYear()}年${weekMonday.getMonth() + 1}月${pad(weekMonday.getDate())}日 - ${end.getMonth() + 1}月${pad(end.getDate())}日`;
+  const sm = weekMonday.getMonth() + 1;
+  const sd = weekMonday.getDate();
+  const em = end.getMonth() + 1;
+  const ed = end.getDate();
+  if (sm === em) return `${sm}.${sd} - ${ed}`;
+  return `${sm}.${sd} - ${em}.${ed}`;
 }
 
 export function SchedulePage() {
-  const t = usePageTheme('schedule');
   const getSetting = useSettingStore((s) => s.get);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [weekMonday, setWeekMonday] = useState(() => getWeekMonday(new Date()));
@@ -160,16 +164,6 @@ export function SchedulePage() {
     setSelectedDay(next);
   }, [selectedDay]);
 
-  const handleSlotClick = useCallback((date: Date, hour: number) => {
-    const endDate = new Date(date);
-    endDate.setHours(hour + 1);
-    setFormDefaults({
-      start: date.toISOString(),
-      end: endDate.toISOString(),
-    });
-    setShowForm(true);
-  }, []);
-
   const handleCreateClick = useCallback(() => {
     setFormDefaults({});
     setShowForm(true);
@@ -263,53 +257,61 @@ export function SchedulePage() {
   }, [importEvents, rangeStart, rangeEnd]);
 
   return (
-    <PageContainer className="relative" bgColor={t.bg}>
-      <GridBackground isDark={t.isDark} />
-      <NavBar title="日历" navColor={t.nav} quote="墙角数枝梅，凌寒独自开" />
+    <PageContainer className="relative">
+      <style>{`
+        .schedule-scroll::-webkit-scrollbar { display: none; }
+        .schedule-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+      `}</style>
+      <NavBar title="日历" />
 
-      <div className="flex-shrink-0 flex flex-col items-center px-8 pt-6 pb-4 relative z-10">
+      <div className="flex-shrink-0 flex flex-col items-center px-4 sm:px-8 pt-6 pb-4 relative z-10">
         <div className="w-full max-w-[1000px] space-y-4">
-          {/* 日历勾选 + 视图切换 */}
-          <div className="flex items-center justify-between">
-            <CalendarList onRefresh={() => fetchSchedules(rangeStart, rangeEnd)} onManage={() => setShowCalendarManager(true)} />
-
-            <div className="flex items-center gap-1 rounded-full p-1 flex-shrink-0" style={{ backgroundColor: `${t.accent}33` }}>
-              {(['day', 'week', 'month', 'agenda'] as const).map((mode) => (
+          {/* 视图切换 — 固定在顶部 */}
+          <div className="flex items-center">
+            <div className="flex items-center gap-1 rounded-full p-1 flex-shrink-0" style={{ backgroundColor: `${appTheme.ink}0D` }}>
+              {(['day', 'week', 'month', 'agenda', 'countdown'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   className="px-3 py-1 rounded-full text-sm transition-all"
                   style={{
-                    backgroundColor: viewMode === mode ? t.accent : 'transparent',
-                    color: viewMode === mode ? t.cardText : t.isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
+                    backgroundColor: viewMode === mode ? appTheme.primary : 'transparent',
+                    color: viewMode === mode ? appTheme.ink : appTheme.inkMuted48,
                   }}
                 >
-                  {mode === 'day' ? '日' : mode === 'week' ? '周' : mode === 'month' ? '月' : '近期'}
+                  {mode === 'day' ? '日' : mode === 'week' ? '周' : mode === 'month' ? '月' : mode === 'agenda' ? '近期' : '倒数日'}
                 </button>
               ))}
             </div>
           </div>
 
-          <DateNavigator
-            weekLabel={viewMode === 'agenda'
-              ? '近期'
-              : viewMode === 'week'
-                ? formatWeekLabel(weekMonday)
-                : viewMode === 'month'
-                  ? `${currentYear}年${currentMonth + 1}月`
-                  : `${selectedDay.getMonth() + 1}月${selectedDay.getDate()}日`
-            }
-            onPrev={viewMode === 'agenda' ? undefined : viewMode === 'month' ? handlePrevMonth : viewMode === 'day' ? handlePrevDay : handlePrev}
-            onNext={viewMode === 'agenda' ? undefined : viewMode === 'month' ? handleNextMonth : viewMode === 'day' ? handleNextDay : handleNext}
-            onToday={handleToday}
-            onImportIcs={handleImportIcs}
-          />
+          {/* 日历勾选 — 仅非倒数日视图 */}
+          {viewMode !== 'countdown' && (
+            <CalendarList onRefresh={() => fetchSchedules(rangeStart, rangeEnd)} onManage={() => setShowCalendarManager(true)} />
+          )}
+
+          {viewMode !== 'countdown' && (
+            <DateNavigator
+              weekLabel={viewMode === 'agenda'
+                ? '近期'
+                : viewMode === 'week'
+                  ? formatWeekLabel(weekMonday)
+                  : viewMode === 'month'
+                    ? `${currentYear}年${currentMonth + 1}月`
+                    : `${selectedDay.getMonth() + 1}月${selectedDay.getDate()}日`
+              }
+              onPrev={viewMode === 'agenda' ? undefined : viewMode === 'month' ? handlePrevMonth : viewMode === 'day' ? handlePrevDay : handlePrev}
+              onNext={viewMode === 'agenda' ? undefined : viewMode === 'month' ? handleNextMonth : viewMode === 'day' ? handleNextDay : handleNext}
+              onToday={handleToday}
+              onImportIcs={handleImportIcs}
+            />
+          )}
 
           {(importResult || error) && (
             <div className="px-4 py-2 rounded-full text-sm text-center"
               style={{
-                backgroundColor: error ? 'rgba(239,68,68,0.3)' : t.accent,
-                color: error ? 'rgb(254,202,202)' : t.cardText,
+                backgroundColor: error ? 'rgba(239,68,68,0.3)' : appTheme.primary,
+                color: error ? 'rgb(254,202,202)' : appTheme.ink,
               }}
             >
               {error || importResult}
@@ -318,15 +320,13 @@ export function SchedulePage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto flex flex-col items-center px-8 pb-8 relative z-10">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col items-center px-4 sm:px-8 pb-4 relative z-10 schedule-scroll">
         <div className="w-full max-w-[1000px]">
           {viewMode === 'week' ? (
             <WeekView
               weekStart={weekMonday}
               schedules={filteredSchedules}
               onEventClick={handleEventClick}
-              onSlotClick={handleSlotClick}
-              onEventUpdate={handleEventUpdate}
             />
           ) : viewMode === 'month' ? (
             <MonthView
@@ -341,11 +341,11 @@ export function SchedulePage() {
               date={selectedDay}
               schedules={schedules}
               onEventClick={handleEventClick}
-              onSlotClick={handleSlotClick}
-              onEventUpdate={handleEventUpdate}
               onBack={handleBackFromDay}
               backLabel={previousView === 'month' ? '返回月视图' : '返回周视图'}
             />
+          ) : viewMode === 'countdown' ? (
+            <CountdownList />
           ) : (
             <AgendaView
               schedules={filteredSchedules}
@@ -401,13 +401,15 @@ export function SchedulePage() {
         className="hidden"
       />
 
-      <button
-        onClick={handleCreateClick}
-        className="fixed bottom-8 right-8 z-30 w-14 h-14 rounded-full text-white shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center"
-        style={{ backgroundColor: t.accent }}
-      >
-        <Plus size={28} strokeWidth={2.5} />
-      </button>
+      {viewMode !== 'countdown' && (
+        <button
+          onClick={handleCreateClick}
+          className="fixed bottom-[72px] right-8 z-30 w-14 h-14 rounded-full text-white active:scale-95 transition-all flex items-center justify-center"
+          style={{ backgroundColor: appTheme.primary }}
+        >
+          <Plus size={28} strokeWidth={2.5} />
+        </button>
+      )}
     </PageContainer>
   );
 }

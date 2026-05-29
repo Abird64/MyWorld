@@ -4,6 +4,7 @@ import * as scheduleService from '@/services/scheduleService';
 
 interface ScheduleState {
   schedules: Schedule[];
+  countdowns: Schedule[];
   isLoading: boolean;
   error: string | null;
 
@@ -11,6 +12,7 @@ interface ScheduleState {
   rangeEnd: string;
 
   fetchSchedules: (rangeStart: string, rangeEnd: string) => Promise<void>;
+  fetchCountdowns: () => Promise<void>;
   createSchedule: (input: CreateScheduleInput) => Promise<Schedule>;
   updateSchedule: (id: string, input: UpdateScheduleInput) => Promise<Schedule>;
   deleteSchedule: (id: string) => Promise<void>;
@@ -18,6 +20,7 @@ interface ScheduleState {
 
 export const useScheduleStore = create<ScheduleState>((set, _get) => ({
   schedules: [],
+  countdowns: [],
   isLoading: false,
   error: null,
   rangeStart: '',
@@ -33,6 +36,15 @@ export const useScheduleStore = create<ScheduleState>((set, _get) => ({
       set({ schedules, isLoading: false });
     } catch (e) {
       set({ error: String(e), isLoading: false });
+    }
+  },
+
+  fetchCountdowns: async () => {
+    try {
+      const countdowns = await scheduleService.listCountdowns();
+      set({ countdowns });
+    } catch (e) {
+      set({ error: String(e) });
     }
   },
 

@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { LanternSvg } from '@/components/ui';
 import { ToolCallCard } from '@/components/ai/ToolCallCard';
 import { useAiStore } from '@/stores/aiStore';
+import { appTheme } from '@/styles/theme';
 import { useFavoriteStore } from '@/stores/favoriteStore';
 import { parseToolCalls } from '@/utils/aiParsers';
 import type { PageTheme } from '@/styles/theme';
@@ -110,7 +111,7 @@ export function ChatView({
                   >
                     <div className="max-w-[80%]">
                       <div
-                        className="chat-bubble px-4 py-3 rounded-2xl text-sm leading-relaxed"
+                        className="chat-bubble markdown-body px-4 py-3 rounded-2xl text-sm leading-relaxed"
                         style={{
                           backgroundColor: isUser
                             ? `${t.accent}33`
@@ -118,7 +119,7 @@ export function ChatView({
                               ? s(0.03)
                               : s(0.08),
                           color: isUser
-                            ? 'rgba(255,255,255,0.9)'
+                            ? appTheme.ink
                             : isTool
                               ? s(0.3)
                               : s(0.8),
@@ -330,8 +331,8 @@ export function ChatView({
             disabled={isSending}
             className="flex-1 h-[52px] bg-transparent text-lg font-light px-2 disabled:opacity-50 focus:outline-none transition-colors"
             style={{
-              borderBottom: `1px solid ${s(0.25)}`,
-              color: s(0.8),
+              borderBottom: `1px solid ${appTheme.hairline}`,
+              color: appTheme.ink,
             }}
           />
           {isSending ? (
@@ -346,19 +347,19 @@ export function ChatView({
             <button
               onClick={handleSend}
               disabled={!input.trim()}
-              className="h-[44px] px-7 rounded-full font-medium text-base transition-all flex-shrink-0 ml-4"
+              className="h-[44px] px-7 rounded-full font-medium text-base transition-all flex-shrink-0 ml-4 btn-press"
               style={{
-                backgroundColor: input.trim() ? s(0.15) : s(0.08),
-                color: input.trim() ? s(0.9) : s(0.4),
+                backgroundColor: input.trim() ? appTheme.primary : appTheme.hairline,
+                color: input.trim() ? appTheme.onPrimary : appTheme.inkMuted48,
                 cursor: input.trim() ? 'pointer' : 'not-allowed',
               }}
               onMouseEnter={(e) => {
                 if (input.trim())
-                  e.currentTarget.style.backgroundColor = s(0.25);
+                  e.currentTarget.style.backgroundColor = appTheme.primaryFocus;
               }}
               onMouseLeave={(e) => {
                 if (input.trim())
-                  e.currentTarget.style.backgroundColor = s(0.15);
+                  e.currentTarget.style.backgroundColor = appTheme.primary;
               }}
             >
               发送

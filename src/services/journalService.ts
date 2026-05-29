@@ -62,6 +62,8 @@ export interface DailyReflectionResult {
   reflection: string;
   xp_result: CompleteResult;
   contacts: ExtractedContact[];
+  mood: string | null;
+  tags: string | null;
 }
 
 /** 日省：AI 综合日记+任务+日程生成反思并结算 XP */

@@ -1,4 +1,4 @@
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 
 interface BatchOperationsBarProps {
   selectedCount: number;
@@ -20,8 +20,7 @@ export function BatchOperationsBar({
   onCancel,
 }: BatchOperationsBarProps) {
   const allSelected = selectedCount > 0 && selectedCount === totalCount;
-  const theme = usePageTheme('tasks');
-  const txt = theme.cardText;
+  const txt = appTheme.ink;
   const txtLight = txt + '4D';
   const txtMid = txt + '80';
   const txtBody = txt + 'B3';
@@ -31,7 +30,7 @@ export function BatchOperationsBar({
   const borderColor = txt + '1A';
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 border-t" style={{ backgroundColor: theme.card, borderColor, boxShadow: `0 -4px 20px ${txt}1A` }}>
+    <div className="fixed bottom-0 left-0 right-0 z-40 border-t" style={{ backgroundColor: appTheme.canvas, borderColor }}>
       <div className="max-w-[1000px] mx-auto px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button

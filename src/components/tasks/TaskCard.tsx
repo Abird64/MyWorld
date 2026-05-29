@@ -1,6 +1,6 @@
 import { Check, Circle, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatDate, isOverdue } from '@/utils/dateFormat';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 import type { Task } from '@/types/task';
 
 interface TaskCardProps {
@@ -30,22 +30,21 @@ export function TaskCard({
   onSubtaskClick,
   onSubtaskComplete,
 }: TaskCardProps) {
-  const theme = usePageTheme('tasks');
   const completed = task.status === 'completed';
-  const txtMid = theme.cardText + '80';
-  const bgSubtle = theme.cardText + '0D';
+  const txtMid = appTheme.ink + '80';
+  const bgSubtle = appTheme.ink + '0D';
 
   const priorityConfig: Record<string, { label: string; color: string }> = {
     high: { label: '紧急', color: '#E74C3C' },
     medium: { label: '重要', color: '#F39C12' },
-    low: { label: '一般', color: theme.accent },
+    low: { label: '一般', color: appTheme.primary },
   };
 
   return (
     <div>
       <div
-        className="backdrop-blur-sm rounded-[24px] p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative group h-[130px] overflow-hidden"
-        style={{ backgroundColor: theme.card }}
+        className="backdrop-blur-sm rounded-[18px] p-4 cursor-pointer relative group h-[130px] overflow-hidden"
+        style={{ backgroundColor: appTheme.canvas }}
         onClick={() => {
           if (multiSelectMode) {
             onToggleSelect(task.id);
@@ -61,8 +60,8 @@ export function TaskCard({
               onClick={(e) => { e.stopPropagation(); onToggleSelect(task.id); }}
               className="flex-shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center mt-5 transition-colors"
               style={{
-                borderColor: isSelected ? theme.accent : '#ccc',
-                backgroundColor: isSelected ? theme.accent : 'transparent',
+                borderColor: isSelected ? appTheme.primary : '#ccc',
+                backgroundColor: isSelected ? appTheme.primary : 'transparent',
               }}
             >
               {isSelected && <Check size={14} className="text-white" />}
@@ -85,7 +84,7 @@ export function TaskCard({
                 onClick={(e) => onQuickComplete(e, task.id)}
                 className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-md" style={{ backgroundColor: theme.accent }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: appTheme.primary }}>
                   <Check size={16} className="text-white" />
                 </div>
               </button>
@@ -96,11 +95,11 @@ export function TaskCard({
           <div className="flex-1 min-w-0">
             <h3
               className="text-lg font-normal mb-1 truncate"
-              style={{ color: completed ? theme.cardText + '80' : theme.cardText, textDecoration: completed ? 'line-through' : 'none' }}
+              style={{ color: completed ? appTheme.ink + '80' : appTheme.ink, textDecoration: completed ? 'line-through' : 'none' }}
             >
               {task.title}
             </h3>
-            <p className="text-sm mb-2" style={{ color: theme.cardText + '99' }}>
+            <p className="text-sm mb-2" style={{ color: appTheme.ink + '99' }}>
               {task.scheduled_at ? formatDate(task.scheduled_at) : formatDate(task.created_at)}
             </p>
 
@@ -129,7 +128,7 @@ export function TaskCard({
         <button
           onClick={(e) => { e.stopPropagation(); onToggleSubtasks(task.id); }}
           className="absolute bottom-3 right-4 flex items-center gap-1 text-xs transition-colors"
-          style={{ color: theme.cardText + '4D' }}
+          style={{ color: appTheme.ink + '4D' }}
         >
           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           子任务
@@ -144,19 +143,19 @@ export function TaskCard({
               key={sub.id}
               onClick={() => onSubtaskClick(sub)}
               className="backdrop-blur-sm rounded-2xl px-4 py-3 flex items-center gap-3 cursor-pointer transition-colors"
-              style={{ backgroundColor: theme.card + '66' }}
+              style={{ backgroundColor: appTheme.canvas + '66' }}
             >
               <button
                 onClick={(e) => { e.stopPropagation(); onSubtaskComplete(e, sub.id); }}
                 className="flex-shrink-0"
               >
                 {sub.status === 'completed'
-                  ? <Check size={14} style={{ color: theme.accent }} />
-                  : <Circle size={14} style={{ color: theme.cardText + '33' }} />}
+                  ? <Check size={14} style={{ color: appTheme.primary }} />
+                  : <Circle size={14} style={{ color: appTheme.ink + '33' }} />}
               </button>
               <span
                 className="text-sm truncate"
-                style={{ color: sub.status === 'completed' ? theme.cardText + '66' : theme.cardText + 'B3', textDecoration: sub.status === 'completed' ? 'line-through' : 'none' }}
+                style={{ color: sub.status === 'completed' ? appTheme.ink + '66' : appTheme.ink + 'B3', textDecoration: sub.status === 'completed' ? 'line-through' : 'none' }}
               >
                 {sub.title}
               </span>
@@ -166,7 +165,7 @@ export function TaskCard({
       )}
       {isExpanded && subtasks.length === 0 && (
         <div className="mt-1 ml-8">
-          <p className="text-xs px-4 py-2" style={{ color: theme.cardText + '4D' }}>暂无子任务</p>
+          <p className="text-xs px-4 py-2" style={{ color: appTheme.ink + '4D' }}>暂无子任务</p>
         </div>
       )}
     </div>

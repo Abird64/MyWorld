@@ -45,62 +45,70 @@ export interface EventLayout {
 }
 
 /**
- * 对一天内的事件做重叠检测，用贪心算法分配列。
+ * 对一天内的事件做重叠检测，用贪心分栏算法分配列。
+ * task_sync 事件不参与分栏，单独返回其与普通日程的重叠关系。
+ * 无 end_at 的事件默认视为 1 小时时长。
  * 输入的事件应已过滤为同一天。
  */
-export function layoutOverlappingEvents(events: Schedule[]): EventLayout[] {
-  const sorted = [...events].sort((a, b) => a.start_at.localeCompare(b.start_at));
-  const layouts: EventLayout[] = [];
-  const processed = new Set<string>();
+export function layoutOverlappingEvents(events: Schedule[]): {
+  layouts: EventLayout[];
+  taskSyncOverlap: Map<string, Schedule[]>;
+} {
+  if (events.length === 0) return { layouts: [], taskSyncOverlap: new Map() };
 
-  for (let i = 0; i < sorted.length; i++) {
-    if (processed.has(sorted[i].id)) continue;
+  const regular: Schedule[] = [];
+  const taskSync: Schedule[] = [];
 
-    // 找出与当前事件重叠的所有事件
-    const overlapGroup: Schedule[] = [sorted[i]];
-    const eventEnd = sorted[i].end_at || sorted[i].start_at;
+  for (const evt of events) {
+    if (evt.source_type === 'task_sync') {
+      taskSync.push(evt);
+    } else {
+      regular.push(evt);
+    }
+  }
 
-    for (let j = i + 1; j < sorted.length; j++) {
-      if (processed.has(sorted[j].id)) continue;
-      if (eventEnd > sorted[j].start_at) {
-        overlapGroup.push(sorted[j]);
+  // 普通日程分栏
+  const sorted = [...regular].sort((a, b) => a.start_at.localeCompare(b.start_at));
+  const columns: { endTime: string }[] = [];
+  const placements: { event: Schedule; col: number }[] = [];
+
+  for (const evt of sorted) {
+    const evtEnd = evt.end_at || evt.start_at;
+    let placedCol = -1;
+
+    for (let c = 0; c < columns.length; c++) {
+      if (evt.start_at >= columns[c].endTime) {
+        placedCol = c;
+        break;
       }
     }
 
-    if (overlapGroup.length === 1) {
-      layouts.push({ event: overlapGroup[0], col: 0, totalCols: 1 });
-      processed.add(overlapGroup[0].id);
+    if (placedCol === -1) {
+      placedCol = columns.length;
+      columns.push({ endTime: evtEnd });
     } else {
-      // 贪心分栏
-      const columns: { endTime: string; events: Schedule[] }[] = [];
-      for (const evt of overlapGroup) {
-        let placed = false;
-        for (const col of columns) {
-          const evtEnd = evt.end_at || evt.start_at;
-          if (evt.start_at >= col.endTime) {
-            col.events.push(evt);
-            col.endTime = evtEnd;
-            placed = true;
-            break;
-          }
-        }
-        if (!placed) {
-          columns.push({
-            endTime: evt.end_at || evt.start_at,
-            events: [evt],
-          });
-        }
-      }
+      columns[placedCol].endTime = evtEnd;
+    }
 
-      const totalCols = columns.length;
-      for (let colIdx = 0; colIdx < columns.length; colIdx++) {
-        for (const evt of columns[colIdx].events) {
-          layouts.push({ event: evt, col: colIdx, totalCols });
-          processed.add(evt.id);
-        }
+    placements.push({ event: evt, col: placedCol });
+  }
+
+  const totalCols = columns.length;
+  const layouts = placements.map(({ event, col }) => ({ event, col, totalCols }));
+
+  // 检测 task_sync 事件与普通日程的重叠
+  const taskSyncOverlap = new Map<string, Schedule[]>();
+  for (const task of taskSync) {
+    const taskEnd = task.end_at || task.start_at;
+    for (const { event: reg } of layouts) {
+      const regEnd = reg.end_at || reg.start_at;
+      if (task.start_at < regEnd && taskEnd > reg.start_at) {
+        const existing = taskSyncOverlap.get(reg.id) || [];
+        existing.push(task);
+        taskSyncOverlap.set(reg.id, existing);
       }
     }
   }
 
-  return layouts;
+  return { layouts, taskSyncOverlap };
 }

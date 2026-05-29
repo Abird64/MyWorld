@@ -109,6 +109,7 @@ pub fn save_journal(
         &journal.id,
         title.as_deref(),
         input.mood.as_deref(),
+        None,
         word_count,
     )?;
 
@@ -339,14 +340,32 @@ pub async fn daily_reflection(
         journal_repo::write_md_file(&ai_path, &input.date, None, None, word_count, "ai", &refl_text)?;
     }
 
-    // 6. 联系人匹配
-    let contacts_json = match_contacts(&db_state, &contacts_raw);
+    // 6. 联系人匹配 + mood/tags 提取
+    let (contacts_json, mood, tags) = match_contacts_and_meta(&db_state, &contacts_raw);
 
-    // 7. 返回
+    // 7. 持久化 mood/tags 到日记记录
+    {
+        let conn = db_state
+            .conn
+            .lock()
+            .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+        if let Ok(journal) = journal_repo::get_or_create_journal(&conn, &app_data.dir, &input.date) {
+            let _ = journal_repo::update_journal_metadata(
+                &conn, &journal.id, None,
+                mood.as_deref(),
+                tags.as_deref(),
+                journal.word_count,
+            );
+        }
+    }
+
+    // 8. 返回
     Ok(serde_json::json!({
         "xp_result": xp_json,
         "reflection": refl_text,
         "contacts": contacts_json,
+        "mood": mood,
+        "tags": tags,
     }))
 }
 
@@ -452,38 +471,63 @@ struct ExtractedContact {
     is_new: bool,
 }
 
-fn match_contacts(
+fn match_contacts_and_meta(
     db_state: &State<'_, DbState>,
     contacts_raw: &Result<String, String>,
-) -> serde_json::Value {
+) -> (serde_json::Value, Option<String>, Option<String>) {
     let raw = match contacts_raw {
         Ok(s) => s.clone(),
         Err(e) => {
             eprintln!("[daily_reflection] 联系人 AI 调用失败: {}", e);
-            return serde_json::json!([]);
+            return (serde_json::json!([]), None, None);
         }
     };
-
-    // 从 AI 回复中提取 JSON（可能被 markdown 包裹）
-    let json_str = extract_json_from_text(&raw);
 
     #[derive(Deserialize)]
     struct RawContact {
         name: String,
         event_summary: String,
     }
-    let raw_contacts: Vec<RawContact> = serde_json::from_str(&json_str).unwrap_or_default();
+    #[derive(Deserialize)]
+    struct ExtractionResult {
+        #[serde(default)]
+        contacts: Vec<RawContact>,
+        mood: Option<String>,
+        #[serde(default)]
+        tags: Vec<String>,
+    }
+
+    // 先尝试从原始文本直接解析（新格式：对象包含 mood/tags）
+    // 再尝试从提取的 JSON 片段解析（兼容旧格式：纯数组）
+    let json_str = extract_json_from_text(&raw);
+    let parsed: ExtractionResult = serde_json::from_str(&json_str)
+        .or_else(|_| {
+            serde_json::from_str::<Vec<RawContact>>(&json_str).map(|contacts| {
+                ExtractionResult { contacts, mood: None, tags: vec![] }
+            })
+        })
+        .unwrap_or_else(|_| {
+            // 回退：可能是旧格式的纯数组
+            let contacts: Vec<RawContact> = serde_json::from_str(&json_str).unwrap_or_default();
+            ExtractionResult { contacts, mood: None, tags: vec![] }
+        });
+
+    let mood = parsed.mood.filter(|m| !m.is_empty());
+    let tags = if parsed.tags.is_empty() {
+        None
+    } else {
+        Some(serde_json::to_string(&parsed.tags).unwrap_or_default())
+    };
 
     let conn = match db_state.conn.lock() {
         Ok(c) => c,
-        Err(_) => return serde_json::json!([]),
+        Err(_) => return (serde_json::json!([]), None, None),
     };
 
     let mut results = Vec::new();
-    for rc in &raw_contacts {
+    for rc in &parsed.contacts {
         if rc.name.trim().is_empty() { continue; }
 
-        // 搜索已有联系人
         let existing = contact_repo::search_contacts(&conn, &rc.name).ok();
         let (contact_id, contact_name) = existing
             .as_ref()
@@ -501,7 +545,8 @@ fn match_contacts(
         });
     }
 
-    serde_json::to_value(results).unwrap_or_else(|_| serde_json::json!([]))
+    let contacts_json = serde_json::to_value(results).unwrap_or_else(|_| serde_json::json!([]));
+    (contacts_json, mood, tags)
 }
 
 /// 从可能包含 markdown 代码块的文本中提取 JSON 内容
@@ -519,7 +564,13 @@ fn extract_json_from_text(text: &str) -> String {
             return after[..end].trim().to_string();
         }
     }
-    // 尝试找 [ ... ]
+    // 尝试找 { ... }（对象，新格式）
+    if let Some(start) = text.find('{') {
+        if let Some(end) = text.rfind('}') {
+            return text[start..=end].to_string();
+        }
+    }
+    // 尝试找 [ ... ]（数组，旧格式）
     if let Some(start) = text.find('[') {
         if let Some(end) = text.rfind(']') {
             return text[start..=end].to_string();

@@ -1,17 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Card, ThemeCard, NavBar } from '@/components/ui';
+import { Card, NavBar } from '@/components/ui';
 import { useWeightsStore, type Weights } from '@/stores/weightsStore';
 import { useSettingStore } from '@/stores/settingStore';
-import { useThemeStore } from '@/stores/themeStore';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { ThemeEditor } from '@/components/settings/ThemeEditor';
-import { themes, type PageTheme } from '@/styles/theme';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 import { PageContainer } from '@/components/layout';
 import { BUILTIN_PROMPTS } from '@/utils/builtinPrompts';
-import { selectableThemes } from '@/styles/theme';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
-import { Plus, Pencil, Trash2, X, Check, Lock, Palette, Download, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, Lock, Download, AlertTriangle } from 'lucide-react';
 import * as scheduleService from '@/services/scheduleService';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -28,9 +24,6 @@ const AI_PROVIDERS = [
   { id: 'ollama', name: 'Ollama', defaultUrl: 'http://localhost:11434' },
 ];
 
-const DANGER = '#E65C5C';
-const DANGER_DIM = '#E65C5C20';
-
 interface SettingsStyles {
   card: string;
   cardBorder: string;
@@ -45,43 +38,24 @@ interface SettingsStyles {
   overlay: (opacity: number) => string;
 }
 
-function isDarkColor(hex: string): boolean {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
-}
-
-function makeStyles(t: typeof themes.settings): SettingsStyles {
-  const cardIsDark = isDarkColor(t.card);
-  const overlay = (opacity: number) =>
-    cardIsDark ? `rgba(255,255,255,${opacity})` : `rgba(0,0,0,${opacity})`;
-  return {
-    card: t.card,
-    cardBorder: cardIsDark ? '#333' : '#DDD',
-    text: t.cardText,
-    textSub: `${t.cardText}99`,
-    accent: t.accent,
-    accentDim: t.accentLight,
-    danger: DANGER,
-    dangerDim: DANGER_DIM,
-    inputBg: cardIsDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-    inputBorder: cardIsDark ? '#444' : '#CCC',
-    overlay,
-  };
-}
+const s: SettingsStyles = {
+  card: appTheme.canvas,
+  cardBorder: appTheme.hairline,
+  text: appTheme.ink,
+  textSub: `${appTheme.ink}99`,
+  accent: appTheme.primary,
+  accentDim: `${appTheme.primary}33`,
+  danger: appTheme.danger,
+  dangerDim: `${appTheme.danger}20`,
+  inputBg: 'rgba(0,0,0,0.06)',
+  inputBorder: '#CCC',
+  overlay: (opacity: number) => `rgba(0,0,0,${opacity})`,
+};
 
 export function SettingsPage() {
-  const t = usePageTheme('settings');
-  const themeStore = useThemeStore();
-  const s = makeStyles(t);
   const weights = useWeightsStore();
   const settings = useSettingStore();
   const { calendars, fetchCalendars } = useCalendarStore();
-
-  // 自定义主题
-  const [showThemeEditor, setShowThemeEditor] = useState(false);
-  const [editingTheme, setEditingTheme] = useState<PageTheme | null>(null);
 
   // 导出对话框
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -214,68 +188,12 @@ export function SettingsPage() {
   };
 
   return (
-    <PageContainer className="relative flex flex-col" bgColor={t.bg}>
-      <NavBar title="设置" navColor={t.nav} quote="静水流深，智者无言" />
+    <PageContainer className="relative flex flex-col" bgColor={appTheme.canvasParchment}>
+      <NavBar title="设置" />
 
       {/* ========== 主内容 ========== */}
-      <div className="flex-1 overflow-y-auto flex flex-col items-center px-8 pt-6 pb-8">
+      <div className="flex-1 overflow-y-auto flex flex-col items-center px-4 sm:px-8 pt-6 pb-8">
         <div className="w-full max-w-[800px] space-y-5">
-
-          {/* ===== 主题设置 ===== */}
-          <Section title="主题设置" styles={s}>
-            <div className="flex flex-wrap gap-4 items-start">
-              <ColorfulCard
-                isSelected={themeStore.mode === 'colorful'}
-                onClick={() => themeStore.setMode('colorful')}
-              />
-              {[...selectableThemes, ...themeStore.customThemes].map((theme) => {
-                const isCustom = theme.id.startsWith('custom_');
-                return (
-                  <div key={theme.id} className="relative group">
-                    <ThemeCard
-                      theme={theme}
-                      isSelected={themeStore.mode === 'uniform' && themeStore.uniformTheme === theme.id}
-                      onClick={() => themeStore.setUniformTheme(theme.id)}
-                    />
-                    {isCustom && (
-                      <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditingTheme(theme); setShowThemeEditor(true); }}
-                          className="w-5 h-5 rounded-full flex items-center justify-center shadow"
-                          style={{ backgroundColor: s.accent }}
-                          title="编辑"
-                        >
-                          <Pencil size={10} className="text-white" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); themeStore.deleteCustomTheme(theme.id); }}
-                          className="w-5 h-5 rounded-full flex items-center justify-center shadow"
-                          style={{ backgroundColor: s.danger }}
-                          title="删除"
-                        >
-                          <Trash2 size={10} className="text-white" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {/* 新建主题 */}
-              <button
-                onClick={() => { setEditingTheme(null); setShowThemeEditor(true); }}
-                className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-colors hover:opacity-80"
-                style={{
-                  width: 140,
-                  height: 88,
-                  borderColor: s.inputBorder,
-                  color: s.textSub,
-                }}
-              >
-                <Plus size={20} />
-                <span className="text-xs mt-1 font-zhuque">新建主题</span>
-              </button>
-            </div>
-          </Section>
 
           {/* ===== 通知设置 ===== */}
           <Section title="通知设置" styles={s}>
@@ -332,7 +250,7 @@ export function SettingsPage() {
                   <option
                     key={p.id}
                     value={p.id}
-                    style={{ backgroundColor: t.card, color: t.cardText }}
+                    style={{ backgroundColor: s.card, color: s.text }}
                   >
                     {p.name}
                   </option>
@@ -417,7 +335,7 @@ export function SettingsPage() {
                             onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                             placeholder="标题"
                             className="w-full px-2 py-1 rounded text-sm outline-none"
-                            style={{ backgroundColor: t.card, border: `1px solid ${s.inputBorder}`, color: t.cardText }}
+                            style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
                           />
                           <textarea
                             value={editForm.prompt}
@@ -425,7 +343,7 @@ export function SettingsPage() {
                             placeholder="提示词内容"
                             rows={2}
                             className="w-full px-2 py-1 rounded text-sm outline-none resize-none"
-                            style={{ backgroundColor: t.card, border: `1px solid ${s.inputBorder}`, color: t.cardText }}
+                            style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
                           />
                           <div className="flex items-center gap-2">
                             <button
@@ -480,7 +398,7 @@ export function SettingsPage() {
               {isAdding ? (
                 <div
                   className="px-3 py-3 rounded-lg space-y-2"
-                  style={{ backgroundColor: s.inputBg, border: `1px solid ${t.accent}` }}
+                  style={{ backgroundColor: s.inputBg, border: `1px solid ${s.accent}` }}
                 >
                   <input
                     type="text"
@@ -488,7 +406,7 @@ export function SettingsPage() {
                     onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
                     placeholder="锦囊标题"
                     className="w-full px-2 py-1 rounded text-sm outline-none"
-                    style={{ backgroundColor: t.card, border: `1px solid ${s.inputBorder}`, color: t.cardText }}
+                    style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
                   />
                   <textarea
                     value={addForm.prompt}
@@ -496,14 +414,14 @@ export function SettingsPage() {
                     placeholder="提示词内容（发送给 AI 的完整提示）"
                     rows={2}
                     className="w-full px-2 py-1 rounded text-sm outline-none resize-none"
-                    style={{ backgroundColor: t.card, border: `1px solid ${s.inputBorder}`, color: t.cardText }}
+                    style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
                   />
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleAdd}
                       disabled={!addForm.title.trim() || !addForm.prompt.trim()}
                       className="flex items-center gap-1 px-3 py-1 rounded text-xs transition-colors disabled:opacity-40"
-                      style={{ backgroundColor: t.accent, color: '#fff' }}
+                      style={{ backgroundColor: s.accent, color: '#fff' }}
                     >
                       <Check size={12} /> 添加
                     </button>
@@ -520,7 +438,7 @@ export function SettingsPage() {
                 <button
                   onClick={() => setIsAdding(true)}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors"
-                  style={{ backgroundColor: s.inputBg, color: t.accent, border: `1px dashed ${t.accent}40` }}
+                  style={{ backgroundColor: s.inputBg, color: s.accent, border: `1px dashed ${s.accent}40` }}
                 >
                   <Plus size={14} /> 添加锦囊
                 </button>
@@ -540,7 +458,7 @@ export function SettingsPage() {
             <button
               onClick={() => { setClearCategories(new Set()); setShowClearDialog(true); }}
               className="w-full py-3 px-4 rounded-xl text-lg transition-colors"
-              style={{ backgroundColor: DANGER_DIM, color: DANGER }}
+              style={{ backgroundColor: s.dangerDim, color: s.danger }}
             >
               清除数据
             </button>
@@ -552,24 +470,6 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
-      {/* ===== 主题编辑器弹窗 ===== */}
-      {showThemeEditor && (
-        <ThemeEditor
-          existing={editingTheme}
-          styles={s}
-          onSave={(theme) => {
-            if (editingTheme) {
-              themeStore.updateCustomTheme(editingTheme.id, theme);
-            } else {
-              themeStore.addCustomTheme(theme);
-            }
-            setShowThemeEditor(false);
-            setEditingTheme(null);
-          }}
-          onCancel={() => { setShowThemeEditor(false); setEditingTheme(null); }}
-        />
-      )}
-
       {/* ===== 导出对话框 ===== */}
       {showExportDialog && (
         <div
@@ -577,11 +477,11 @@ export function SettingsPage() {
           onClick={() => setShowExportDialog(false)}
         >
           <div
-            className="rounded-[28px] p-6 w-[420px] shadow-2xl"
-            style={{ backgroundColor: t.card }}
+            className="rounded-[18px] p-6 w-[95vw] sm:w-[420px]"
+            style={{ backgroundColor: s.card }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-medium mb-5 tracking-wider" style={{ color: t.cardText }}>
+            <h2 className="text-lg font-medium mb-5 tracking-wider" style={{ color: s.text }}>
               导出数据
             </h2>
 
@@ -607,9 +507,9 @@ export function SettingsPage() {
                       color: s.text,
                     }}
                   >
-                    <option value="" style={{ backgroundColor: t.card, color: t.cardText }}>全部日程</option>
+                    <option value="" style={{ backgroundColor: s.card, color: s.text }}>全部日程</option>
                     {calendars.map((cal) => (
-                      <option key={cal.id} value={cal.id} style={{ backgroundColor: t.card, color: t.cardText }}>
+                      <option key={cal.id} value={cal.id} style={{ backgroundColor: s.card, color: s.text }}>
                         {cal.name}
                       </option>
                     ))}
@@ -654,8 +554,8 @@ export function SettingsPage() {
               <div
                 className="mt-4 px-4 py-2 rounded-full text-sm text-center"
                 style={{
-                  backgroundColor: exportMessage.startsWith('导出成功') ? s.accentDim : DANGER_DIM,
-                  color: exportMessage.startsWith('导出成功') ? s.accent : DANGER,
+                  backgroundColor: exportMessage.startsWith('导出成功') ? s.accentDim : s.dangerDim,
+                  color: exportMessage.startsWith('导出成功') ? s.accent : s.danger,
                 }}
               >
                 {exportMessage}
@@ -681,13 +581,13 @@ export function SettingsPage() {
           onClick={() => setShowClearDialog(false)}
         >
           <div
-            className="rounded-[24px] p-5 w-[380px] max-h-[85vh] flex flex-col shadow-2xl"
-            style={{ backgroundColor: t.card }}
+            className="rounded-[18px] p-5 w-[95vw] sm:w-[380px] max-h-[85vh] flex flex-col"
+            style={{ backgroundColor: s.card }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2 mb-1 flex-shrink-0">
-              <AlertTriangle size={16} style={{ color: DANGER }} />
-              <h2 className="text-base font-medium tracking-wider" style={{ color: t.cardText }}>
+              <AlertTriangle size={16} style={{ color: s.danger }} />
+              <h2 className="text-base font-medium tracking-wider" style={{ color: s.text }}>
                 清除数据
               </h2>
             </div>
@@ -703,8 +603,8 @@ export function SettingsPage() {
                     key={opt.id}
                     className="flex items-start gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer transition-colors"
                     style={{
-                      backgroundColor: isSelected ? DANGER_DIM : s.overlay(0.04),
-                      border: `1px solid ${isSelected ? DANGER : s.cardBorder}`,
+                      backgroundColor: isSelected ? s.dangerDim : s.overlay(0.04),
+                      border: `1px solid ${isSelected ? s.danger : s.cardBorder}`,
                     }}
                   >
                     <input
@@ -718,10 +618,10 @@ export function SettingsPage() {
                         });
                       }}
                       className="mt-0.5 flex-shrink-0"
-                      style={{ accentColor: DANGER }}
+                      style={{ accentColor: s.danger }}
                     />
                     <div>
-                      <div className="text-sm font-medium" style={{ color: isSelected ? DANGER : s.text }}>{opt.label}</div>
+                      <div className="text-sm font-medium" style={{ color: isSelected ? s.danger : s.text }}>{opt.label}</div>
                       <div className="text-xs mt-0.5" style={{ color: s.textSub }}>{opt.description}</div>
                     </div>
                   </label>
@@ -742,8 +642,8 @@ export function SettingsPage() {
                 disabled={clearCategories.size === 0}
                 className="flex-1 py-2 rounded-full text-sm font-medium transition-all disabled:opacity-30"
                 style={{
-                  backgroundColor: clearCategories.size > 0 ? DANGER : DANGER_DIM,
-                  color: clearCategories.size > 0 ? '#fff' : DANGER,
+                  backgroundColor: clearCategories.size > 0 ? s.danger : s.dangerDim,
+                  color: clearCategories.size > 0 ? '#fff' : s.danger,
                 }}
               >
                 {clearCategories.size > 0
@@ -761,10 +661,10 @@ export function SettingsPage() {
           className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none"
         >
           <div
-            className="px-5 py-3 rounded-full text-sm shadow-lg"
+            className="px-5 py-3 rounded-full text-sm"
             style={{
-              backgroundColor: toast.type === 'success' ? s.accentDim : DANGER_DIM,
-              color: toast.type === 'success' ? s.accent : DANGER,
+              backgroundColor: toast.type === 'success' ? s.accentDim : s.dangerDim,
+              color: toast.type === 'success' ? s.accent : s.danger,
             }}
           >
             {toast.message}
@@ -783,7 +683,7 @@ function Section({ title, children, styles }: { title: string; children: React.R
       className="w-full p-5 rounded-xl"
       style={{ backgroundColor: styles.card, border: `1px solid ${styles.cardBorder}` }}
     >
-      <h3 className="text-xl mb-4" style={{ color: styles.text, fontFamily: '"Zhuque Fangsong", serif' }}>
+      <h3 className="text-xl mb-4 font-semibold" style={{ color: styles.text }}>
         {title}
       </h3>
       <div className="space-y-4">
@@ -872,45 +772,3 @@ function InputRow({ label, value, onChange, styles, type = 'text', placeholder =
   );
 }
 
-/** 万象彩模式卡片 — 5 个主题 accent 竖条 */
-const COLORFUL_ACCENTS = ['#58A968', '#F2C94C', '#E65C5C', '#D98B58', '#8A6DA7'];
-
-function ColorfulCard({ isSelected, onClick }: {
-  isSelected: boolean;
-  onClick: () => void;
-  allThemes?: unknown;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="relative flex flex-col rounded-2xl overflow-hidden transition-all duration-200 cursor-pointer"
-      style={{
-        width: 140,
-        border: isSelected ? '2px solid #F2C94C' : '2px solid transparent',
-        boxShadow: isSelected ? '0 0 0 2px rgba(242,201,76,0.3)' : '0 2px 8px rgba(0,0,0,0.3)',
-        transform: isSelected ? 'scale(1.03)' : 'scale(1)',
-      }}
-    >
-      {isSelected && (
-        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#F2C94C] flex items-center justify-center z-10">
-          <Check size={12} strokeWidth={3} className="text-[#1A1A1A]" />
-        </div>
-      )}
-
-      <div className="flex gap-1 p-3" style={{ height: 52 }}>
-        {COLORFUL_ACCENTS.map((color, i) => (
-          <div key={i} className="flex-1 rounded-md" style={{ backgroundColor: color }} title={`主题色 ${i + 1}`} />
-        ))}
-      </div>
-
-      <div className="pb-3 text-center">
-        <div className="flex items-center justify-center gap-1">
-          <Palette size={12} style={{ color: '#F2C94C' }} />
-          <span className="text-xs font-zhuque tracking-wider" style={{ color: '#F2C94C' }}>
-            万象彩
-          </span>
-        </div>
-      </div>
-    </button>
-  );
-}

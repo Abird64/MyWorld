@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 import type { Schedule } from '@/types/schedule';
 
 
@@ -15,7 +15,6 @@ const weekDayNames = ['周一', '周二', '周三', '周四', '周五', '周六'
 const MAX_VISIBLE_EVENTS = 3;
 
 export function MonthView({ year, month, schedules, onEventClick, onDayClick }: MonthViewProps) {
-  const t = usePageTheme('schedule');
   const [hoveredCellIdx, setHoveredCellIdx] = useState<number | null>(null);
   // 获取当月第一天
   const firstDay = new Date(year, month, 1);
@@ -51,11 +50,12 @@ export function MonthView({ year, month, schedules, onEventClick, onDayClick }: 
   };
 
   return (
-    <div className="w-full rounded-2xl overflow-hidden" style={{ backgroundColor: t.card }}>
+    <div className="w-full rounded-2xl" style={{ backgroundColor: appTheme.canvas }}>
+      <div>
       {/* 星期标题 */}
-      <div className="grid grid-cols-7" style={{ borderBottom: `1px solid ${t.accent}33` }}>
+      <div className="grid grid-cols-7" style={{ borderBottom: `1px solid ${appTheme.primary}33` }}>
         {weekDayNames.map((name) => (
-          <div key={name} className="py-2 text-center text-xs" style={{ color: `${t.cardText}80` }}>
+          <div key={name} className="py-2 text-center text-xs" style={{ color: `${appTheme.ink}80` }}>
             {name}
           </div>
         ))}
@@ -77,9 +77,9 @@ export function MonthView({ year, month, schedules, onEventClick, onDayClick }: 
                 !isCurrentMonth ? 'opacity-40' : ''
               }`}
               style={{
-                borderBottom: `1px solid ${t.accent}1A`,
-                borderRight: `1px solid ${t.accent}1A`,
-                backgroundColor: hoveredCellIdx === idx ? `${t.accent}0D` : undefined,
+                borderBottom: `1px solid ${appTheme.primary}1A`,
+                borderRight: `1px solid ${appTheme.primary}1A`,
+                backgroundColor: hoveredCellIdx === idx ? `${appTheme.primary}0D` : undefined,
               }}
               onMouseEnter={() => setHoveredCellIdx(idx)}
               onMouseLeave={() => setHoveredCellIdx(null)}
@@ -92,8 +92,8 @@ export function MonthView({ year, month, schedules, onEventClick, onDayClick }: 
                     isToday ? 'font-medium' : ''
                   }`}
                   style={isToday
-                    ? { backgroundColor: t.accent, color: t.cardText }
-                    : { color: `${t.cardText}B3` }
+                    ? { backgroundColor: appTheme.primary, color: appTheme.ink }
+                    : { color: `${appTheme.ink}B3` }
                   }
                 >
                   {day.getDate()}
@@ -103,13 +103,13 @@ export function MonthView({ year, month, schedules, onEventClick, onDayClick }: 
               {/* 事件列表 */}
               <div className="space-y-0.5">
                 {visibleEvents.map((event) => {
-                  const bgColor = event.color || t.accent;
+                  const bgColor = event.color || appTheme.primary;
                   const isTaskSync = event.source_type === 'task_sync';
 
                   return (
                     <div
                       key={event.id}
-                      className="rounded px-1 py-0.5 text-[10px] truncate cursor-pointer transition-opacity hover:opacity-80"
+                      className="rounded px-1 py-0.5 text-[10px] break-all cursor-pointer transition-opacity hover:opacity-80"
                       style={{
                         backgroundColor: isTaskSync ? 'transparent' : bgColor,
                         border: isTaskSync ? `1px dashed ${bgColor}` : 'none',
@@ -127,7 +127,7 @@ export function MonthView({ year, month, schedules, onEventClick, onDayClick }: 
                 })}
 
                 {hiddenCount > 0 && (
-                  <div className="text-[10px] text-center" style={{ color: `${t.cardText}80` }}>
+                  <div className="text-[10px] text-center" style={{ color: `${appTheme.ink}80` }}>
                     +{hiddenCount} 更多
                   </div>
                 )}
@@ -136,6 +136,7 @@ export function MonthView({ year, month, schedules, onEventClick, onDayClick }: 
           );
         })}
       </div>
+      </div>{/* end min-w wrapper */}
     </div>
   );
 }

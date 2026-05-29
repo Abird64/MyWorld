@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 import { listUpcomingBirthdays, type BirthdayInfo } from '@/services/contactService';
 
 function formatDate(month: number, day: number): string {
@@ -7,7 +7,6 @@ function formatDate(month: number, day: number): string {
 }
 
 export function BirthdayBar() {
-  const t = usePageTheme('relations');
   const [birthdays, setBirthdays] = useState<BirthdayInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,8 +35,8 @@ export function BirthdayBar() {
   const monthLabel = display === thisMonth ? '本月生日' : '下月生日';
 
   return (
-    <div className="w-full max-w-[1000px] rounded-2xl p-4 mb-2" style={{ backgroundColor: `${t.accent}12` }}>
-      <p className="text-xs font-medium mb-3" style={{ color: `${t.cardText}99` }}>
+    <div className="w-full max-w-[1000px] rounded-2xl p-4 mb-2" style={{ backgroundColor: `${appTheme.primary}12` }}>
+      <p className="text-xs font-medium mb-3" style={{ color: `${appTheme.ink}99` }}>
         {monthLabel}
       </p>
       <div className="flex gap-3 overflow-x-auto">
@@ -45,22 +44,22 @@ export function BirthdayBar() {
           <div
             key={b.contact_id}
             className="flex-shrink-0 rounded-xl px-4 py-3 text-center min-w-[90px]"
-            style={{ backgroundColor: t.card }}
+            style={{ backgroundColor: appTheme.canvas }}
           >
-            <p className="text-sm font-medium truncate" style={{ color: t.cardText }}>{b.name}</p>
-            <p className="text-xs mt-1" style={{ color: `${t.cardText}88` }}>
+            <p className="text-sm font-medium truncate" style={{ color: appTheme.ink }}>{b.name}</p>
+            <p className="text-xs mt-1" style={{ color: `${appTheme.ink}88` }}>
               {formatDate(b.upcoming_month, b.upcoming_day)}
               {b.birthday_calendar === 'lunar' && (
                 <span className="ml-1 opacity-60">农历{b.birthday_month}/{b.birthday_day}</span>
               )}
             </p>
             {b.upcoming_age && (
-              <p className="text-xs" style={{ color: `${t.cardText}66` }}>{b.upcoming_age}岁</p>
+              <p className="text-xs" style={{ color: `${appTheme.ink}66` }}>{b.upcoming_age}岁</p>
             )}
             {b.days_remaining === 0 ? (
               <p className="text-xs font-medium mt-1" style={{ color: '#D4A843' }}>今天</p>
             ) : (
-              <p className="text-xs mt-1" style={{ color: `${t.cardText}66` }}>{b.days_remaining}天后</p>
+              <p className="text-xs mt-1" style={{ color: `${appTheme.ink}66` }}>{b.days_remaining}天后</p>
             )}
           </div>
         ))}

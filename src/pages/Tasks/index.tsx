@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, X, Search, ArrowUpDown, ListChecks } from 'lucide-react';
 import { CapsuleTabs, NavBar } from '@/components/ui';
-import { GridBackground, PageContainer } from '@/components/layout';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { PageContainer } from '@/components/layout';
+import { appTheme } from '@/styles/theme';
 import { useTaskStore } from '@/stores/taskStore';
 import { useSkillStore } from '@/stores/skillStore';
 import * as skillService from '@/services/skillService';
@@ -80,8 +80,7 @@ function filterTasks(tasks: Task[], tabId: string, searchQuery: string): Task[] 
 // ========== Page ==========
 
 export function TasksPage() {
-  const theme = usePageTheme('tasks');
-  const txt = theme.cardText;
+  const txt = appTheme.ink;
   const txtLight = txt + '4D';
   const txtMid = txt + '80';
   const txtMeta = txt + '66';
@@ -225,7 +224,6 @@ export function TasksPage() {
       .map(([skill_id, xp_amount]) => ({ skill_id, xp_amount }));
     await skillService.setTaskSkills(id, skillEntries);
     showToast('已保存', 2000);
-    closeDetail();
   };
 
   const handleCompleteFromDetail = async (id: string) => {
@@ -286,17 +284,13 @@ export function TasksPage() {
   };
 
   return (
-    <PageContainer className="relative" bgColor={theme.bg}>
-      {/* 网格背景 */}
-      <GridBackground isDark={theme.isDark} lineOpacity={0.15} />
-
-      {/* 顶部导航栏 */}
-      <NavBar title="任务" navColor={theme.nav} quote="苔痕上阶绿，草色入帘青" />
+    <PageContainer className="relative">
+      <NavBar title="任务" />
 
       {/* 固定控制区 */}
-      <div className="flex-shrink-0 flex flex-col items-center px-8 pt-6 pb-4 relative z-10">
+      <div className="flex-shrink-0 flex flex-col items-center px-4 sm:px-8 pt-6 pb-4 relative z-10">
         <div className="w-full max-w-[1000px]">
-          <CapsuleTabs items={categories} activeId={activeCategory} onChange={setActiveCategory} accentColor={theme.accent} isDark={theme.isDark} />
+          <CapsuleTabs items={categories} activeId={activeCategory} onChange={setActiveCategory} accentColor={appTheme.primary} />
         </div>
         <div className="h-4" />
         <div className="w-full max-w-[1000px] flex items-center gap-3">
@@ -305,7 +299,7 @@ export function TasksPage() {
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索任务..."
               className="w-full backdrop-blur-sm rounded-full pl-11 pr-4 py-3 text-base focus:outline-none task-search-input transition-all"
-              style={{ backgroundColor: theme.card + '99', color: txt }} />
+              style={{ backgroundColor: appTheme.canvas + '99', color: txt }} />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
                 style={{ color: txtLight }}
@@ -318,7 +312,7 @@ export function TasksPage() {
           <div className="relative">
             <button onClick={() => setShowSortMenu(!showSortMenu)}
               className="w-11 h-11 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors"
-              style={{ backgroundColor: theme.card + '99', color: txtMeta }}
+              style={{ backgroundColor: appTheme.canvas + '99', color: txtMeta }}
               onMouseEnter={(e) => (e.currentTarget.style.color = txtMid)}
               onMouseLeave={(e) => (e.currentTarget.style.color = txtMeta)}>
               <ArrowUpDown size={18} />
@@ -326,8 +320,8 @@ export function TasksPage() {
             {showSortMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowSortMenu(false)} />
-                <div className="absolute right-0 top-full mt-2 rounded-2xl shadow-xl py-2 z-20 min-w-[140px]"
-                  style={{ backgroundColor: theme.card }}>
+                <div className="absolute right-0 top-full mt-2 rounded-2xl py-2 z-20 min-w-[140px]"
+                  style={{ backgroundColor: appTheme.canvas }}>
                   {[
                     { value: 'created_at' as const, label: '创建时间' },
                     { value: 'deadline' as const, label: '截止时间' },
@@ -336,7 +330,7 @@ export function TasksPage() {
                     <button key={opt.value}
                       onClick={() => { setSortBy(opt.value); setShowSortMenu(false); }}
                       className="w-full text-left px-4 py-2.5 text-sm transition-colors"
-                      style={sortBy === opt.value ? { color: theme.accent, fontWeight: 500 } : { color: txtMeta }}
+                      style={sortBy === opt.value ? { color: appTheme.primary, fontWeight: 500 } : { color: txtMeta }}
                       onMouseEnter={sortBy !== opt.value ? (e) => (e.currentTarget.style.backgroundColor = bgSubtle) : undefined}
                       onMouseLeave={sortBy !== opt.value ? (e) => (e.currentTarget.style.backgroundColor = 'transparent') : undefined}>
                       {opt.label}
@@ -349,8 +343,8 @@ export function TasksPage() {
           <button onClick={() => { setMultiSelectMode(!multiSelectMode); if (multiSelectMode) setSelectedIds(new Set()); }}
             className="w-11 h-11 rounded-full flex items-center justify-center transition-colors"
             style={multiSelectMode
-              ? { backgroundColor: theme.accent, color: '#fff' }
-              : { backgroundColor: theme.card + '99', color: txtMeta }}
+              ? { backgroundColor: appTheme.primary, color: '#fff' }
+              : { backgroundColor: appTheme.canvas + '99', color: txtMeta }}
             onMouseEnter={!multiSelectMode ? (e) => (e.currentTarget.style.color = txtMid) : undefined}
             onMouseLeave={!multiSelectMode ? (e) => (e.currentTarget.style.color = txtMeta) : undefined}>
             <ListChecks size={18} />
@@ -359,12 +353,12 @@ export function TasksPage() {
       </div>
 
       {/* 任务卡片列表 */}
-      <div className="flex-1 overflow-y-auto flex flex-col items-center px-8 pb-8 relative z-10">
+      <div className="flex-1 overflow-y-auto flex flex-col items-center px-4 sm:px-8 pb-8 relative z-10">
         <div className="w-full max-w-[1000px]">
           {isLoading ? (
             <div className="flex items-center justify-center py-20"><p className="text-lg" style={{ color: txtMeta }}>加载中...</p></div>
           ) : filteredTasks.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {filteredTasks.map((task) => (
                 <TaskCard
                   key={task.id}
@@ -429,14 +423,14 @@ export function TasksPage() {
       {/* 右下角加号按钮 */}
       {!multiSelectMode && (
         <button onClick={() => setShowCreate(true)}
-          className="fixed bottom-8 right-8 z-30 w-14 h-14 rounded-full text-white shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center task-fab">
+          className="fixed bottom-[72px] right-8 z-30 w-14 h-14 rounded-full text-white active:scale-95 transition-all flex items-center justify-center task-fab">
           <Plus size={28} strokeWidth={2.5} />
         </button>
       )}
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] bg-black/80 text-white px-6 py-3 rounded-2xl shadow-lg text-sm max-w-[500px]">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] bg-black/80 text-white px-6 py-3 rounded-2xl text-sm max-w-[500px]">
           {toast}
         </div>
       )}
@@ -446,16 +440,16 @@ export function TasksPage() {
         @keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
         .animate-slide-in { animation: slide-in 0.25s ease-out; }
         .date-input, .time-input { -webkit-appearance: none; appearance: none; background: transparent; border: none; outline: none; font-family: inherit; font-size: inherit; color: inherit; cursor: pointer; }
-        .date-input::-webkit-calendar-picker-indicator, .time-input::-webkit-calendar-picker-indicator { opacity: 0.4; cursor: pointer; filter: grayscale(1) brightness(${theme.isDark ? '2' : '1'}); }
+        .date-input::-webkit-calendar-picker-indicator, .time-input::-webkit-calendar-picker-indicator { opacity: 0.4; cursor: pointer; filter: grayscale(1); }
         .date-input::-webkit-calendar-picker-indicator:hover, .time-input::-webkit-calendar-picker-indicator:hover { opacity: 0.7; }
         .date-input::-webkit-datetime-edit, .time-input::-webkit-datetime-edit { color: inherit; }
         .date-input::-webkit-datetime-edit-fields-wrapper, .time-input::-webkit-datetime-edit-fields-wrapper { padding: 0; }
-        .date-input::-webkit-datetime-edit-text, .time-input::-webkit-datetime-edit-text { color: ${theme.cardText}40; padding: 0 1px; }
+        .date-input::-webkit-datetime-edit-text, .time-input::-webkit-datetime-edit-text { color: ${appTheme.ink}40; padding: 0 1px; }
         .date-input::-webkit-datetime-edit-month-field, .date-input::-webkit-datetime-edit-day-field, .date-input::-webkit-datetime-edit-year-field, .time-input::-webkit-datetime-edit-hour-field, .time-input::-webkit-datetime-edit-minute-field { color: inherit; }
-        .task-search-input:focus { box-shadow: 0 0 0 2px ${theme.accent}4D; }
-        .task-search-input::placeholder { color: ${theme.cardText}4D; }
-        .task-fab { background-color: ${theme.accent}; }
-        .task-fab:hover { background-color: ${theme.accent}DD; }
+        .task-search-input:focus { box-shadow: 0 0 0 2px ${appTheme.primary}4D; }
+        .task-search-input::placeholder { color: ${appTheme.ink}4D; }
+        .task-fab { background-color: ${appTheme.primary}; }
+        .task-fab:hover { background-color: ${appTheme.primary}DD; }
       `}</style>
     </PageContainer>
   );

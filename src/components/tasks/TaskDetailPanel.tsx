@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Check, Circle, Trash2, Plus } from 'lucide-react';
-import { SKILL_COLORS, SKILL_ORDER } from '@/components/ui';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { SKILL_COLORS, SKILL_ORDER } from '@/styles/theme';
+import { appTheme } from '@/styles/theme';
 import * as skillService from '@/services/skillService';
 import { formatDateTime } from '@/utils/dateFormat';
 import type { Task } from '@/types/task';
@@ -44,7 +44,6 @@ export function TaskDetailPanel({
   onCompleteSubtask,
   onDeleteSubtask,
 }: TaskDetailPanelProps) {
-  const theme = usePageTheme('tasks');
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [status, setStatus] = useState(task.status);
@@ -115,7 +114,7 @@ export function TaskDetailPanel({
   const statusOptions = [
     { value: 'pending', label: '待办', color: '#999' },
     { value: 'in_progress', label: '进行中', color: '#2A8CB7' },
-    { value: 'completed', label: '已完成', color: theme.accent },
+    { value: 'completed', label: '已完成', color: appTheme.primary },
     { value: 'cancelled', label: '已取消', color: '#E74C3C' },
   ] as const;
 
@@ -123,11 +122,11 @@ export function TaskDetailPanel({
     { value: '', label: '无', color: '#999' },
     { value: 'high', label: '紧急', color: '#E74C3C' },
     { value: 'medium', label: '重要', color: '#F39C12' },
-    { value: 'low', label: '一般', color: theme.accent },
+    { value: 'low', label: '一般', color: appTheme.primary },
   ];
 
   // 动态颜色常量
-  const txt = theme.cardText;
+  const txt = appTheme.ink;
   const txtDim = txt + 'CC';       // 80%
   const txtMid = txt + '80';       // 50%
   const txtLight = txt + '4D';     // 30%
@@ -142,15 +141,15 @@ export function TaskDetailPanel({
   return (
     <>
       <style>{`
-        #task-detail-panel .focus-ring-accent:focus { outline: none; box-shadow: 0 0 0 2px ${theme.accent}4D; }
-        #task-detail-panel .btn-accent { background-color: ${theme.accent}; }
-        #task-detail-panel .btn-accent:hover { background-color: ${theme.accent}DD; }
+        #task-detail-panel .focus-ring-accent:focus { outline: none; box-shadow: 0 0 0 2px ${appTheme.primary}4D; }
+        #task-detail-panel .btn-accent { background-color: ${appTheme.primary}; }
+        #task-detail-panel .btn-accent:hover { background-color: ${appTheme.primary}DD; }
         #task-detail-panel input::placeholder,
         #task-detail-panel textarea::placeholder { color: ${txtHint}; }
       `}</style>
       <div id="task-detail-panel" className="fixed inset-0 z-50 flex justify-end">
         <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-[480px] shadow-2xl flex flex-col animate-slide-in" style={{ backgroundColor: theme.card }}>
+      <div className="relative w-full max-w-[480px] flex flex-col animate-slide-in" style={{ backgroundColor: appTheme.canvas }}>
         {/* 头部 */}
         <div className="flex items-center justify-between p-6 border-b" style={{ borderColor }}>
           <h2 className="text-xl" style={{ color: txtDim }}>任务详情</h2>
@@ -327,7 +326,7 @@ export function TaskDetailPanel({
                     style={{ backgroundColor: bgSubdued }}>
                     <button onClick={() => onCompleteSubtask(sub.id)} className="flex-shrink-0">
                       {sub.status === 'completed'
-                        ? <Check size={14} style={{ color: theme.accent }} />
+                        ? <Check size={14} style={{ color: appTheme.primary }} />
                         : <Circle size={14} style={{ color: txtHint }} />}
                     </button>
                     <span className="flex-1 text-sm truncate"
@@ -357,7 +356,7 @@ export function TaskDetailPanel({
               <button onClick={handleAddSubtask} disabled={!subtaskTitle.trim()}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
                 style={subtaskTitle.trim()
-                  ? { backgroundColor: theme.accent, color: '#fff' }
+                  ? { backgroundColor: appTheme.primary, color: '#fff' }
                   : { backgroundColor: bgSubtle, color: txtHint }}>
                 <Plus size={16} />
               </button>

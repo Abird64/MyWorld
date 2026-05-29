@@ -1,4 +1,4 @@
-import { capsuleTab } from '@/styles/theme';
+import { appTheme } from '@/styles/theme';
 
 interface CapsuleTabItem {
   id: string;
@@ -14,39 +14,32 @@ interface CapsuleTabsProps {
   className?: string;
 }
 
-/**
- * 统一胶囊分类栏组件
- */
 export function CapsuleTabs({
   items,
   activeId,
   onChange,
-  accentColor = '#58A968',
-  isDark = true,
+  accentColor = appTheme.primary,
   className = '',
 }: CapsuleTabsProps) {
   return (
-    <div className={`flex items-center gap-6 ${className}`}>
-      {items.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => onChange(item.id)}
-          className={`
-            ${capsuleTab.padding.x} ${capsuleTab.padding.y}
-            ${capsuleTab.borderRadius}
-            ${capsuleTab.fontSize}
-            font-light tracking-wider
-            ${capsuleTab.transition}
-          `}
-          style={{
-            minWidth: capsuleTab.minWidth,
-            backgroundColor: activeId === item.id ? accentColor : `${accentColor}30`,
-            color: activeId === item.id ? 'white' : isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
-          }}
-        >
-          {item.label}
-        </button>
-      ))}
+    <div className={`flex items-center gap-2 flex-wrap ${className}`}>
+      {items.map((item) => {
+        const isActive = activeId === item.id;
+        return (
+          <button
+            key={item.id}
+            onClick={() => onChange(item.id)}
+            className="px-4 py-1.5 rounded-full text-sm transition-all duration-200 btn-press"
+            style={{
+              backgroundColor: isActive ? accentColor : 'transparent',
+              color: isActive ? appTheme.onPrimary : appTheme.ink,
+              border: isActive ? 'none' : `1px solid ${appTheme.hairline}`,
+            }}
+          >
+            {item.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

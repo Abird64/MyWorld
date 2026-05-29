@@ -1,5 +1,5 @@
 import { useJournalStore } from '@/stores/journalStore';
-import { usePageTheme } from '@/hooks/usePageTheme';
+import { appTheme } from '@/styles/theme';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -28,8 +28,6 @@ export function TimelineDropdown() {
     toggleTimeline,
     currentDate,
   } = useJournalStore();
-
-  const t = usePageTheme('diary');
 
   if (!showTimeline) return null;
 
@@ -64,7 +62,7 @@ export function TimelineDropdown() {
     toggleTimeline();
   };
 
-  const txt = t.cardText;
+  const txt = appTheme.ink;
   const txtDim = txt + 'CC';
   const txtMid = txt + '80';
   const txtLight = txt + '4D';
@@ -74,24 +72,24 @@ export function TimelineDropdown() {
   return (
     <div className="flex justify-center px-8">
       <div className="max-w-[1000px] flex-1">
-        <div className="rounded-2xl p-4 shadow-lg mt-1" style={{ backgroundColor: t.card }}>
+        <div className="rounded-2xl p-4 mt-1" style={{ backgroundColor: appTheme.canvas }}>
           {/* 月份导航 */}
           <div className="flex items-center justify-between mb-3 px-2">
             <button
               onClick={() => navigateMonth(-1)}
-              className="transition-colors text-lg font-zhuque"
+              className="transition-colors text-lg"
               style={{ color: txtMid }}
               onMouseEnter={(e) => (e.currentTarget.style.color = txt)}
               onMouseLeave={(e) => (e.currentTarget.style.color = txtMid)}
             >
               ◀
             </button>
-            <span className="font-zhuque text-lg" style={{ color: txtDim }}>
+            <span className="text-lg" style={{ color: txtDim }}>
               {year}年{month}月
             </span>
             <button
               onClick={() => navigateMonth(1)}
-              className="transition-colors text-lg font-zhuque"
+              className="transition-colors text-lg"
               style={{ color: txtMid }}
               onMouseEnter={(e) => (e.currentTarget.style.color = txt)}
               onMouseLeave={(e) => (e.currentTarget.style.color = txtMid)}
@@ -105,7 +103,7 @@ export function TimelineDropdown() {
             {WEEKDAYS.map((w) => (
               <div
                 key={w}
-                className="text-center text-sm font-zhuque py-1"
+                className="text-center text-sm py-1"
                 style={{ color: txtLight }}
               >
                 {w}
@@ -120,12 +118,12 @@ export function TimelineDropdown() {
                 {cell ? (
                   <button
                     onClick={() => handleDayClick(cell.dateStr)}
-                    className="w-9 h-9 rounded-full flex items-center justify-center relative font-zhuque text-sm transition-colors"
+                    className="w-9 h-9 rounded-full flex items-center justify-center relative text-sm transition-colors"
                     style={
                       cell.isCurrent
-                        ? { backgroundColor: '#2C3532', color: '#fff' }
+                        ? { backgroundColor: appTheme.surfaceBlack, color: '#fff' }
                         : cell.isToday
-                          ? { backgroundColor: '#E65C5C33', color: '#E65C5C' }
+                          ? { backgroundColor: `${appTheme.danger}33`, color: appTheme.danger }
                           : { color: txtBody }
                     }
                     onMouseEnter={!cell.isCurrent && !cell.isToday ? (e) => (e.currentTarget.style.backgroundColor = hoverBg) : undefined}
@@ -133,7 +131,7 @@ export function TimelineDropdown() {
                   >
                     {cell.day}
                     {cell.hasEntry && !cell.isCurrent && (
-                      <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-[#2C3532]/60" />
+                      <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `${appTheme.surfaceBlack}99` }} />
                     )}
                   </button>
                 ) : null}

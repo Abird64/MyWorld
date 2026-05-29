@@ -19,6 +19,7 @@ pub struct CreateScheduleInput {
     pub source_id: Option<String>,
     pub category: Option<String>,
     pub calendar_id: Option<String>,
+    pub event_type: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -34,6 +35,7 @@ pub struct UpdateScheduleInput {
     pub location: Option<String>,
     pub category: Option<String>,
     pub calendar_id: Option<String>,
+    pub event_type: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -68,6 +70,7 @@ pub fn create_schedule(
         input.source_id.as_deref(),
         input.category.as_deref(),
         input.calendar_id.as_deref(),
+        input.event_type.as_deref().unwrap_or("event"),
     )?;
     serde_json::to_value(schedule).map_err(|e| e.to_string())
 }
@@ -113,6 +116,7 @@ pub fn update_schedule(
         input.location.as_deref(),
         input.category.as_deref(),
         input.calendar_id.as_deref(),
+        input.event_type.as_deref(),
     )?;
     serde_json::to_value(schedule).map_err(|e| e.to_string())
 }
@@ -142,6 +146,15 @@ pub fn delete_schedule(
     let affected = schedule_repo::delete_schedule(&conn, &input.id)?;
     serde_json::to_value(serde_json::json!({ "success": true, "deleted": affected }))
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_countdowns(
+    state: State<'_, DbState>,
+) -> Result<serde_json::Value, String> {
+    let conn = state.conn.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+    let countdowns = schedule_repo::list_countdowns(&conn)?;
+    serde_json::to_value(countdowns).map_err(|e| e.to_string())
 }
 
 #[derive(Deserialize)]
@@ -199,6 +212,7 @@ pub fn import_ics_events(
             Some(&event.uid),
             event.category.as_deref(),
             input.calendar_id.as_deref().or(event.calendar_id.as_deref()),
+            "event",
         )?;
 
         imported += 1;

@@ -63,25 +63,25 @@ export function ContactSyncCard({ contact, onSync, onIgnore, dark = true }: Cont
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-zhuque text-base" style={{ color: TXT }}>
+            <span className="text-base" style={{ color: TXT }}>
               {contact.name}
             </span>
             {matched && contact.existing_contact_name && contact.existing_contact_name !== contact.name && (
-              <span className="font-zhuque text-xs" style={{ color: TXT_DIM }}>
+              <span className="text-xs" style={{ color: TXT_DIM }}>
                 → {contact.existing_contact_name}
               </span>
             )}
             {matched ? (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-zhuque">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
                 已存在
               </span>
             ) : (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-zhuque">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
                 新联系人
               </span>
             )}
           </div>
-          <p className="font-zhuque text-sm mt-1" style={{ color: TXT_DIM }}>
+          <p className="text-sm mt-1" style={{ color: TXT_DIM }}>
             {contact.event_summary}
           </p>
         </div>
@@ -93,7 +93,7 @@ export function ContactSyncCard({ contact, onSync, onIgnore, dark = true }: Cont
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-sm font-zhuque transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-sm transition-colors disabled:opacity-50"
           >
             <Check size={14} />
             {syncing ? '同步中...' : '同步备注'}
@@ -102,7 +102,7 @@ export function ContactSyncCard({ contact, onSync, onIgnore, dark = true }: Cont
           <div className="flex-1 flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <input
-                className="flex-1 rounded-lg px-3 py-1.5 text-sm font-zhuque focus:outline-none"
+                className="flex-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
                 style={{
                   backgroundColor: INPUT_BG,
                   color: TXT,
@@ -114,7 +114,7 @@ export function ContactSyncCard({ contact, onSync, onIgnore, dark = true }: Cont
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-sm font-zhuque transition-colors disabled:opacity-50 whitespace-nowrap"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-sm transition-colors disabled:opacity-50 whitespace-nowrap"
               >
                 <Plus size={14} />
                 {creating ? '创建中...' : '创建'}
@@ -133,7 +133,7 @@ export function ContactSyncCard({ contact, onSync, onIgnore, dark = true }: Cont
         ) : (
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-sm font-zhuque transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-sm transition-colors"
           >
             <Plus size={14} />
             手动创建
@@ -142,7 +142,7 @@ export function ContactSyncCard({ contact, onSync, onIgnore, dark = true }: Cont
 
         <button
           onClick={() => { setDone(true); onIgnore(contact.name); }}
-          className="px-3 py-1.5 rounded-lg text-sm font-zhuque transition-colors"
+          className="px-3 py-1.5 rounded-lg text-sm transition-colors"
           style={{ color: BTN_IGNORE }}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = HOVER_BG)}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}

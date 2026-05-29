@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
 /* ========== 全局基础样式 ========== */
-/* 确保页面容器有适当的内边距，防止内容贴边框 */
 html, body, #root {
   height: 100%;
   width: 100%;
+  font-family: "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* 桌面应用：全局禁止文字选中/拖拽，仅保留输入框可选 */
@@ -18,20 +20,11 @@ input, textarea, [contenteditable="true"] {
   -webkit-user-select: text;
 }
 
-/* AI 对话气泡允许选中文字（含所有子元素，覆盖全局 * 选择器） */
+/* AI 对话气泡允许选中文字 */
 .chat-bubble,
 .chat-bubble * {
   user-select: text;
   -webkit-user-select: text;
-}
-
-/* 古典字体 */
-.font-zhuque {
-  font-family: "Zhuque Fangsong", "STKaiti", "KaiTi", serif;
-}
-
-.font-xiaowei {
-  font-family: "Microsoft YaHei", "SimHei", sans-serif;
 }
 
 /* 自定义滚动条 */
@@ -40,47 +33,56 @@ input, textarea, [contenteditable="true"] {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.04);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 /* 毛玻璃效果 */
 .glass {
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: rgba(255, 255, 255, 0.72);
 }
 
-/* Markdown 渲染样式 */
+.glass-dark {
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: rgba(0, 0, 0, 0.72);
+}
+
+/* Markdown 渲染样式 — 浅色背景版 */
 .markdown-body p {
   margin: 0 0 0.5em 0;
+  line-height: 1.47;
+  font-size: 17px;
+  color: #1d1d1f;
 }
 .markdown-body p:last-child {
   margin-bottom: 0;
 }
 .markdown-body strong {
-  color: rgba(255, 255, 255, 0.95);
   font-weight: 600;
 }
 .markdown-body em {
   font-style: italic;
 }
 .markdown-body code {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.06);
   padding: 0.15em 0.4em;
   border-radius: 4px;
   font-size: 0.9em;
 }
 .markdown-body pre {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.05);
   padding: 0.75em 1em;
   border-radius: 8px;
   overflow-x: auto;
@@ -98,20 +100,41 @@ input, textarea, [contenteditable="true"] {
   margin: 0.2em 0;
 }
 .markdown-body blockquote {
-  border-left: 3px solid rgba(255, 255, 255, 0.3);
+  border-left: 3px solid rgba(0, 0, 0, 0.12);
   padding-left: 0.75em;
   margin: 0.5em 0;
-  opacity: 0.85;
+  color: #7a7a7a;
 }
 .markdown-body h1, .markdown-body h2, .markdown-body h3 {
   margin: 0.6em 0 0.3em 0;
   font-weight: 600;
+  color: #1d1d1f;
 }
 .markdown-body h1 { font-size: 1.2em; }
 .markdown-body h2 { font-size: 1.1em; }
 .markdown-body h3 { font-size: 1em; }
 .markdown-body hr {
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid #e0e0e0;
   margin: 0.75em 0;
+}
+.markdown-body a {
+  color: #0066cc;
+  text-decoration: none;
+}
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+/* ========== Apple 按钮交互 ========== */
+.btn-press {
+  transition: transform 0.1s ease;
+}
+.btn-press:active {
+  transform: scale(0.95);
+}
+
+/* ========== 底部安全区 ========== */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
