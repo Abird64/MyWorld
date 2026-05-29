@@ -1,13 +1,15 @@
 use chrono::Local;
 use lunardate::LunarDate;
+use rusqlite::Connection;
 
-use crate::db::repositories::memory_repo::Memory;
+use crate::db::repositories::{contact_repo, habit_repo, memory_repo, schedule_repo, task_repo};
 
 /// 构建"提灯"的系统提示词
 ///
+/// `conn` 用于查询每日快照（今日日程、待办、习惯等）
 /// `personality` 来自用户设置 `ai.personality`，默认值由设置页提供
 /// `memories` 来自小本本记忆表，注入为跨对话上下文
-pub fn build_system_prompt(personality: &str, memories: &[Memory]) -> String {
+pub fn build_system_prompt(conn: &Connection, personality: &str, memories: &[memory_repo::Memory]) -> String {
     let now = Local::now();
     let datetime = now.format("现在时间：%Y年%m月%d日 %A %H:%M，时区 Asia/Shanghai (UTC+8)");
 
@@ -32,13 +34,15 @@ pub fn build_system_prompt(personality: &str, memories: &[Memory]) -> String {
         Err(_) => "农历日期未知".to_string(),
     };
 
+    let daily_snapshot = build_daily_snapshot(conn);
+
     let base = format!(
         r#"你是"提灯"，住在一款叫"拾阶"的桌面应用里陪伴用户管理人生。性格温和、靠谱、不啰嗦，像了解用户的朋友。中文为主，偶用英文点缀。
 
 ## 当前信息
 {datetime}
 农历：{lunar_str}
-
+{daily_snapshot}
 ## 通用规则
 - 数据操作必须调用工具，绝不凭空编造。模糊意图先追问一句比做错好
 - 回复简洁温暖，不长篇大论，不用电商语气。用户做得好时给正向反馈但不刻意夸
@@ -91,7 +95,8 @@ pub fn build_system_prompt(personality: &str, memories: &[Memory]) -> String {
 - 泛泛而谈、无具体信息的对话
 "#,
         datetime = datetime,
-        lunar_str = lunar_str
+        lunar_str = lunar_str,
+        daily_snapshot = daily_snapshot
     );
 
     let mut prompt = String::with_capacity(base.len() + personality.len() + 4096);
@@ -130,6 +135,124 @@ pub fn build_system_prompt(personality: &str, memories: &[Memory]) -> String {
 
     prompt.push_str(&base);
     prompt
+}
+
+/// 构建每日快照：今日日程、待办任务、习惯打卡、近期提醒
+fn build_daily_snapshot(conn: &Connection) -> String {
+    let today = Local::now().format("%Y-%m-%d").to_string();
+    let mut sections: Vec<String> = Vec::new();
+
+    // ── 今日日程 ──
+    if let Ok(schedules) = schedule_repo::list_schedules_in_range(conn, &today, &today) {
+        let events: Vec<_> = schedules.iter()
+            .filter(|s| s.event_type != "countdown")
+            .collect();
+        if !events.is_empty() {
+            let mut lines = String::from("### 今日日程\n");
+            for s in events.iter().take(10) {
+                let time_str = if s.is_all_day != 0 {
+                    "全天".to_string()
+                } else {
+                    s.start_at.get(11..16).unwrap_or("").to_string()
+                };
+                lines.push_str(&format!("- {} {}\n", time_str, s.title));
+            }
+            sections.push(lines);
+        }
+    }
+
+    // ── 待办任务 ──
+    if let Ok(tasks) = task_repo::list_tasks(conn, None, Some(None)) {
+        let pending: Vec<_> = tasks.iter()
+            .filter(|t| t.status == "pending" || t.status == "in_progress")
+            .collect();
+        if !pending.is_empty() {
+            let mut lines = format!("### 待办任务（{}项）\n", pending.len());
+            for t in pending.iter().take(8) {
+                let priority = match t.priority.as_deref() {
+                    Some("high") => "紧急",
+                    Some("medium") => "重要",
+                    _ => "",
+                };
+                let deadline = t.deadline.as_ref()
+                    .and_then(|d| d.get(0..16).map(|s| s.replace('T', " ")))
+                    .map(|d| format!("（截止{}）", d))
+                    .unwrap_or_default();
+                let status_label = if t.status == "in_progress" { "进行中 " } else { "" };
+                let p_label = if !priority.is_empty() { format!("{}：", priority) } else { String::new() };
+                lines.push_str(&format!("- {}{}{}{}\n", status_label, p_label, t.title, deadline));
+            }
+            sections.push(lines);
+        }
+    }
+
+    // ── 习惯打卡 ──
+    if let Ok(habits) = habit_repo::get_all_streaks(conn) {
+        if !habits.is_empty() {
+            let unchecked: Vec<_> = habits.iter()
+                .filter(|h| !h.checked_today)
+                .collect();
+            let checked: Vec<_> = habits.iter()
+                .filter(|h| h.checked_today)
+                .collect();
+            // 只在有未打卡习惯时显示
+            if !unchecked.is_empty() {
+                let mut lines = String::from("### 习惯打卡\n");
+                for h in &checked {
+                    let icon = h.habit.icon.as_deref().unwrap_or("");
+                    lines.push_str(&format!("- ✅ {}{}（连续{}天）\n", icon, h.habit.name, h.streak));
+                }
+                for h in &unchecked {
+                    let icon = h.habit.icon.as_deref().unwrap_or("");
+                    let streak_str = if h.streak > 0 { format!("连续{}天，", h.streak) } else { String::new() };
+                    lines.push_str(&format!("- ⬜ {}{}（{}今日未打卡）\n", icon, h.habit.name, streak_str));
+                }
+                sections.push(lines);
+            }
+        }
+    }
+
+    // ── 近期提醒 ──
+    let mut reminders: Vec<String> = Vec::new();
+
+    // 倒数日（未来30天内的）
+    if let Ok(countdowns) = schedule_repo::list_countdowns(conn) {
+        let now_date = chrono::Local::now().date_naive();
+        for cd in &countdowns {
+            if let Ok(target) = chrono::NaiveDate::parse_from_str(&cd.start_at[..10], "%Y-%m-%d") {
+                let diff = (target - now_date).num_days();
+                if diff >= 0 && diff <= 30 {
+                    reminders.push(format!("- 倒数日：{}（还有{}天）", cd.title, diff));
+                }
+            }
+        }
+    }
+
+    // 近期生日（7天内）
+    if let Ok(birthdays) = contact_repo::list_upcoming_birthdays(conn, 7) {
+        for b in &birthdays {
+            if b.days_remaining > 0 {
+                reminders.push(format!("- 生日：{} {}（还有{}天）", b.name, b.upcoming_date, b.days_remaining));
+            } else if b.days_remaining == 0 {
+                reminders.push(format!("- 生日：{} 今天过生日！", b.name));
+            }
+        }
+    }
+
+    if !reminders.is_empty() {
+        let mut lines = String::from("### 近期提醒\n");
+        for r in &reminders {
+            lines.push_str(r);
+            lines.push('\n');
+        }
+        sections.push(lines);
+    }
+
+    if sections.is_empty() {
+        return String::new();
+    }
+
+    format!("## 今日概况\n{}\n", sections.join("\n"))
 }
 
 /// 日省 XP 结算提示词：只评估经验值，调用 settle_diary 工具

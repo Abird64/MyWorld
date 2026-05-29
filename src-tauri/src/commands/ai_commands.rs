@@ -70,7 +70,7 @@ pub async fn send_message(
 
         let personality = get_setting_or(&conn, "ai.personality", "你是一个温暖的人生管理助手，名叫提灯。");
         let memories = memory_repo::list_memories_for_injection(&conn, 50).unwrap_or_default();
-        let system_prompt = prompts::build_system_prompt(&personality, &memories);
+        let system_prompt = prompts::build_system_prompt(&conn, &personality, &memories);
 
         let mut chat_messages: Vec<client::ChatMessage> = Vec::new();
         chat_messages.push(client::ChatMessage {
@@ -246,7 +246,7 @@ fn build_chat_context(
         "你是一个温暖的人生管理助手，名叫提灯。",
     );
     let memories = memory_repo::list_memories_for_injection(conn, 50).unwrap_or_default();
-    let system_prompt = prompts::build_system_prompt(&personality, &memories);
+    let system_prompt = prompts::build_system_prompt(conn, &personality, &memories);
 
     let mut chat_messages = vec![client::ChatMessage {
         role: "system".to_string(),
