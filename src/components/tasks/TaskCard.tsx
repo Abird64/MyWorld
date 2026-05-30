@@ -36,8 +36,8 @@ export function TaskCard({
   const bgSubtle = appTheme.ink + '0D';
 
   const priorityConfig: Record<string, { label: string; color: string }> = {
-    high: { label: '紧急', color: '#E74C3C' },
-    medium: { label: '重要', color: '#F39C12' },
+    high: { label: '紧急', color: appTheme.danger },
+    medium: { label: '重要', color: appTheme.warning },
     low: { label: '一般', color: appTheme.primary },
   };
 
@@ -61,7 +61,7 @@ export function TaskCard({
               onClick={(e) => { e.stopPropagation(); onToggleSelect(task.id); }}
               className="flex-shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center mt-5 transition-colors"
               style={{
-                borderColor: isSelected ? appTheme.primary : '#ccc',
+                borderColor: isSelected ? appTheme.primary : appTheme.hairline,
                 backgroundColor: isSelected ? appTheme.primary : 'transparent',
               }}
             >

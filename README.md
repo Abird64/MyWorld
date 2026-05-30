@@ -1,8 +1,8 @@
-# 拾阶 (MyWorld)
+# 提灯 (Lantern)
 
-> 拾级而上，提灯而行 — My world, step by step.
+> 拾级而上，提灯而行 — Lantern, step by step.
 
-一个本地优先的 AI 驱动人生管理系统。把 Obsidian 的数据开放、RPG 的成长反馈、AI Agent 的智能调度，编织成一个陪你拾级而上的桌面伙伴。
+一个本地优先的 AI 驱动人生管理系统。把 Obsidian 的数据开放、RPG 的成长反馈、AI Agent 的智能调度，编织成一个提灯引路的桌面伙伴。
 
 ## 功能
 
@@ -31,8 +31,8 @@
 
 | 文件 | 大小 | 说明 |
 |------|------|------|
-| `MyWorld_x.x.x_standard.exe` | ~200 MB | 含 WebView2 安装引导（没有 Edge 的电脑用） |
-| `MyWorld_x.x.x_lite.exe` | ~7 MB | 不含 WebView2（已安装 Edge/WebView2 的电脑用） |
+| `Lantern_x.x.x_standard.exe` | ~200 MB | 含 WebView2 安装引导（没有 Edge 的电脑用） |
+| `Lantern_x.x.x_lite.exe` | ~7 MB | 不含 WebView2（已安装 Edge/WebView2 的电脑用） |
 
 ## 快速开始
 
@@ -90,8 +90,8 @@ src/
 
 ## 数据可迁移性
 
-* 日记：`%APPDATA%/com.myworld.app/diaries/` 下的 `.md` 文件，可直接用 Obsidian 打开
-* 数据库：`%APPDATA%/com.myworld.app/myworld.db`，可用任何 SQLite 工具读取
+* 日记：`%APPDATA%/com.lantern.app/diaries/` 下的 `.md` 文件，可直接用 Obsidian 打开
+* 数据库：`%APPDATA%/com.lantern.app/lantern.db`，可用任何 SQLite 工具读取
 * 导出：支持 ICS 日历导出，按日历表筛选
 
 ## 开源协议

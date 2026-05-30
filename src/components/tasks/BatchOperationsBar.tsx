@@ -51,7 +51,7 @@ export function BatchOperationsBar({
             disabled={selectedCount === 0}
             className="px-5 py-2.5 rounded-full text-sm transition-all"
             style={selectedCount > 0
-              ? { backgroundColor: '#2A8CB7', color: '#fff' }
+              ? { backgroundColor: appTheme.primary, color: appTheme.onPrimary }
               : { backgroundColor: bgSubtle, color: txtHint }}
           >
             批量完成
@@ -61,7 +61,7 @@ export function BatchOperationsBar({
             disabled={selectedCount === 0}
             className="px-5 py-2.5 rounded-full text-sm transition-all"
             style={selectedCount > 0
-              ? { backgroundColor: '#fef2f2', color: '#ef4444' }
+              ? { backgroundColor: `${appTheme.danger}20`, color: appTheme.danger }
               : { backgroundColor: bgSubtle, color: txtHint }}
           >
             批量删除

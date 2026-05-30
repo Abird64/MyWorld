@@ -156,6 +156,9 @@ export function ChatView({
     isSending,
     isExecuting,
     error,
+    aiStatus,
+    streamingContent,
+    isStreaming,
     stopGeneration,
     executeToolCalls,
     executeSingleToolCall,
@@ -168,7 +171,16 @@ export function ChatView({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, streamingContent]);
+
+  // 锦囊/粘贴等程序化输入后自动调整 textarea 高度
+  useEffect(() => {
+    const ta = inputRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const maxHeight = 22 * 4 + 16;
+    ta.style.height = Math.min(ta.scrollHeight, maxHeight) + 'px';
+  }, [input]);
 
   const handleCopy = useCallback(async (msgId: string, content: string | null) => {
     await copyText(content);
@@ -391,7 +403,27 @@ export function ChatView({
                 </div>
               );
             })}
-            {isSending && (
+            {/* 流式内容 */}
+            {isStreaming && streamingContent && (
+              <div className="flex justify-start">
+                <div className="max-w-[80%]">
+                  <div
+                    className="chat-bubble markdown-body px-4 py-3 rounded-2xl text-sm leading-relaxed"
+                    style={{
+                      backgroundColor: s(0.08),
+                      color: s(0.8),
+                      borderBottomLeftRadius: '4px',
+                    }}
+                  >
+                    <Markdown remarkPlugins={[remarkGfm]}>
+                      {streamingContent}
+                    </Markdown>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* 状态指示器 */}
+            {isSending && !isStreaming && (
               <div className="flex justify-start">
                 <div
                   className="px-4 py-3 rounded-2xl"
@@ -400,7 +432,7 @@ export function ChatView({
                     borderBottomLeftRadius: '4px',
                   }}
                 >
-                  <ShiningText text="思考中..." />
+                  <ShiningText text={aiStatus || "思考中..."} />
                 </div>
               </div>
             )}
@@ -472,7 +504,7 @@ export function ChatView({
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
-                // auto-resize
+                // auto-resize: reset to 1 line, then grow to fit (max 4 lines)
                 const ta = e.target;
                 ta.style.height = 'auto';
                 const lineHeight = 22;

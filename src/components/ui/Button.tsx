@@ -31,7 +31,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       },
       danger: {
         backgroundColor: appTheme.danger,
-        color: '#ffffff',
+        color: appTheme.onPrimary,
       },
       'xp-focus': {
         backgroundColor: 'rgba(42, 140, 183, 0.14)',

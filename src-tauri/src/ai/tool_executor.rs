@@ -4,6 +4,7 @@ use chrono::{Datelike, Duration, Local, NaiveDate, Weekday};
 use rusqlite::Connection;
 use serde::Deserialize;
 
+use crate::ai::guide;
 use crate::db::repositories::{calendar_repo, contact_repo, habit_repo, journal_repo, memory_repo, schedule_repo, skill_repo, task_repo};
 use crate::db::repositories::contact_repo::ContactMethodInput;
 use crate::db::repositories::task_repo::Task;
@@ -152,6 +153,13 @@ struct ToolTimelineArgs {
     month: i32,
 }
 
+#[derive(Debug, Deserialize)]
+struct ToolSearchJournalsArgs {
+    query: String,
+    #[serde(default)]
+    limit: Option<usize>,
+}
+
 // ── 人脉参数 ──
 
 #[derive(Debug, Deserialize)]
@@ -286,6 +294,7 @@ pub fn execute_tool(
         "save_journal" => execute_save_journal(conn, app_data_dir, arguments),
         "get_timeline" => execute_get_timeline(conn, arguments),
         "settle_diary" => execute_settle_diary(conn, arguments),
+        "search_journals" => execute_search_journals(conn, app_data_dir, arguments),
         // 人脉 (5)
         "create_contact" => execute_create_contact(conn, arguments),
         "search_contacts" => execute_search_contacts(conn, arguments),
@@ -308,6 +317,8 @@ pub fn execute_tool(
         "create_habit" => execute_create_habit(conn, arguments),
         "check_habit" => execute_check_habit(conn, arguments),
         "uncheck_habit" => execute_uncheck_habit(conn, arguments),
+        // 指南
+        "get_guide" => execute_get_guide(arguments),
         _ => Err(format!("未知工具: {}", name)),
     }
 }
@@ -1115,6 +1126,35 @@ fn execute_get_journal(conn: &Connection, _app_data_dir: Option<&Path>, argument
             Ok(result)
         }
     }
+}
+
+// ========== 搜索日记 ==========
+
+fn execute_search_journals(conn: &Connection, app_data_dir: Option<&Path>, arguments: &str) -> Result<String, String> {
+    let args: ToolSearchJournalsArgs = serde_json::from_str(arguments)
+        .map_err(|e| format!("search_journals 参数解析失败: {}", e))?;
+
+    let app_data_dir = app_data_dir.ok_or("app_data_dir 不可用")?;
+    let limit = args.limit.unwrap_or(3).min(10);
+
+    let results = journal_repo::search_journals(conn, app_data_dir, &args.query, limit)?;
+
+    if results.is_empty() {
+        return Ok(format!("没有找到与[{}]相关的日记。", args.query));
+    }
+
+    let mut output = format!("找到 {} 条与[{}]相关的日记：\n\n", results.len(), args.query);
+    for (i, r) in results.iter().enumerate() {
+        output.push_str(&format!(
+            "{}. [{}] {}\n   {}\n\n",
+            i + 1,
+            r.journal.journal_date,
+            r.journal.title,
+            r.snippet
+        ));
+    }
+
+    Ok(output)
 }
 
 // ========== 写入日记 ==========
@@ -2254,4 +2294,18 @@ fn execute_uncheck_habit(conn: &Connection, arguments: &str) -> Result<String, S
     } else {
         Err(format!("{}在指定日期没有打卡记录", habit.name))
     }
+}
+
+// ========== 指南 ==========
+
+#[derive(Debug, Deserialize)]
+struct ToolGetGuideArgs {
+    module: String,
+}
+
+fn execute_get_guide(arguments: &str) -> Result<String, String> {
+    let args: ToolGetGuideArgs = serde_json::from_str(arguments)
+        .map_err(|e| format!("get_guide 参数解析失败: {}", e))?;
+
+    guide::get_guide(&args.module)
 }

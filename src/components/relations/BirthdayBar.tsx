@@ -67,7 +67,7 @@ export function BirthdayBar() {
             {b.upcoming_age && (
               <span
                 className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium mt-1 text-white"
-                style={{ backgroundColor: '#ff9500' }}
+                style={{ backgroundColor: appTheme.warning }}
               >
                 {b.upcoming_age}岁
               </span>

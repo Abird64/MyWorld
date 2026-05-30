@@ -1,6 +1,7 @@
 mod ai;
 mod db;
 mod commands;
+mod sync;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -20,6 +21,12 @@ pub fn run() {
             let (db_state, app_data_state) = db::connection::init_db(app.handle())?;
             app.manage(db_state);
             app.manage(app_data_state);
+
+            // 初始化同步状态
+            app.manage(sync::sync_engine::SyncState::new());
+
+            // 启动后台同步任务
+            sync::sync_engine::spawn_background_sync(app.handle().clone());
 
             Ok(())
         })
@@ -100,6 +107,9 @@ pub fn run() {
             commands::habit_commands::get_streak,
             commands::habit_commands::get_all_streaks,
             commands::habit_commands::get_week_matrix,
+            commands::sync_commands::sync_test_connection,
+            commands::sync_commands::sync_now,
+            commands::sync_commands::sync_get_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

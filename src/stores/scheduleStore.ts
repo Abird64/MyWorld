@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Schedule, CreateScheduleInput, UpdateScheduleInput } from '@/types/schedule';
 import * as scheduleService from '@/services/scheduleService';
+import { triggerSync } from '@/stores/syncStore';
 
 interface ScheduleState {
   schedules: Schedule[];
@@ -58,6 +59,7 @@ export const useScheduleStore = create<ScheduleState>((set, _get) => ({
         ),
         isLoading: false,
       }));
+      triggerSync();
       return schedule;
     } catch (e) {
       set({ error: String(e), isLoading: false });
@@ -73,6 +75,7 @@ export const useScheduleStore = create<ScheduleState>((set, _get) => ({
         schedules: state.schedules.map((s) => (s.id === id ? schedule : s)),
         isLoading: false,
       }));
+      triggerSync();
       return schedule;
     } catch (e) {
       set({ error: String(e), isLoading: false });
@@ -88,6 +91,7 @@ export const useScheduleStore = create<ScheduleState>((set, _get) => ({
         schedules: state.schedules.filter((s) => s.id !== id),
         isLoading: false,
       }));
+      triggerSync();
     } catch (e) {
       set({ error: String(e), isLoading: false });
     }

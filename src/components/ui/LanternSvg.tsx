@@ -6,10 +6,10 @@ interface LanternSvgProps {
   isDark?: boolean;
 }
 
-export function LanternSvg({ className, accentColor = '#58A968', isDark = true }: LanternSvgProps) {
-  const eyeColor = isDark ? '#5BA4E6' : '#2563EB';
-  const frameColor = isDark ? '#e8e8e8' : '#4A4A4A';
-  const frameDim = isDark ? '#c0c0c0' : '#6A6A6A';
+export function LanternSvg({ className, accentColor = '#4CAF76', isDark = true }: LanternSvgProps) {
+  const eyeColor = isDark ? '#A8E6CF' : '#2D6B4F';
+  const frameColor = isDark ? 'rgba(255,255,255,0.12)' : '#4A4A4A';
+  const frameDim = isDark ? 'rgba(255,255,255,0.08)' : '#6A6A6A';
   const leftEyeRef = useRef<SVGLineElement>(null);
   const rightEyeRef = useRef<SVGLineElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Contact, CreateContactInput, UpdateContactInput } from '@/types/contact';
 import * as contactService from '@/services/contactService';
+import { triggerSync } from '@/stores/syncStore';
 
 interface ContactState {
   contacts: Contact[];
@@ -40,6 +41,7 @@ export const useContactStore = create<ContactState>((set) => ({
         contacts: [contact, ...state.contacts],
         isLoading: false,
       }));
+      triggerSync();
       return contact;
     } catch (e) {
       set({ error: String(e), isLoading: false });
@@ -55,6 +57,7 @@ export const useContactStore = create<ContactState>((set) => ({
         contacts: state.contacts.map((c) => (c.id === id ? contact : c)),
         isLoading: false,
       }));
+      triggerSync();
       return contact;
     } catch (e) {
       set({ error: String(e), isLoading: false });
@@ -70,6 +73,7 @@ export const useContactStore = create<ContactState>((set) => ({
         contacts: state.contacts.filter((c) => c.id !== id),
         isLoading: false,
       }));
+      triggerSync();
     } catch (e) {
       set({ error: String(e), isLoading: false });
     }

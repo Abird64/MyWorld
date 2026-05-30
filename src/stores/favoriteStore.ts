@@ -4,6 +4,7 @@
 import { create } from 'zustand';
 import type { AiFavorite } from '@/types/favorite';
 import * as favoriteService from '@/services/favoriteService';
+import { triggerSync } from '@/stores/syncStore';
 
 interface FavoriteState {
   favorites: AiFavorite[];
@@ -49,6 +50,7 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
           favoritedIds: newIds,
           favorites: favorites.filter((f) => f.message_id !== messageId),
         });
+        triggerSync();
         return false;
       } catch (e) {
         console.error('Failed to unfavorite:', e);
@@ -64,6 +66,7 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
           favoritedIds: newIds,
           favorites: [fav, ...favorites],
         });
+        triggerSync();
         return true;
       } catch (e) {
         console.error('Failed to favorite:', e);
@@ -83,6 +86,7 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
         favorites: favorites.filter((f) => f.id !== id),
         favoritedIds: newIds,
       });
+      triggerSync();
     } catch (e) {
       console.error('Failed to delete favorite:', e);
     }
@@ -92,6 +96,7 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
     try {
       await favoriteService.deleteAllFavorites();
       set({ favorites: [], favoritedIds: new Set() });
+      triggerSync();
     } catch (e) {
       console.error('Failed to delete all favorites:', e);
     }

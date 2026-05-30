@@ -3,6 +3,7 @@ import type { Journal, ExtractedContact } from '@/types/journal';
 import type { CompleteResult } from '@/types/task';
 import * as journalService from '@/services/journalService';
 import * as contactService from '@/services/contactService';
+import { triggerSync } from '@/stores/syncStore';
 import type { DailyReflectionResult } from '@/services/journalService';
 
 interface JournalState {
@@ -140,6 +141,7 @@ export const useJournalStore = create<JournalState>((set, get) => {
         try {
           const journal = await journalService.saveJournal(currentDate, content);
           set({ journal, isSaving: false, lastSaved: Date.now() });
+          triggerSync();
         } catch (e) {
           set({ error: String(e), isSaving: false });
         }
@@ -157,6 +159,7 @@ export const useJournalStore = create<JournalState>((set, get) => {
       try {
         const journal = await journalService.saveJournal(currentDate, content);
         set({ journal, isSaving: false, lastSaved: Date.now() });
+        triggerSync();
       } catch (e) {
         set({ error: String(e), isSaving: false });
       }

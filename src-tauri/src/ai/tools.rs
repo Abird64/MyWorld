@@ -59,11 +59,12 @@ pub fn get_tools() -> Vec<ToolDefinition> {
         list_calendars_definition(),
         update_schedule_definition(),
         delete_schedule_definition(),
-        // ── 日记 (4) ──
+        // ── 日记 (5) ──
         get_journal_by_date_definition(),
         save_journal_definition(),
         get_timeline_definition(),
         settle_diary_definition(),
+        search_journals_definition(),
         // ── 人脉 (5) ──
         create_contact_definition(),
         search_contacts_definition(),
@@ -86,6 +87,8 @@ pub fn get_tools() -> Vec<ToolDefinition> {
         create_habit_definition(),
         check_habit_definition(),
         uncheck_habit_definition(),
+        // ── 指南 (1) ──
+        get_guide_definition(),
     ]
 }
 
@@ -104,8 +107,10 @@ pub fn is_query_tool(name: &str) -> bool {
             | "get_task_skills"
             | "resolve_date"
             | "search_memories"
+            | "search_journals"
             | "list_countdowns"
             | "list_habits"
+            | "get_guide"
     )
 }
 
@@ -616,6 +621,30 @@ pub fn settle_diary_definition() -> ToolDefinition {
     }
 }
 
+fn search_journals_definition() -> ToolDefinition {
+    ToolDefinition {
+        tool_type: "function".to_string(),
+        function: FunctionDef {
+            name: "search_journals".to_string(),
+            description: "搜索日记内容。当用户问[之前写过什么/日记里提到过/找找日记/有没有关于XX的日记]时调用。搜索日记标题、摘要和正文内容，返回匹配的片段。".to_string(),
+            parameters: ToolParameters {
+                param_type: "object".to_string(),
+                properties: serde_json::json!({
+                    "query": {
+                        "type": "string",
+                        "description": "搜索关键词，匹配日记标题、摘要和正文内容"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "返回结果数量上限，默认3，最大10"
+                    }
+                }),
+                required: vec!["query".to_string()],
+            },
+        },
+    }
+}
+
 fn get_timeline_definition() -> ToolDefinition {
     ToolDefinition {
         tool_type: "function".to_string(),
@@ -1106,6 +1135,27 @@ fn uncheck_habit_definition() -> ToolDefinition {
                     }
                 }),
                 required: vec![],
+            },
+        },
+    }
+}
+
+fn get_guide_definition() -> ToolDefinition {
+    ToolDefinition {
+        tool_type: "function".to_string(),
+        function: FunctionDef {
+            name: "get_guide".to_string(),
+            description: "查阅某个模块的详细使用指南。当你不确定某个模块的用法、规则或最佳实践时调用。可选模块：任务、日程、日记、人脉、习惯、技能、小本本、XP、概览".to_string(),
+            parameters: ToolParameters {
+                param_type: "object".to_string(),
+                properties: serde_json::json!({
+                    "module": {
+                        "type": "string",
+                        "enum": ["任务", "日程", "日记", "人脉", "习惯", "技能", "小本本", "XP", "概览"],
+                        "description": "要查阅的模块名"
+                    }
+                }),
+                required: vec!["module".to_string()],
             },
         },
     }

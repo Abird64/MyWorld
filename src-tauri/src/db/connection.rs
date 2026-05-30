@@ -7,6 +7,7 @@ use super::repositories::skill_repo;
 
 pub struct DbState {
     pub conn: Mutex<Connection>,
+    pub db_path: PathBuf,
 }
 
 pub struct AppDataState {
@@ -21,7 +22,7 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<(DbState, AppDataState),
 
     std::fs::create_dir_all(&db_path).map_err(|e| format!("Failed to create data dir: {}", e))?;
 
-    db_path.push("myworld.db");
+    db_path.push("lantern.db");
 
     let conn = Connection::open(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
 
@@ -44,6 +45,7 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<(DbState, AppDataState),
     Ok((
         DbState {
             conn: Mutex::new(conn),
+            db_path: db_path.clone(),
         },
         AppDataState {
             dir: db_path.parent().unwrap_or(&db_path).to_path_buf(),

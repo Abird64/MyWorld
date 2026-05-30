@@ -415,6 +415,123 @@ pub fn complete_diary_with_xp(
     super::task_repo::complete_task(conn, &task_id)
 }
 
+/// 日记搜索结果（含上下文片段）
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct JournalSearchResult {
+    pub journal: Journal,
+    pub snippet: String, // 匹配的上下文片段（前后各 50 字）
+}
+
+/// 搜索日记：查 DB 的 title/summary + 读 .md 文件内容做 LIKE 匹配
+/// 返回带上下文片段的搜索结果，最多 limit 条
+pub fn search_journals(
+    conn: &Connection,
+    app_data_dir: &Path,
+    query: &str,
+    limit: usize,
+) -> Result<Vec<JournalSearchResult>, String> {
+    let pattern = format!("%{}%", query);
+    let query_lower = query.to_lowercase();
+
+    // 1. 先从 DB 搜索 title/summary 命中的
+    let mut stmt = conn
+        .prepare(&format!(
+            "SELECT {} FROM journals WHERE (title LIKE ?1 OR summary LIKE ?1) AND entry_type = 'user' ORDER BY journal_date DESC",
+            JOURNAL_COLUMNS
+        ))
+        .map_err(|e| format!("Failed to prepare journal search: {}", e))?;
+
+    let db_hits: Vec<Journal> = stmt
+        .query_map(params![pattern], journal_from_row)
+        .map_err(|e| format!("Failed to search journals: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect journal search: {}", e))?;
+
+    let mut results: Vec<JournalSearchResult> = Vec::new();
+    let mut seen_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    // DB 命中的，生成 snippet
+    for journal in db_hits {
+        if results.len() >= limit { break; }
+        seen_ids.insert(journal.id.clone());
+        let snippet = if let Some(ref summary) = journal.summary {
+            if summary.to_lowercase().contains(&query_lower) {
+                extract_snippet(summary, query)
+            } else {
+                // title 命中，snippet 用 title + summary
+                journal.summary.clone().unwrap_or_default()
+            }
+        } else {
+            journal.title.clone()
+        };
+        results.push(JournalSearchResult { journal, snippet });
+    }
+
+    // 2. 遍历最近的日记文件，在内容中搜索
+    if results.len() < limit {
+        let mut stmt2 = conn
+            .prepare(&format!(
+                "SELECT {} FROM journals WHERE entry_type = 'user' ORDER BY journal_date DESC LIMIT 100",
+                JOURNAL_COLUMNS
+            ))
+            .map_err(|e| format!("Failed to prepare journal scan: {}", e))?;
+
+        let recent: Vec<Journal> = stmt2
+            .query_map([], journal_from_row)
+            .map_err(|e| format!("Failed to scan journals: {}", e))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("Failed to collect journals: {}", e))?;
+
+        for journal in recent {
+            if results.len() >= limit { break; }
+            if seen_ids.contains(&journal.id) { continue; }
+
+            // 读取文件内容
+            let file_path = app_data_dir.join(&journal.file_path);
+            if let Ok(content) = read_md_file(&file_path) {
+                if content.to_lowercase().contains(&query_lower) {
+                    let snippet = extract_snippet(&content, query);
+                    seen_ids.insert(journal.id.clone());
+                    results.push(JournalSearchResult { journal, snippet });
+                }
+            }
+        }
+    }
+
+    Ok(results)
+}
+
+/// 从文本中提取匹配关键词的上下文片段（前后各 50 字）
+fn extract_snippet(text: &str, query: &str) -> String {
+    let lower = text.to_lowercase();
+    let query_lower = query.to_lowercase();
+
+    if let Some(pos) = lower.find(&query_lower) {
+        let start = text[..pos].char_indices()
+            .nth_back(50)
+            .map(|(i, _)| i)
+            .unwrap_or(0);
+        let end_pos = pos + query.len();
+        let end = text[end_pos..].char_indices()
+            .nth(50)
+            .map(|(i, _)| end_pos + i)
+            .unwrap_or(text.len());
+
+        let mut snippet = String::new();
+        if start > 0 { snippet.push_str("..."); }
+        snippet.push_str(&text[start..end]);
+        if end < text.len() { snippet.push_str("..."); }
+        snippet
+    } else {
+        // fallback: 取前 100 字
+        let end = text.char_indices()
+            .nth(100)
+            .map(|(i, _)| i)
+            .unwrap_or(text.len());
+        text[..end].to_string()
+    }
+}
+
 /// 获取日记总天数
 pub fn get_journal_count(conn: &Connection) -> Result<i32, String> {
     conn.query_row(

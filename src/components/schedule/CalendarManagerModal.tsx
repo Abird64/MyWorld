@@ -132,7 +132,7 @@ export function CalendarManagerModal({ onClose }: Props) {
                   <button
                     onClick={() => setDeleteTarget({ id: cal.id, name: cal.name })}
                     className="text-xs p-1 rounded-full transition-opacity hover:opacity-80"
-                    style={{ color: '#E65C5C' }}
+                    style={{ color: appTheme.danger }}
                   >
                     <Trash2 size={14} strokeWidth={1.5} />
                   </button>

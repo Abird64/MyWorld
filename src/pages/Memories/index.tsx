@@ -92,7 +92,7 @@ export function MemoriesPage() {
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-all"
               style={{
                 backgroundColor: isActive ? appTheme.primary : 'transparent',
-                color: isActive ? '#fff' : appTheme.ink,
+                color: isActive ? appTheme.onPrimary : appTheme.ink,
                 border: `1px solid ${isActive ? appTheme.primary : appTheme.hairline}`,
                 opacity: isActive ? 1 : 0.7,
               }}

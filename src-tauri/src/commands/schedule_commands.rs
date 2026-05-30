@@ -292,7 +292,7 @@ pub fn export_ics_events(
     let mut ics = String::new();
     ics.push_str("BEGIN:VCALENDAR\r\n");
     ics.push_str("VERSION:2.0\r\n");
-    ics.push_str("PRODID:-//拾阶//日程导出//CN\r\n");
+    ics.push_str("PRODID:-//提灯//日程导出//CN\r\n");
     ics.push_str("CALSCALE:GREGORIAN\r\n");
 
     for s in &schedules {

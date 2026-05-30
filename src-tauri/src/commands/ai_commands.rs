@@ -1,7 +1,7 @@
-use tauri::State;
+use tauri::{Emitter, State};
 
 use crate::ai::client;
-use crate::ai::{prompts, tool_executor, tools};
+use crate::ai::{context, prompts, router, tool_executor, tools};
 use crate::db::connection::{AppDataState, DbState};
 use crate::db::repositories::{ai_repo, memory_repo, setting_repo};
 
@@ -55,22 +55,81 @@ pub fn list_messages(
     ai_repo::list_messages(&conn, &conversation_id)
 }
 
-/// 核心命令：发送用户消息 → 调用 AI → 自动执行查询工具 → 保存最终回复
+/// 核心命令：发送用户消息 → 两阶段调用（意图分析 + 增强回答）→ 自动执行查询工具 → 保存最终回复
+///
+/// 通过 Tauri 事件实时推送状态和流式 token：
+/// - `ai:status` — 当前处理阶段（字符串）
+/// - `ai:token`  — 流式输出的每个 token（字符串）
+/// - `ai:done`   — 响应完成（null）
 #[tauri::command]
 pub async fn send_message(
+    app_handle: tauri::AppHandle,
     state: State<'_, DbState>,
+    app_data: State<'_, AppDataState>,
     conversation_id: String,
     content: String,
 ) -> Result<ai_repo::Message, String> {
-    // 1. 保存用户消息 + 构建系统提示词 + 读取配置，然后释放锁
-    let (mut chat_messages, config, tool_defs) = {
+    // 1. 保存用户消息 + 读取配置，然后释放锁（不能在 await 期间持锁）
+    let (personality, config, app_data_dir) = {
+        let conn = state.conn.lock().map_err(|e| e.to_string())?;
+        ai_repo::create_message(&conn, &conversation_id, "user", Some(&content), None, None, None)?;
+        let personality = get_setting_or(&conn, "ai.personality", "你是提灯，一盏有诗意的灯。说话轻盈、有画面感，情绪细腻，相信日常琐碎里藏着诗意。不用 emoji。");
+        let config = client::AiConfig {
+            api_url: get_setting_or(&conn, "ai.api_url", "https://api.deepseek.com"),
+            api_key: get_setting_or(&conn, "ai.api_key", ""),
+            model: get_setting_or(&conn, "ai.model", "deepseek-v4-flash"),
+        };
+        (personality, config, app_data.dir.clone())
+    };
+
+    // 2. 第一阶段：意图分析（异步，不持锁，5秒超时自动降级）
+    let _ = app_handle.emit("ai:status", "正在思索...");
+    let intent_analysis = router::analyze_user_intent(&config, &content).await;
+
+    // 3. 搜索上下文 + 构建系统提示词（需持锁）
+    let (mut chat_messages, tool_defs) = {
         let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
-        ai_repo::create_message(&conn, &conversation_id, "user", Some(&content), None, None, None)?;
+        let system_prompt = match intent_analysis {
+            Some(ref analysis) => {
+                // 根据意图发出对应状态提示
+                let mut status_parts: Vec<&str> = Vec::new();
+                if !analysis.keywords.is_empty() {
+                    status_parts.push("翻阅记忆");
+                }
+                if !analysis.journal_queries.is_empty() {
+                    status_parts.push("轻轻翻阅日记");
+                }
+                if analysis.intent == router::IntentType::Task
+                    || analysis.keywords.iter().any(|k| k.contains("任务") || k.contains("待办"))
+                {
+                    status_parts.push("查看待办");
+                }
+                let has_person = analysis.keywords.iter().any(|k| {
+                    let len = k.chars().count();
+                    len >= 2 && len <= 4
+                        && k.chars().all(|c| c.is_ascii_alphanumeric() || ('\u{4e00}' <= c && c <= '\u{9fff}'))
+                });
+                if has_person {
+                    status_parts.push("想起相关的人");
+                }
+                if !status_parts.is_empty() {
+                    let status = if status_parts.len() > 1 {
+                        format!("正在{}、{}...", status_parts[0], status_parts[1])
+                    } else {
+                        format!("正在{}...", status_parts[0])
+                    };
+                    let _ = app_handle.emit("ai:status", status);
+                }
 
-        let personality = get_setting_or(&conn, "ai.personality", "你是提灯，一盏有诗意的灯。说话轻盈、有画面感，情绪细腻，相信日常琐碎里藏着诗意。不用 emoji。");
-        let memories = memory_repo::list_memories_for_injection(&conn, 50).unwrap_or_default();
-        let system_prompt = prompts::build_system_prompt(&conn, &personality, &memories);
+                let ctx = context::gather_context(&conn, &app_data_dir, analysis);
+                prompts::build_enhanced_system_prompt(&conn, &personality, &ctx)
+            }
+            None => {
+                let memories = memory_repo::list_memories_for_injection(&conn, 50).unwrap_or_default();
+                prompts::build_system_prompt(&conn, &personality, &memories)
+            }
+        };
 
         let mut chat_messages: Vec<client::ChatMessage> = Vec::new();
         chat_messages.push(client::ChatMessage {
@@ -99,17 +158,16 @@ pub async fn send_message(
         }
 
         let tool_defs = tools::get_tools();
-        let config = client::AiConfig {
-            api_url: get_setting_or(&conn, "ai.api_url", "https://api.deepseek.com"),
-            api_key: get_setting_or(&conn, "ai.api_key", ""),
-            model: get_setting_or(&conn, "ai.model", "deepseek-v4-flash"),
-        };
-
-        (chat_messages, config, tool_defs)
+        (chat_messages, tool_defs)
     };
 
-    // 2. 调用 AI（不持有锁，带工具定义）
-    let mut ai_reply = client::chat_completion(&config, chat_messages.clone(), Some(tool_defs.clone())).await?;
+    // 4. 调用 AI（流式模式，通过事件推送 token）
+    let _ = app_handle.emit("ai:status", "正在构思...");
+    let handle = app_handle.clone();
+    let on_token = move |token: String| {
+        let _ = handle.emit("ai:token", token);
+    };
+    let mut ai_reply = client::chat_completion(&config, chat_messages.clone(), Some(tool_defs.clone()), Some(&on_token)).await?;
 
     // 3. 自动执行查询工具的循环（最多3轮，防止无限循环）
     const MAX_AUTO_ROUNDS: usize = 3;
@@ -153,11 +211,12 @@ pub async fn send_message(
         });
 
         // 执行查询工具 + 保存 tool 结果 + 更新 chat_messages
+        let _ = app_handle.emit("ai:status", "正在查阅...");
         {
             let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
             for tc in &parsed_tc {
                 let result = tool_executor::execute_tool(
-                    &mut *conn, None,
+                    &mut *conn, Some(&app_data_dir),
                     &tc.function.name,
                     &tc.function.arguments,
                 )
@@ -179,8 +238,13 @@ pub async fn send_message(
             }
         }
 
-        // 重新调用 AI
-        ai_reply = client::chat_completion(&config, chat_messages.clone(), Some(tool_defs.clone())).await?;
+        // 重新调用 AI（流式）
+        let _ = app_handle.emit("ai:status", "正在构思...");
+        let handle2 = app_handle.clone();
+        let on_token2 = move |token: String| {
+            let _ = handle2.emit("ai:token", token);
+        };
+        ai_reply = client::chat_completion(&config, chat_messages.clone(), Some(tool_defs.clone()), Some(&on_token2)).await?;
     }
 
     // 4. 保存最终 AI 回复
@@ -230,6 +294,7 @@ pub async fn send_message(
         }
     }
 
+    let _ = app_handle.emit("ai:done", ());
     Ok(saved_msg)
 }
 
@@ -343,7 +408,7 @@ pub async fn execute_tool_calls(
         (msgs, tools::get_tools())
     };
 
-    let follow_up_msg = match client::chat_completion(&config, chat_messages, Some(tool_defs)).await {
+    let follow_up_msg = match client::chat_completion(&config, chat_messages, Some(tool_defs), None).await {
         Ok(msg) => msg,
         Err(e) => {
             let conn = state.conn.lock().map_err(|err| err.to_string())?;
@@ -454,7 +519,7 @@ pub async fn modify_tool_calls(
     };
 
     // 2. 调 AI 重新生成（带工具定义，AI 可能更新 tool_calls）
-    let ai_reply = client::chat_completion(&config, chat_messages, Some(tool_defs)).await?;
+    let ai_reply = client::chat_completion(&config, chat_messages, Some(tool_defs), None).await?;
 
     // 3. 保存 AI 回复 + 返回全部消息
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
@@ -533,7 +598,7 @@ pub async fn finalize_tool_calls(
     };
 
     let tool_defs = tools::get_tools();
-    let follow_up_msg = match client::chat_completion(&config, chat_messages, Some(tool_defs)).await {
+    let follow_up_msg = match client::chat_completion(&config, chat_messages, Some(tool_defs), None).await {
         Ok(msg) => msg,
         Err(e) => {
             let conn = state.conn.lock().map_err(|err| err.to_string())?;
@@ -619,7 +684,7 @@ pub async fn cancel_tool_calls(
         (msgs, tools::get_tools())
     };
 
-    let follow_up_msg = match client::chat_completion(&config, chat_messages, Some(tool_defs)).await {
+    let follow_up_msg = match client::chat_completion(&config, chat_messages, Some(tool_defs), None).await {
         Ok(msg) => msg,
         Err(e) => {
             let conn = state.conn.lock().map_err(|err| err.to_string())?;

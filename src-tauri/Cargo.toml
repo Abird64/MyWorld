@@ -1,7 +1,7 @@
 [package]
-name = "myworld"
-version = "1.5.0"
-description = "拾阶 (MyWorld) - 拾级而上，提灯而行。A local-first AI-powered life management desktop app."
+name = "lantern"
+version = "2.0.0"
+description = "提灯 - 拾级而上，提灯而行。A local-first AI-powered life management desktop app."
 authors = ["鹏子"]
 license = "MIT"
 repository = "https://github.com/Abird64/-My-World"
@@ -9,7 +9,7 @@ edition = "2021"
 rust-version = "1.77.2"
 
 [lib]
-name = "myworld_lib"
+name = "lantern_lib"
 crate-type = ["staticlib", "rlib"]
 
 [build-dependencies]
@@ -23,7 +23,10 @@ tauri = { version = "2.11.2", features = [] }
 tauri-plugin-log = "2"
 rusqlite = { version = "0.35", features = ["bundled"] }
 nanoid = "0.4"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 lunardate = "0.2"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+futures-util = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+base64 = "0.22"
+quick-xml = { version = "0.37", features = ["serialize"] }

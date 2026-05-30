@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { HabitWithStreak, WeekMatrix, CreateHabitInput, UpdateHabitInput } from '@/types/habit';
 import * as habitService from '@/services/habitService';
+import { triggerSync } from '@/stores/syncStore';
 
 interface HabitState {
   habits: HabitWithStreak[];
@@ -38,8 +39,8 @@ export const useHabitStore = create<HabitState>((set, get) => ({
   checkHabit: async (habitId) => {
     try {
       await habitService.checkHabit(habitId);
-      // 刷新
       await get().fetchAll();
+      triggerSync();
     } catch (e) {
       set({ error: String(e) });
     }
@@ -49,6 +50,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     try {
       await habitService.uncheckHabit(habitId);
       await get().fetchAll();
+      triggerSync();
     } catch (e) {
       set({ error: String(e) });
     }
@@ -58,6 +60,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     try {
       await habitService.createHabit(input);
       await get().fetchAll();
+      triggerSync();
     } catch (e) {
       set({ error: String(e) });
       throw e;
@@ -68,6 +71,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     try {
       await habitService.updateHabit(id, input);
       await get().fetchAll();
+      triggerSync();
     } catch (e) {
       set({ error: String(e) });
       throw e;
@@ -78,6 +82,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     try {
       await habitService.deleteHabit(id);
       await get().fetchAll();
+      triggerSync();
     } catch (e) {
       set({ error: String(e) });
     }

@@ -122,7 +122,7 @@ export function TimelineDropdown() {
                     className="w-9 h-9 rounded-full flex items-center justify-center relative text-sm transition-colors"
                     style={
                       cell.isCurrent
-                        ? { backgroundColor: appTheme.surfaceBlack, color: '#fff' }
+                        ? { backgroundColor: appTheme.surfaceBlack, color: appTheme.onPrimary }
                         : cell.isToday
                           ? { backgroundColor: `${appTheme.danger}33`, color: appTheme.danger }
                           : { color: txtBody }

@@ -67,6 +67,7 @@ function TagInput({
   inputVal: string; onInputChange: (v: string) => void;
   placeholder: string; accentColor: string;
 }) {
+  const appTheme = useAppTheme();
   return (
     <div>
       {tags.length > 0 && (
@@ -107,7 +108,7 @@ function TagInput({
         className="w-full text-base rounded-2xl px-4 py-3 focus:outline-none"
         style={{
           backgroundColor: `${accentColor}10`,
-          color: '#F2E9E0',
+          color: appTheme.ink,
         }}
       />
     </div>
@@ -504,7 +505,7 @@ export function RelationsPage() {
                     className="px-3 py-1.5 rounded-full text-sm transition-all"
                     style={{
                       backgroundColor: newGroupName === label ? groupColors[id] : `${appTheme.ink}10`,
-                      color: newGroupName === label ? '#fff' : `${appTheme.ink}99`,
+                      color: newGroupName === label ? appTheme.onPrimary : `${appTheme.ink}99`,
                     }}
                   >
                     {label}
@@ -524,7 +525,7 @@ export function RelationsPage() {
                     className="px-3 py-1.5 text-xs transition-colors"
                     style={{
                       backgroundColor: newBirthdayCalendar === 'solar' ? appTheme.primary : 'transparent',
-                      color: newBirthdayCalendar === 'solar' ? '#fff' : `${appTheme.ink}60`,
+                      color: newBirthdayCalendar === 'solar' ? appTheme.onPrimary : `${appTheme.ink}60`,
                     }}
                   >阳历</button>
                   <button
@@ -532,7 +533,7 @@ export function RelationsPage() {
                     className="px-3 py-1.5 text-xs transition-colors"
                     style={{
                       backgroundColor: newBirthdayCalendar === 'lunar' ? appTheme.primary : 'transparent',
-                      color: newBirthdayCalendar === 'lunar' ? '#fff' : `${appTheme.ink}60`,
+                      color: newBirthdayCalendar === 'lunar' ? appTheme.onPrimary : `${appTheme.ink}60`,
                     }}
                   >农历</button>
                 </div>
@@ -713,7 +714,7 @@ export function RelationsPage() {
                       className="px-4 py-1.5 rounded-full text-sm transition-all"
                       style={{
                         backgroundColor: editGroupName === label ? groupColors[id] : `${appTheme.ink}10`,
-                        color: editGroupName === label ? '#fff' : `${appTheme.ink}99`,
+                        color: editGroupName === label ? appTheme.onPrimary : `${appTheme.ink}99`,
                       }}
                     >
                       {label}
@@ -733,7 +734,7 @@ export function RelationsPage() {
                       className="px-3 py-1.5 text-xs transition-colors"
                       style={{
                         backgroundColor: editBirthdayCalendar === 'solar' ? appTheme.primary : 'transparent',
-                        color: editBirthdayCalendar === 'solar' ? '#fff' : `${appTheme.ink}60`,
+                        color: editBirthdayCalendar === 'solar' ? appTheme.onPrimary : `${appTheme.ink}60`,
                       }}
                     >阳历</button>
                     <button
@@ -741,7 +742,7 @@ export function RelationsPage() {
                       className="px-3 py-1.5 text-xs transition-colors"
                       style={{
                         backgroundColor: editBirthdayCalendar === 'lunar' ? appTheme.primary : 'transparent',
-                        color: editBirthdayCalendar === 'lunar' ? '#fff' : `${appTheme.ink}60`,
+                        color: editBirthdayCalendar === 'lunar' ? appTheme.onPrimary : `${appTheme.ink}60`,
                       }}
                     >农历</button>
                   </div>
@@ -840,7 +841,7 @@ export function RelationsPage() {
               <button
                 onClick={closeDetail}
                 className="flex-1 py-3 rounded-full transition-colors"
-                style={{ backgroundColor: appTheme.primary, color: '#fff' }}
+                style={{ backgroundColor: appTheme.primary, color: appTheme.onPrimary }}
               >
                 完成
               </button>

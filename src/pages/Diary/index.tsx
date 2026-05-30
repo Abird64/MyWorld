@@ -214,7 +214,7 @@ export function DiaryPage() {
         </button>
         <button
           className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          style={{ backgroundColor: appTheme.primary, color: '#fff' }}
+          style={{ backgroundColor: appTheme.primary, color: appTheme.onPrimary }}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = appTheme.primaryFocus)}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = appTheme.primary)}
           onClick={handleRixing}

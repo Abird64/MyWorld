@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Calendar } from '@/types/schedule';
 import * as calendarService from '@/services/calendarService';
+import { triggerSync } from '@/stores/syncStore';
 
 interface CalendarState {
   calendars: Calendar[];
@@ -40,6 +41,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       visibleSet.add(calendar.id);
       return { calendars: updated, visibleCalendarIds: visibleSet };
     });
+    triggerSync();
     return calendar;
   },
 
@@ -48,6 +50,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     set((state) => ({
       calendars: state.calendars.map((c) => (c.id === id ? calendar : c)),
     }));
+    triggerSync();
     return calendar;
   },
 
@@ -61,6 +64,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
         visibleCalendarIds: visibleSet,
       };
     });
+    triggerSync();
   },
 
   toggleCalendar: (id) => {

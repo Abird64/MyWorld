@@ -55,7 +55,7 @@ export function HomePage() {
 
   const themeMode = useThemeStore((s) => s.mode);
   const t: PageTheme = {
-    id: 'lantern', name: '拾阶',
+    id: 'lantern', name: '提灯',
     bg: appTheme.canvas, nav: appTheme.surfaceBlack,
     accent: appTheme.primary, accentLight: `${appTheme.primary}33`,
     text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink,
@@ -362,7 +362,7 @@ export function HomePage() {
                       className="flex items-center gap-1 px-3 py-1 rounded-full text-xs whitespace-nowrap transition-all btn-press"
                       style={{
                         backgroundColor: isActive ? appTheme.primary : 'transparent',
-                        color: isActive ? '#fff' : appTheme.inkMuted48,
+                        color: isActive ? appTheme.onPrimary : appTheme.inkMuted48,
                         border: `1px solid ${isActive ? appTheme.primary : appTheme.hairline}`,
                       }}
                     >

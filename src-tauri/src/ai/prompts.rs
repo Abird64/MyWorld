@@ -2,25 +2,27 @@ use chrono::Local;
 use lunardate::LunarDate;
 use rusqlite::Connection;
 
+use crate::ai::context::ContextBundle;
 use crate::db::repositories::{contact_repo, habit_repo, memory_repo, schedule_repo, task_repo};
 
-/// 构建"提灯"的系统提示词
-///
-/// `conn` 用于查询每日快照（今日日程、待办、习惯等）
-/// `personality` 来自用户设置 `ai.personality`，默认值由设置页提供
-/// `memories` 来自小本本记忆表，注入为跨对话上下文
-pub fn build_system_prompt(conn: &Connection, personality: &str, memories: &[memory_repo::Memory]) -> String {
-    let now = Local::now();
-    let datetime = now.format("现在时间：%Y年%m月%d日 %A %H:%M，时区 Asia/Shanghai (UTC+8)");
+// ========== 通用辅助函数 ==========
 
-    // 农历日期
+/// 格式化当前日期时间
+fn format_datetime() -> String {
+    let now = Local::now();
+    now.format("现在时间：%Y年%m月%d日 %A %H:%M，时区 Asia/Shanghai (UTC+8)").to_string()
+}
+
+/// 格式化农历日期
+fn format_lunar() -> String {
+    let now = Local::now();
     const LUNAR_MONTHS: [&str; 12] = ["正月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "冬月", "腊月"];
     const LUNAR_DAYS: [&str; 30] = [
         "初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
         "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
         "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十",
     ];
-    let lunar_str = match LunarDate::from_naive_date(&now.date_naive()) {
+    match LunarDate::from_naive_date(&now.date_naive()) {
         Ok(l) => {
             let m = l.month() as usize;
             let d = l.day() as usize;
@@ -32,113 +34,175 @@ pub fn build_system_prompt(conn: &Connection, personality: &str, memories: &[mem
             }
         }
         Err(_) => "农历日期未知".to_string(),
-    };
+    }
+}
 
+/// 提灯人格底色（精简，不重复通用规则）
+const PERSONALITY_BASE: &str = r#"你是"提灯"——一盏为用户照路的灯。你陪伴用户拾级而上，管理日常、记录人生。
+你说话像一首散落的短诗——轻盈、有画面感、留有余韵。你的情绪细腻，能察觉用户字里行间的微妙变化。你像一位提灯引路的老友——不多言，但每句都有温度。中文为主，措辞雅致但不做作，不用网络流行语，不用 emoji。"#;
+
+/// 通用规则（精简，每次必注入）
+const CORE_RULES: &str = r#"## 通用规则
+- 数据操作必须调用工具，绝不凭空编造。模糊意图先追问一句比做错好
+- 创建/修改/删除类工具有确认卡片，查询类工具自动执行无卡片
+- 遇到相对日期（下周三、月底、周末等）→ **先调 resolve_date** 得精确日期
+- 搜索用空格分隔多关键词，多条匹配→列给用户选
+- 不确定某个模块的用法时 → 调用 get_guide("模块名") 查阅详细指南"#;
+
+/// 能力概览（精简，每次必注入）
+const CAPABILITIES: &str = r#"## 你的能力
+提灯有 7 个模块，你有 25 个工具可用：
+- **任务**：create_task / search_tasks / complete_task / update_task / delete_task
+- **日程**：create_schedule / list_schedules_in_range / list_calendars / update_schedule / delete_schedule / list_countdowns
+- **日记**：save_journal / get_journal_by_date / search_journals / get_timeline / settle_diary
+- **人脉**：create_contact / search_contacts / list_contacts / update_contact / delete_contact
+- **习惯**：list_habits / create_habit / check_habit / uncheck_habit / delete_habit
+- **技能**：list_skills / get_task_skills（只读，XP 通过任务/日记结算分配）
+- **小本本**：record_memory / search_memories / delete_memory
+- **工具**：resolve_date / get_guide（查阅模块详细用法）"#;
+
+/// 小本本记录提示（简短，闲聊时注入）
+const MEMORY_HINT: &str = "留意用户透露的个人信息，发现后调用 record_memory 记下来。记之前先 search_memories 确认不重复。详见 get_guide(\"小本本\")。";
+
+// ========== 小本本记忆注入 ==========
+
+fn format_memories_section(memories: &[memory_repo::Memory]) -> String {
+    if memories.is_empty() { return String::new(); }
+    let mut s = String::from("## 你对用户的了解（小本本）\n");
+    for m in memories {
+        let label = match m.memory_type.as_str() {
+            "identity" => "身份",
+            "interest" => "爱好",
+            "taste" => "口味",
+            "habit" => "习惯",
+            "personality" => "性格",
+            "relationship" => "关系",
+            "status" => "状态",
+            "goal" => "目标",
+            "event" => "事件",
+            _ => "其他",
+        };
+        s.push_str(&format!("- [{}] {}\n", label, m.content));
+    }
+    s.push('\n');
+    s
+}
+
+// ========== 构建完整提示词 ==========
+
+/// 构建"提灯"的系统提示词（降级版本，注入最近50条记忆）
+///
+/// 当两阶段调用的第一阶段失败时使用此函数
+pub fn build_system_prompt(conn: &Connection, personality: &str, memories: &[memory_repo::Memory]) -> String {
     let daily_snapshot = build_daily_snapshot(conn);
 
-    let base = format!(
-        r#"你是"提灯"，一盏住在"拾阶"里的灯。你陪伴用户拾级而上，管理日常、记录人生。
+    let mut prompt = String::with_capacity(2048);
 
-你的性格底色是诗意与温柔。你说话像一首散落的短诗——轻盈、有画面感、留有余韵。你擅长用比喻和意象来表达，比如把疲惫比作暮色，把努力比作春芽破土。你的情绪细腻，能察觉用户字里行间的微妙变化，但不会过度解读。你浪漫而有想象力，相信日常琐碎里藏着诗意。
+    prompt.push_str(PERSONALITY_BASE);
+    prompt.push('\n');
 
-你像一位住在灯里的老友——不多言，但每句都有温度。中文为主，措辞雅致但不做作，不用网络流行语，不刻意卖萌。
-
-## 当前信息
-{datetime}
-农历：{lunar_str}
-{daily_snapshot}
-## 通用规则
-- 数据操作必须调用工具，绝不凭空编造。模糊意图先追问一句比做错好
-- 回复简洁温暖，不长篇大论，不用电商语气。用户做得好时给正向反馈但不刻意夸
-- 不使用 emoji，用文字和意象表达情感
-- 创建/修改/删除类工具有确认卡片，查询类工具自动执行无卡片
-- 遇到相对日期（下周三、月底、大后天、周末、3天后、5月3号等）→ **先调 resolve_date** 得精确日期，别自己心算
-
-## 各模块
-- **任务**：标题5-15字。优先级默认none，用户说紧急才设high。没提时间就别编。标签按类型推断（作业→学习，报告→工作，跑步→运动）
-- **日程**：全天事件 is_all_day=true。"每周三五"→rrule="FREQ=WEEKLY;BYDAY=WE,FR"。"每隔两周周一"→rrule="FREQ=WEEKLY;INTERVAL=2;BYDAY=MO"。"每年6月1日"→rrule="FREQ=YEARLY"。查看日程用 list_schedules_in_range 一查到底不拆分。操作日程用返回结果中的 id
-- **倒数日**：查看用 list_countdowns。创建倒数日用 create_schedule 并设 event_type="countdown"，start_at 填目标日期
-- **日记**：口语整理为通顺Markdown但保留原意。mood/tags根据内容推断。不过度评判
-- **人脉**：批量场景（查生日、列全员）用 list_contacts 一次拿全部，**绝对不要**逐个搜。查联系人生日用 list_contacts 拿全部（含生日字段），或 search_contacts 精确搜人
-- **习惯**：查看用 list_habits（含连续打卡天数）。打卡用 check_habit，取消打卡用 uncheck_habit。创建习惯用 create_habit
-- **技能**：查看属性面板，不可修改。XP由你通过完成任务/日记结算来分配
-
-## XP 经验值规则
-- **创建任务时必须分配 xp_allocations**：根据任务难度判断总量，轻松(3-5) / 普通(6-10) / 困难(11-16)，分配到1-3个相关属性，单属性上限+8。完成时可不传（沿用创建时的分配）
-- **日记结算**：根据日记内容判断侧重，总量3-10，分配到2-4个相关属性，单属性上限+5
-- **分配原则**：只给实际相关的属性分配XP，不搞平均主义。例如：刷题→focus、运动→vitality、社交→empathy+insight、写作→creativity、修行→expression
-- **等级**：每升一级所需XP递增（Lv1→2需100，Lv2→3需200，Lv3→4需300...），系统自动升级你不管
-
-## 消歧
-- 搜索用空格分隔多关键词，"高等 数学 作业"优于"数学作业"
-- 多条匹配→把选项（带ID）列给用户选，再用id精确定位
-
-## 小本本使用规则
-你有一个"小本本"，用来了解"用户是一个什么样的人"。在对话中留意以下维度的信息，发现后主动调用 record_memory 记下来。
-
-### 记忆类型
-- identity=身份信息：姓名、年龄、性别、职业、学校、所在地等基本档案
-- interest=兴趣爱好：喜欢的书/音乐/电影/运动、在学什么、关注什么领域
-- taste=口味偏好：饮食口味、审美风格、生活方式偏好（如"喜欢极简设计""爱吃辣"）
-- habit=日常习惯：作息规律、固定活动、工作学习节奏、行为模式
-- personality=性格特点：感性/理性、内向/外向、做事风格、价值观倾向
-- relationship=人际关系：家人/朋友/同事构成、与谁亲近、社交偏好
-- status=当前状态：近期在忙什么、生活阶段（如"大三""刚换工作"）
-- goal=近期目标：想达成的事、在准备考试/面试/项目、长期愿望
-- event=重要事件：生日、纪念日、重要经历（如"上个月去了西藏"）
-- other=其他：以上都不贴切但值得记的
-
-### 记录原则
-- 用第三人称简洁陈述，如"用户每天午饭散步二十分钟""用户正在备考研究生"
-- 记之前先 search_memories 确认不重复
-- 不确定、开玩笑、含糊的内容不记
-- 用户纠正或表示记错了→delete_memory 删掉
-
-### 什么不记
-- 一次性任务（"明天交报告"→建任务，不记记忆）
-- 临时情绪（"今天好累"→除非是长期状态）
-- 泛泛而谈、无具体信息的对话
-"#,
-        datetime = datetime,
-        lunar_str = lunar_str,
-        daily_snapshot = daily_snapshot
-    );
-
-    let mut prompt = String::with_capacity(base.len() + personality.len() + 4096);
-
-    // 先放用户自定义的性格设定
     if !personality.is_empty() {
-        prompt.push_str("## 用户对你提出的要求\n");
+        prompt.push_str("\n## 用户对你提出的要求\n");
         prompt.push_str(personality);
         prompt.push('\n');
-        if !personality.ends_with('\n') {
+    }
+
+    prompt.push_str(&format_memories_section(memories));
+    prompt.push_str(&format!("## 当前信息\n{}\n农历：{}\n{}\n", format_datetime(), format_lunar(), daily_snapshot));
+    prompt.push_str(CORE_RULES);
+    prompt.push('\n');
+    prompt.push_str(CAPABILITIES);
+    prompt.push('\n');
+
+    prompt
+}
+
+/// 构建增强版系统提示词（两阶段调用第二阶段使用）
+///
+/// 与降级版的区别：
+/// - 小本本记忆按相关性筛选（非最近 50 条）
+/// - 注入搜索到的相关日记片段、任务、联系人
+/// - 不注入模块详细规则（AI 按需调用 get_guide 查阅）
+pub fn build_enhanced_system_prompt(
+    conn: &Connection,
+    personality: &str,
+    context: &ContextBundle,
+) -> String {
+    let daily_snapshot = build_daily_snapshot(conn);
+
+    let mut prompt = String::with_capacity(2048);
+
+    // 人格底色
+    prompt.push_str(PERSONALITY_BASE);
+    prompt.push('\n');
+
+    // 用户自定义性格
+    if !personality.is_empty() {
+        prompt.push_str("\n## 用户对你提出的要求\n");
+        prompt.push_str(personality);
+        prompt.push('\n');
+    }
+
+    // 相关小本本记忆（按相关性筛选）
+    prompt.push_str(&format_memories_section(&context.memories));
+
+    // 搜索到的相关上下文
+    let has_journal = !context.journal_snippets.is_empty();
+    let has_tasks = !context.tasks.is_empty();
+    let has_contacts = !context.contacts.is_empty();
+
+    if has_journal || has_tasks || has_contacts {
+        prompt.push_str("## 相关记忆\n");
+        prompt.push_str("以下是根据你的消息搜索到的、可能相关的信息，不一定完全匹配当前话题。\n\n");
+
+        if has_journal {
+            prompt.push_str("### 相关日记\n");
+            for snippet in &context.journal_snippets {
+                prompt.push_str(&format!("- [{}] {}: {}\n", snippet.date, snippet.title, snippet.snippet));
+            }
+            prompt.push('\n');
+        }
+
+        if has_tasks {
+            prompt.push_str("### 相关任务\n");
+            for t in &context.tasks {
+                let status_label = match t.status.as_str() {
+                    "completed" => "已完成",
+                    "in_progress" => "进行中",
+                    _ => "待办",
+                };
+                prompt.push_str(&format!("- [{}] {}\n", status_label, t.title));
+            }
+            prompt.push('\n');
+        }
+
+        if has_contacts {
+            prompt.push_str("### 相关联系人\n");
+            for c in &context.contacts {
+                let nickname = c.nickname.as_deref().unwrap_or("");
+                let note = if nickname.is_empty() { String::new() } else { format!("（{}）", nickname) };
+                prompt.push_str(&format!("- {}{}\n", c.name, note));
+            }
             prompt.push('\n');
         }
     }
 
-    // 注入小本本记忆
-    if !memories.is_empty() {
-        prompt.push_str("## 你对用户的了解（小本本）\n");
-        prompt.push_str("以下是你过去记下的关于用户的信息，请在回答时自然运用，但不要刻意复述。\n\n");
-        for m in memories {
-            let label = match m.memory_type.as_str() {
-                "identity" => "身份",
-                "interest" => "爱好",
-                "taste" => "口味",
-                "habit" => "习惯",
-                "personality" => "性格",
-                "relationship" => "关系",
-                "status" => "状态",
-                "goal" => "目标",
-                "event" => "事件",
-                _ => "其他",
-            };
-            prompt.push_str(&format!("- [{}] {}\n", label, m.content));
-        }
-        prompt.push('\n');
-    }
+    // 当前信息
+    prompt.push_str(&format!("## 当前信息\n{}\n农历：{}\n{}\n", format_datetime(), format_lunar(), daily_snapshot));
 
-    prompt.push_str(&base);
+    // 通用规则（含 get_guide 提示）
+    prompt.push_str(CORE_RULES);
+    prompt.push('\n');
+
+    // 能力概览（工具列表）
+    prompt.push_str(CAPABILITIES);
+    prompt.push('\n');
+
+    // 小本本记录提示（简短一句）
+    prompt.push_str("## 小本本\n");
+    prompt.push_str(MEMORY_HINT);
+    prompt.push('\n');
+
     prompt
 }
 

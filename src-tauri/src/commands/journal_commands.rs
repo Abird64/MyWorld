@@ -379,7 +379,7 @@ async fn call_xp_ai(
     let messages = vec![
         ChatMessage { role: "system".into(), content: Some(prompt.into()), tool_calls: None, tool_call_id: None, name: None, reasoning_content: None },
     ];
-    client::chat_completion(&config, messages, Some(vec![settle_tool.clone()])).await
+    client::chat_completion(&config, messages, Some(vec![settle_tool.clone()]), None).await
 }
 
 async fn call_refl_ai(
@@ -390,7 +390,7 @@ async fn call_refl_ai(
         ChatMessage { role: "system".into(), content: Some(prompt.into()), tool_calls: None, tool_call_id: None, name: None, reasoning_content: None },
         ChatMessage { role: "user".into(), content: Some("请写今天的日记旁白。".into()), tool_calls: None, tool_call_id: None, name: None, reasoning_content: None },
     ];
-    let reply = client::chat_completion(&config, messages, None).await?;
+    let reply = client::chat_completion(&config, messages, None, None).await?;
     Ok(reply.content.unwrap_or_default())
 }
 
@@ -402,7 +402,7 @@ async fn call_contact_ai(
         ChatMessage { role: "system".into(), content: Some(prompt.into()), tool_calls: None, tool_call_id: None, name: None, reasoning_content: None },
         ChatMessage { role: "user".into(), content: Some("请提取日记中的人物。".into()), tool_calls: None, tool_call_id: None, name: None, reasoning_content: None },
     ];
-    let reply = client::chat_completion(&config, messages, None).await?;
+    let reply = client::chat_completion(&config, messages, None, None).await?;
     Ok(reply.content.unwrap_or_default())
 }
 

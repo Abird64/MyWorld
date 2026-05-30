@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as memoryService from '@/services/memoryService';
 import type { Memory } from '@/types/memory';
+import { triggerSync } from '@/stores/syncStore';
 
 interface MemoryState {
   memories: Memory[];
@@ -29,6 +30,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
   deleteMemory: async (id) => {
     await memoryService.deleteMemory(id);
     set({ memories: get().memories.filter(m => m.id !== id) });
+    triggerSync();
   },
 
   setSelectedType: (type) => {

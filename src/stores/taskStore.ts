@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Task, CreateTaskInput, UpdateTaskInput, CompleteResult } from '@/types/task';
 import * as taskService from '@/services/taskService';
+import { triggerSync } from '@/stores/syncStore';
 
 interface TaskState {
   tasks: Task[];
@@ -48,6 +49,7 @@ export const useTaskStore = create<TaskState>((set) => ({
         tasks: [task, ...state.tasks],
         isLoading: false,
       }));
+      triggerSync();
       return task;
     } catch (e) {
       set({ error: String(e), isLoading: false });
@@ -63,6 +65,7 @@ export const useTaskStore = create<TaskState>((set) => ({
         tasks: state.tasks.map((t) => (t.id === id ? task : t)),
         isLoading: false,
       }));
+      triggerSync();
       return task;
     } catch (e) {
       set({ error: String(e), isLoading: false });
@@ -78,6 +81,7 @@ export const useTaskStore = create<TaskState>((set) => ({
         tasks: state.tasks.filter((t) => t.id !== id),
         isLoading: false,
       }));
+      triggerSync();
     } catch (e) {
       set({ error: String(e), isLoading: false });
     }
@@ -95,6 +99,7 @@ export const useTaskStore = create<TaskState>((set) => ({
         ),
         isLoading: false,
       }));
+      triggerSync();
       return result;
     } catch (e) {
       set({ error: String(e), isLoading: false });
@@ -114,6 +119,7 @@ export const useTaskStore = create<TaskState>((set) => ({
         ),
         isLoading: false,
       }));
+      triggerSync();
     } catch (e) {
       set({ error: String(e), isLoading: false });
       throw e;

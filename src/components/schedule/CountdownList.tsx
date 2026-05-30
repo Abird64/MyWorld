@@ -123,7 +123,7 @@ function CountdownForm({
             <button
               onClick={onDelete}
               className="px-4 py-2 rounded-xl text-sm flex items-center gap-1"
-              style={{ color: '#C75C5C' }}
+              style={{ color: appTheme.danger }}
             >
               <Trash2 size={16} /> 删除
             </button>
@@ -132,7 +132,7 @@ function CountdownForm({
           <button
             onClick={handleSubmit}
             className="px-6 py-2 rounded-xl text-sm font-medium"
-            style={{ backgroundColor: color, color: '#fff' }}
+            style={{ backgroundColor: color, color: appTheme.onPrimary }}
           >
             {editing ? '保存' : '创建'}
           </button>

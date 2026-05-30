@@ -1,8 +1,8 @@
 /**
- * MyWorld - 设计系统
+ * 提灯 (Lantern) - 设计系统
  *
- * Apple-inspired design tokens: single accent (#0066cc),
- * system-ui typography, 8px spacing grid, pill buttons.
+ * 夜萤设计语言：深色默认、萤火绿主色、毛玻璃分层、呼吸感动效。
+ * 详见 DESIGN.md
  */
 
 // ========== 新主题系统 ==========
@@ -36,11 +36,11 @@ export interface AppThemeHelpers {
   rgba: (opacity: number) => string;
 }
 
-/** 浅色主题 */
+/** 浅色主题（清晨） */
 export const appThemeLight: AppTheme = {
-  primary: '#0066cc',
-  primaryFocus: '#0071e3',
-  primaryOnDark: '#2997ff',
+  primary: '#2D6B4F',
+  primaryFocus: '#3A7D5F',
+  primaryOnDark: '#4CAF76',
   ink: '#1d1d1f',
   canvas: '#ffffff',
   canvasParchment: '#f5f5f7',
@@ -61,33 +61,33 @@ export const appThemeLight: AppTheme = {
   warning: '#ff9500',
 };
 
-/** 深色主题 */
+/** 深色主题（夜萤）— 默认 */
 export const appThemeDark: AppTheme = {
-  primary: '#2997ff',
-  primaryFocus: '#40a9ff',
-  primaryOnDark: '#2997ff',
-  ink: '#f5f5f7',
-  canvas: '#1c1c1e',
-  canvasParchment: '#2c2c2e',
-  surfacePearl: '#232325',
-  surfaceDark: '#3a3a3c',
-  surfaceDark2: '#444446',
-  surfaceDark3: '#333335',
-  surfaceBlack: '#000000',
+  primary: '#4CAF76',
+  primaryFocus: '#5BBF86',
+  primaryOnDark: '#4CAF76',
+  ink: 'rgba(255,255,255,0.88)',
+  canvas: '#0F1412',
+  canvasParchment: '#141A17',
+  surfacePearl: 'rgba(255,255,255,0.04)',
+  surfaceDark: 'rgba(255,255,255,0.07)',
+  surfaceDark2: 'rgba(255,255,255,0.10)',
+  surfaceDark3: 'rgba(255,255,255,0.13)',
+  surfaceBlack: '#0A0E0C',
   onPrimary: '#ffffff',
-  onDark: '#ffffff',
-  bodyMuted: '#666666',
-  inkMuted80: '#cccccc',
-  inkMuted48: '#8e8e93',
-  hairline: '#38383a',
-  divider: '#2c2c2e',
-  danger: '#ff453a',
-  success: '#30d158',
-  warning: '#ff9f0a',
+  onDark: 'rgba(255,255,255,0.88)',
+  bodyMuted: 'rgba(255,255,255,0.30)',
+  inkMuted80: 'rgba(255,255,255,0.50)',
+  inkMuted48: 'rgba(255,255,255,0.30)',
+  hairline: 'rgba(255,255,255,0.06)',
+  divider: 'rgba(255,255,255,0.06)',
+  danger: '#C97070',
+  success: '#4CAF76',
+  warning: '#D4A76A',
 };
 
-/** 默认主题（浅色）— 向后兼容 */
-export const appTheme: AppTheme = appThemeLight;
+/** 默认主题（深色/夜萤） */
+export const appTheme: AppTheme = appThemeDark;
 
 /** 浅色主题辅助函数 */
 export const appThemeLightHelpers: AppThemeHelpers = {
@@ -122,7 +122,7 @@ export interface PageTheme {
 export const themes: Record<string, PageTheme> = {
   lantern: {
     id: 'lantern',
-    name: '拾阶',
+    name: '提灯',
     bg: appTheme.canvas,
     nav: appTheme.surfaceBlack,
     accent: appTheme.primary,
@@ -130,20 +130,20 @@ export const themes: Record<string, PageTheme> = {
     text: appTheme.ink,
     card: appTheme.canvas,
     cardText: appTheme.ink,
-    isDark: false,
+    isDark: true,
     danger: appTheme.danger,
     warning: appTheme.warning,
     success: appTheme.success,
   },
   // 保留 key 以防旧代码引用，值都映射到新主题
-  tasks: { id: 'tasks', name: '拾阶', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  diary: { id: 'diary', name: '拾阶', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  schedule: { id: 'schedule', name: '拾阶', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  relations: { id: 'relations', name: '拾阶', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  settings: { id: 'settings', name: '设置', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  skills: { id: 'skills', name: '拾阶', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  memories: { id: 'memories', name: '拾阶', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  habits: { id: 'habits', name: '拾阶', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  tasks: { id: 'tasks', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  diary: { id: 'diary', name: '提灯', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  schedule: { id: 'schedule', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  relations: { id: 'relations', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  settings: { id: 'settings', name: '设置', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  skills: { id: 'skills', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  memories: { id: 'memories', name: '提灯', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  habits: { id: 'habits', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
 };
 
 export const selectableThemes: PageTheme[] = [themes.lantern];
@@ -200,13 +200,13 @@ export const spacing = {
   component: '16px',
 };
 
-/** Apple 风格圆角系统 */
+/** 夜萤圆角系统 */
 export const borderRadius = {
   none: '0',
   xs: '5px',
   sm: '8px',
-  md: '11px',
-  lg: '18px',
+  md: '14px',
+  lg: '20px',
   pill: '9999px',
   full: '9999px',
 };
@@ -264,7 +264,7 @@ export const capsuleTab = {
 
 // ========== 卡片 ==========
 export const card = {
-  borderRadius: 'rounded-[18px]',
+  borderRadius: 'rounded-[20px]',
   padding: {
     sm: 'p-4',
     md: 'p-6',

@@ -94,7 +94,7 @@ export function CreateHabitModal({ editing, onSubmit, onCancel, onDelete }: Crea
               className="flex-1 px-3 py-2 rounded-xl text-sm transition-all"
               style={{
                 backgroundColor: frequencyType === opt.id ? color : `${appTheme.primary}15`,
-                color: frequencyType === opt.id ? '#fff' : appTheme.ink,
+                color: frequencyType === opt.id ? appTheme.onPrimary : appTheme.ink,
               }}
             >
               {opt.label}
@@ -124,7 +124,7 @@ export function CreateHabitModal({ editing, onSubmit, onCancel, onDelete }: Crea
             <button
               onClick={onDelete}
               className="px-4 py-2 rounded-xl text-sm flex items-center gap-1"
-              style={{ color: '#C75C5C' }}
+              style={{ color: appTheme.danger }}
             >
               <Trash2 size={16} /> 删除
             </button>
@@ -133,7 +133,7 @@ export function CreateHabitModal({ editing, onSubmit, onCancel, onDelete }: Crea
           <button
             onClick={handleSubmit}
             className="px-6 py-2 rounded-xl text-sm font-medium"
-            style={{ backgroundColor: color, color: '#fff' }}
+            style={{ backgroundColor: color, color: appTheme.onPrimary }}
           >
             {editing ? '保存' : '创建'}
           </button>

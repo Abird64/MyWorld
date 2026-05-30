@@ -64,7 +64,7 @@ export function SkillsPage() {
               <div className="text-center">
                 <div
                   className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-4"
-                  style={{ backgroundColor: appTheme.primary, color: '#fff' }}
+                  style={{ backgroundColor: appTheme.primary, color: appTheme.onPrimary }}
                 >
                   ◈ Lv.{avgLevel}
                 </div>

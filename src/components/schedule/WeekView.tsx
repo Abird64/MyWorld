@@ -117,7 +117,7 @@ export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) 
                     style={{
                       backgroundColor: isTaskSync ? 'transparent' : bgColor,
                       border: isTaskSync ? `1px dashed ${bgColor}` : 'none',
-                      color: isTaskSync ? bgColor : '#FFF',
+                      color: isTaskSync ? bgColor : appTheme.onPrimary,
                       opacity: isTaskSync ? 0.7 : 1,
                     }}
                     onClick={() => onEventClick(event)}

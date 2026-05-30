@@ -296,7 +296,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
                   onClick={() => handleSave(editScope)}
                   disabled={!title.trim()}
                   className="px-4 py-2 rounded-full text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  style={{ color: '#fff', backgroundColor: isSaveHovered ? `${appTheme.primary}CC` : appTheme.primary }}
+                  style={{ color: appTheme.onPrimary, backgroundColor: isSaveHovered ? `${appTheme.primary}CC` : appTheme.primary }}
                   onMouseEnter={() => setIsSaveHovered(true)}
                   onMouseLeave={() => setIsSaveHovered(false)}
                 >

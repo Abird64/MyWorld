@@ -138,8 +138,8 @@ export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProp
           </div>
           <div className="flex gap-2 ml-auto">
             {[
-              { value: 'high', label: '紧急', color: '#E74C3C' },
-              { value: 'medium', label: '重要', color: '#F39C12' },
+              { value: 'high', label: '紧急', color: appTheme.danger },
+              { value: 'medium', label: '重要', color: appTheme.warning },
               { value: 'low', label: '一般', color: appTheme.primary },
             ].map((p) => (
               <button
@@ -147,7 +147,7 @@ export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProp
                 onClick={() => setPriority(priority === p.value ? '' : p.value)}
                 className="px-4 py-2 rounded-full text-sm transition-all"
                 style={priority === p.value
-                  ? { backgroundColor: p.color, color: '#fff' }
+                  ? { backgroundColor: p.color, color: appTheme.onPrimary }
                   : { color: txtMid, backgroundColor: bgSubtle }}
               >
                 {p.label}
@@ -296,7 +296,7 @@ export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProp
             disabled={!title.trim() || sending}
             className="flex-1 py-3 rounded-2xl text-base font-medium transition-all"
             style={title.trim() && !sending
-              ? { backgroundColor: appTheme.primary, color: '#fff' }
+              ? { backgroundColor: appTheme.primary, color: appTheme.onPrimary }
               : { backgroundColor: bgDisabled, color: txtLight }}
           >
             创建

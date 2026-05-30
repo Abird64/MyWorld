@@ -344,7 +344,7 @@ export function TasksPage() {
           <button onClick={() => { setMultiSelectMode(!multiSelectMode); if (multiSelectMode) setSelectedIds(new Set()); }}
             className="w-11 h-11 rounded-full flex items-center justify-center transition-colors"
             style={multiSelectMode
-              ? { backgroundColor: appTheme.primary, color: '#fff' }
+              ? { backgroundColor: appTheme.primary, color: appTheme.onPrimary }
               : { backgroundColor: appTheme.canvas + '99', color: txtMeta }}
             onMouseEnter={!multiSelectMode ? (e) => (e.currentTarget.style.color = txtMid) : undefined}
             onMouseLeave={!multiSelectMode ? (e) => (e.currentTarget.style.color = txtMeta) : undefined}>

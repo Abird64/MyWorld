@@ -128,8 +128,8 @@ function DeleteCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info
   const query = (params.query as string) || '';
 
   return (
-    <div className="mt-2 rounded-xl border overflow-hidden" style={{ backgroundColor: appTheme.canvas, borderColor: `${info?.color || '#E65C5C'}30` }}>
-      <CardHeader icon={<Trash2 size={12} />} color={info?.color || '#E65C5C'} title={info?.label || '删除'} />
+    <div className="mt-2 rounded-xl border overflow-hidden" style={{ backgroundColor: appTheme.canvas, borderColor: `${info?.color || appTheme.danger}30` }}>
+      <CardHeader icon={<Trash2 size={12} />} color={info?.color || appTheme.danger} title={info?.label || '删除'} />
       <div className="px-4 py-3 space-y-2">
         {query ? (
           <div className="flex items-center gap-2">
@@ -137,7 +137,7 @@ function DeleteCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info
             <span className="text-sm font-medium" style={{ color: appTheme.ink }}>"{query}"</span>
           </div>
         ) : null}
-        <p className="text-xs" style={{ color: '#E65C5C' }}>此操作不可撤销，请确认</p>
+        <p className="text-xs" style={{ color: appTheme.danger }}>此操作不可撤销，请确认</p>
       </div>
       {modifyMode ? (
         <CardModifyInput onSubmit={(text) => { onModify?.(text); setModifyMode(false); }} onBack={() => setModifyMode(false)} />
@@ -145,7 +145,7 @@ function DeleteCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info
         <CardActions
           isExecuting={isExecuting} onConfirm={onConfirm} onCancel={onCancel}
           onModifyClick={onModify ? () => setModifyMode(true) : undefined}
-          confirmLabel="确认删除" confirmColor={info?.color || '#E65C5C'}
+          confirmLabel="确认删除" confirmColor={info?.color || appTheme.danger}
         />
       )}
     </div>

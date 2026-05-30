@@ -116,13 +116,13 @@ export function TaskDetailPanel({
     { value: 'pending', label: '待办', color: '#999' },
     { value: 'in_progress', label: '进行中', color: '#2A8CB7' },
     { value: 'completed', label: '已完成', color: appTheme.primary },
-    { value: 'cancelled', label: '已取消', color: '#E74C3C' },
+    { value: 'cancelled', label: '已取消', color: appTheme.danger },
   ] as const;
 
   const priorityOptions = [
     { value: '', label: '无', color: '#999' },
-    { value: 'high', label: '紧急', color: '#E74C3C' },
-    { value: 'medium', label: '重要', color: '#F39C12' },
+    { value: 'high', label: '紧急', color: appTheme.danger },
+    { value: 'medium', label: '重要', color: appTheme.warning },
     { value: 'low', label: '一般', color: appTheme.primary },
   ];
 
@@ -180,7 +180,7 @@ export function TaskDetailPanel({
                 <button key={s.value} onClick={() => setStatus(s.value)}
                   className="px-4 py-1.5 rounded-full text-sm transition-all"
                   style={status === s.value
-                    ? { backgroundColor: s.color, color: '#fff' }
+                    ? { backgroundColor: s.color, color: appTheme.onPrimary }
                     : { color: txtMid, backgroundColor: bgSubtle }}>
                   {s.label}
                 </button>
@@ -202,7 +202,7 @@ export function TaskDetailPanel({
                 <button key={p.value} onClick={() => setPriority(p.value)}
                   className="px-4 py-1.5 rounded-full text-sm transition-all"
                   style={priority === p.value
-                    ? { backgroundColor: p.color, color: '#fff' }
+                    ? { backgroundColor: p.color, color: appTheme.onPrimary }
                     : { color: txtMid, backgroundColor: bgSubtle }}>
                   {p.label}
                 </button>
@@ -357,7 +357,7 @@ export function TaskDetailPanel({
               <button onClick={handleAddSubtask} disabled={!subtaskTitle.trim()}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
                 style={subtaskTitle.trim()
-                  ? { backgroundColor: appTheme.primary, color: '#fff' }
+                  ? { backgroundColor: appTheme.primary, color: appTheme.onPrimary }
                   : { backgroundColor: bgSubtle, color: txtHint }}>
                 <Plus size={16} />
               </button>
@@ -378,7 +378,7 @@ export function TaskDetailPanel({
             ) : (
               <button onClick={() => onUncomplete(task.id)}
                 className="flex-1 py-3 rounded-2xl text-white text-base transition-colors flex items-center justify-center gap-2"
-                style={{ backgroundColor: '#F39C12' }}>
+                style={{ backgroundColor: appTheme.warning }}>
                 <Circle size={16} />
                 取消完成 -XP
               </button>

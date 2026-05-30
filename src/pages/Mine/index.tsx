@@ -89,7 +89,7 @@ export function MinePage() {
             <div className="px-5 pt-5 pb-4 text-center">
               <div
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium mb-3"
-                style={{ backgroundColor: appTheme.primary, color: '#fff' }}
+                style={{ backgroundColor: appTheme.primary, color: appTheme.onPrimary }}
               >
                 ◈ Lv.{avgLevel} · {title}
               </div>

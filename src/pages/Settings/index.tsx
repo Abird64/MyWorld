@@ -6,8 +6,9 @@ import { useAppTheme, useThemeMode } from '@/stores/themeStore';
 import { PageContainer } from '@/components/layout';
 import { BUILTIN_PROMPTS } from '@/utils/builtinPrompts';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
-import { Plus, Pencil, Trash2, X, Check, Lock, Download, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, Lock, Download, AlertTriangle, Cloud, Loader2, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import * as scheduleService from '@/services/scheduleService';
+import { useSyncStore } from '@/stores/syncStore';
 import { invoke } from '@tauri-apps/api/core';
 
 const AI_PROVIDERS = [
@@ -49,6 +50,14 @@ export function SettingsPage() {
   const { mode, setMode } = useThemeMode();
   const settings = useSettingStore();
   const { calendars, fetchCalendars } = useCalendarStore();
+  const syncStore = useSyncStore();
+
+  // 同步表单
+  const [syncFormUrl, setSyncFormUrl] = useState('');
+  const [syncFormUser, setSyncFormUser] = useState('');
+  const [syncFormPass, setSyncFormPass] = useState('');
+  const [syncTestResult, setSyncTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [syncTesting, setSyncTesting] = useState(false);
 
   // 导出对话框
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -66,6 +75,44 @@ export function SettingsPage() {
   const [editForm, setEditForm] = useState({ title: '', prompt: '' });
   const [isAdding, setIsAdding] = useState(false);
   const [addForm, setAddForm] = useState({ title: '', prompt: '' });
+
+  const handleTestConnection = async () => {
+    if (!syncFormUrl || !syncFormUser || !syncFormPass) {
+      setSyncTestResult({ ok: false, msg: '请填写完整的 WebDAV 配置' });
+      return;
+    }
+    setSyncTesting(true);
+    setSyncTestResult(null);
+    try {
+      // 先保存配置
+      await settings.set('sync.url', syncFormUrl);
+      await settings.set('sync.username', syncFormUser);
+      await settings.set('sync.password', syncFormPass);
+      const msg = await syncStore.testConnection(syncFormUrl, syncFormUser, syncFormPass);
+      setSyncTestResult({ ok: true, msg });
+    } catch (e) {
+      setSyncTestResult({ ok: false, msg: String(e) });
+    } finally {
+      setSyncTesting(false);
+    }
+  };
+
+  const handleSyncNow = async () => {
+    // 保存当前配置
+    await settings.set('sync.url', syncFormUrl);
+    await settings.set('sync.username', syncFormUser);
+    await settings.set('sync.password', syncFormPass);
+    await settings.set('sync.enabled', 'true');
+    await syncStore.syncNow();
+  };
+
+  const handleSaveSyncConfig = async () => {
+    await settings.set('sync.url', syncFormUrl);
+    await settings.set('sync.username', syncFormUser);
+    await settings.set('sync.password', syncFormPass);
+    setSyncTestResult({ ok: true, msg: '配置已保存' });
+    setTimeout(() => setSyncTestResult(null), 2000);
+  };
 
   const handleExport = async () => {
     try {
@@ -119,11 +166,21 @@ export function SettingsPage() {
   useEffect(() => {
     settings.loadAll();
     fetchCalendars();
+    syncStore.loadStatus();
   }, []);
 
   useEffect(() => {
     loadCustomPrompts();
   }, []);
+
+  // 同步表单从 settings 初始化
+  useEffect(() => {
+    if (settings.loaded) {
+      setSyncFormUrl(settings.get('sync.url', 'https://dav.jianguoyun.com/dav/'));
+      setSyncFormUser(settings.get('sync.username', ''));
+      setSyncFormPass(settings.get('sync.password', ''));
+    }
+  }, [settings.loaded]);
 
   const get = (key: string, fallback = '') => settings.get(key, fallback);
   const set = (key: string, value: string) => settings.set(key, value);
@@ -424,7 +481,7 @@ export function SettingsPage() {
                       onClick={handleAdd}
                       disabled={!addForm.title.trim() || !addForm.prompt.trim()}
                       className="flex items-center gap-1 px-3 py-1 rounded text-xs transition-colors disabled:opacity-40"
-                      style={{ backgroundColor: s.accent, color: '#fff' }}
+                      style={{ backgroundColor: s.accent, color: appTheme.onPrimary }}
                     >
                       <Check size={12} /> 添加
                     </button>
@@ -449,6 +506,148 @@ export function SettingsPage() {
             </div>
           </Section>
 
+          {/* ===== 数据同步 ===== */}
+          <Section title="数据同步" styles={s}>
+            <div className="flex items-center gap-2 mb-2">
+              <Cloud size={16} style={{ color: s.accent }} />
+              <span className="text-sm" style={{ color: s.textSub }}>
+                通过 WebDAV（如坚果云）在多台设备间同步数据
+              </span>
+            </div>
+
+            {/* 启用同步开关 */}
+            <ToggleRow
+              label="启用自动同步"
+              checked={settings.get('sync.enabled') === 'true'}
+              onChange={(v) => settings.set('sync.enabled', String(v))}
+              styles={s}
+            />
+
+            {/* WebDAV 配置 */}
+            <InputRow
+              label="WebDAV 服务器"
+              value={syncFormUrl}
+              placeholder="https://dav.jianguoyun.com/dav/"
+              onChange={setSyncFormUrl}
+              styles={s}
+            />
+            <InputRow
+              label="用户名"
+              value={syncFormUser}
+              placeholder="your@email.com"
+              onChange={setSyncFormUser}
+              styles={s}
+            />
+            <InputRow
+              label="应用密码"
+              value={syncFormPass}
+              type="password"
+              placeholder="坚果云应用密码"
+              onChange={setSyncFormPass}
+              styles={s}
+            />
+
+            {/* 同步间隔 */}
+            <InputRow
+              label="同步间隔（分钟）"
+              value={settings.get('sync.interval_minutes', '30')}
+              type="number"
+              placeholder="30"
+              onChange={(v) => settings.set('sync.interval_minutes', v)}
+              styles={s}
+            />
+
+            {/* 按钮行 */}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={handleTestConnection}
+                disabled={syncTesting}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+                style={{ backgroundColor: s.overlay(0.08), color: s.text }}
+              >
+                {syncTesting ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
+                测试连接
+              </button>
+              <button
+                onClick={handleSaveSyncConfig}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm transition-colors"
+                style={{ backgroundColor: s.overlay(0.08), color: s.text }}
+              >
+                保存配置
+              </button>
+            </div>
+
+            {/* 测试结果 */}
+            {syncTestResult && (
+              <div
+                className="px-3 py-2 rounded-lg text-sm"
+                style={{
+                  backgroundColor: syncTestResult.ok ? `${s.accent}15` : s.dangerDim,
+                  color: syncTestResult.ok ? s.accent : s.danger,
+                }}
+              >
+                {syncTestResult.ok ? <Wifi size={14} className="inline mr-1.5" /> : <WifiOff size={14} className="inline mr-1.5" />}
+                {syncTestResult.msg}
+              </div>
+            )}
+
+            {/* 手动同步按钮 */}
+            <div className="pt-2 border-t" style={{ borderColor: s.cardBorder }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm" style={{ color: s.textSub }}>
+                  {syncStore.status?.last_sync_time
+                    ? `上次同步: ${new Date(syncStore.status.last_sync_time).toLocaleString()}`
+                    : '尚未同步'}
+                </span>
+              </div>
+              <button
+                onClick={handleSyncNow}
+                disabled={syncStore.isSyncing}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                style={{ backgroundColor: s.accent, color: appTheme.onPrimary }}
+              >
+                {syncStore.isSyncing ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" /> 同步中...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={15} /> 立即同步
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* 同步结果 */}
+            {syncStore.lastResult && (
+              <div
+                className="px-3 py-2 rounded-lg text-xs space-y-1"
+                style={{
+                  backgroundColor: syncStore.lastResult.success ? `${s.accent}15` : s.dangerDim,
+                  color: syncStore.lastResult.success ? s.accent : s.danger,
+                }}
+              >
+                <div>{syncStore.lastResult.message}</div>
+                {syncStore.lastResult.bytes_uploaded > 0 && (
+                  <div>上传: {formatBytes(syncStore.lastResult.bytes_uploaded)}</div>
+                )}
+                {syncStore.lastResult.bytes_downloaded > 0 && (
+                  <div>下载: {formatBytes(syncStore.lastResult.bytes_downloaded)}</div>
+                )}
+              </div>
+            )}
+
+            {/* 同步错误 */}
+            {syncStore.error && (
+              <div
+                className="px-3 py-2 rounded-lg text-sm"
+                style={{ backgroundColor: s.dangerDim, color: s.danger }}
+              >
+                {syncStore.error}
+              </div>
+            )}
+          </Section>
+
           {/* ===== 数据管理 ===== */}
           <Section title="数据管理" styles={s}>
             <button
@@ -469,7 +668,7 @@ export function SettingsPage() {
 
           {/* 版本信息 */}
           <div className="text-center pt-6 pb-4">
-            <span className="text-sm" style={{ color: s.textSub }}>拾阶 v0.1</span>
+            <span className="text-sm" style={{ color: s.textSub }}>提灯 v0.1</span>
           </div>
         </div>
       </div>
@@ -646,7 +845,7 @@ export function SettingsPage() {
                 className="flex-1 py-2 rounded-full text-sm font-medium transition-all disabled:opacity-30"
                 style={{
                   backgroundColor: clearCategories.size > 0 ? s.danger : s.dangerDim,
-                  color: clearCategories.size > 0 ? '#fff' : s.danger,
+                  color: clearCategories.size > 0 ? appTheme.onPrimary : s.danger,
                 }}
               >
                 {clearCategories.size > 0
@@ -722,6 +921,12 @@ function ToggleRow({ label, checked, onChange, styles, disabled = false }: {
       </button>
     </div>
   );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 function InputRow({ label, value, onChange, styles, type = 'text', placeholder = '' }: {
