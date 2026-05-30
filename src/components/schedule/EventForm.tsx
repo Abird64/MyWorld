@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import type { CreateScheduleInput } from '@/types/schedule';
 
@@ -62,6 +62,7 @@ function buildRrule(repeat: string, selectedDays: string[], interval: number): s
 }
 
 export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: EventFormProps) {
+  const appTheme = useAppTheme();
   const { calendars } = useCalendarStore();
   const [title, setTitle] = useState('');
   const defaultStartVal = defaultStart ? toLocalDatetime(defaultStart) : toLocalDatetime(new Date().toISOString());
@@ -142,7 +143,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
             style={{
               color: appTheme.ink,
               border: `1px solid ${appTheme.primary}4D`,
-              backgroundColor: 'rgba(0,0,0,0.04)',
+              backgroundColor: appTheme.canvasParchment,
             }}
             autoFocus
           />
@@ -158,7 +159,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
               style={{
                 color: appTheme.ink,
                 border: `1px solid ${appTheme.primary}4D`,
-                backgroundColor: 'rgba(0,0,0,0.04)',
+                backgroundColor: appTheme.canvasParchment,
               }}
             />
           </div>
@@ -174,7 +175,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
               style={{
                 color: appTheme.ink,
                 border: `1px solid ${appTheme.primary}4D`,
-                backgroundColor: 'rgba(0,0,0,0.04)',
+                backgroundColor: appTheme.canvasParchment,
               }}
             />
           </div>
@@ -187,7 +188,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
               onChange={(e) => setCalendarId(e.target.value || null)}
               className="w-full px-3 py-2 rounded-xl text-sm outline-none"
               style={{
-                backgroundColor: 'rgba(0,0,0,0.04)',
+                backgroundColor: appTheme.canvasParchment,
                 border: `1px solid ${appTheme.primary}4D`,
                 color: appTheme.ink,
               }}
@@ -220,7 +221,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
                       ? { backgroundColor: appTheme.primary, color: appTheme.ink }
                       : {
                           color: `${appTheme.ink}B2`,
-                          backgroundColor: 'rgba(0,0,0,0.06)',
+                          backgroundColor: appTheme.canvasParchment,
                         }
                   }
                 >
@@ -246,7 +247,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
                   style={{
                     color: appTheme.ink,
                     border: `1px solid ${appTheme.primary}4D`,
-                    backgroundColor: 'rgba(0,0,0,0.04)',
+                    backgroundColor: appTheme.canvasParchment,
                   }}
                 />
                 <span className="text-xs" style={{ color: `${appTheme.ink}99` }}>
@@ -273,7 +274,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
                         ? { backgroundColor: appTheme.primary, color: appTheme.ink }
                         : {
                             color: `${appTheme.ink}B2`,
-                            backgroundColor: 'rgba(0,0,0,0.06)',
+                            backgroundColor: appTheme.canvasParchment,
                           }
                     }
                   >

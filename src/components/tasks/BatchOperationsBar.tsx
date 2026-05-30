@@ -1,4 +1,4 @@
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 interface BatchOperationsBarProps {
   selectedCount: number;
@@ -19,6 +19,7 @@ export function BatchOperationsBar({
   onBatchDelete,
   onCancel,
 }: BatchOperationsBarProps) {
+  const appTheme = useAppTheme();
   const allSelected = selectedCount > 0 && selectedCount === totalCount;
   const txt = appTheme.ink;
   const txtLight = txt + '4D';

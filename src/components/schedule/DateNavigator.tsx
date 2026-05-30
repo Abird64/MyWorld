@@ -1,4 +1,4 @@
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 
 interface DateNavigatorProps {
@@ -10,6 +10,7 @@ interface DateNavigatorProps {
 }
 
 export function DateNavigator({ weekLabel, onPrev, onNext, onToday, onImportIcs }: DateNavigatorProps) {
+  const appTheme = useAppTheme();
   const btnBg = `${appTheme.primary}4D`;
   const btnHoverBg = `${appTheme.primary}80`;
   const textColor = appTheme.ink;

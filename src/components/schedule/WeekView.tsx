@@ -1,5 +1,5 @@
 import type { Schedule } from '@/types/schedule';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { EventBlock } from './EventBlock';
 import {
   HOUR_START,
@@ -18,6 +18,7 @@ interface WeekViewProps {
 const weekDayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) {
+  const appTheme = useAppTheme();
   // 生成 7 天的日期
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);

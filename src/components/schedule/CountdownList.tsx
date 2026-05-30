@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import * as scheduleService from '@/services/scheduleService';
 import { Plus, X, Trash2 } from 'lucide-react';
@@ -37,6 +37,7 @@ function CountdownForm({
   onCancel: () => void;
   onDelete?: () => void;
 }) {
+  const appTheme = useAppTheme();
   const [title, setTitle] = useState(editing?.title ?? '');
   const [date, setDate] = useState(
     editing ? toDateString(editing.start_at) : toDateString(new Date().toISOString())
@@ -143,6 +144,7 @@ function CountdownForm({
 
 /** 倒数日列表视图 */
 export function CountdownList() {
+  const appTheme = useAppTheme();
   const { countdowns, fetchCountdowns } = useScheduleStore();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);

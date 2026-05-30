@@ -1,4 +1,4 @@
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 interface CapsuleTabItem {
   id: string;
@@ -18,9 +18,11 @@ export function CapsuleTabs({
   items,
   activeId,
   onChange,
-  accentColor = appTheme.primary,
+  accentColor,
   className = '',
 }: CapsuleTabsProps) {
+  const appTheme = useAppTheme();
+  const accent = accentColor ?? appTheme.primary;
   return (
     <div className={`flex items-center gap-2 flex-wrap ${className}`}>
       {items.map((item) => {
@@ -31,7 +33,7 @@ export function CapsuleTabs({
             onClick={() => onChange(item.id)}
             className="px-4 py-1.5 rounded-full text-sm transition-all duration-200 btn-press"
             style={{
-              backgroundColor: isActive ? accentColor : 'transparent',
+              backgroundColor: isActive ? accent : 'transparent',
               color: isActive ? appTheme.onPrimary : appTheme.ink,
               border: isActive ? 'none' : `1px solid ${appTheme.hairline}`,
             }}

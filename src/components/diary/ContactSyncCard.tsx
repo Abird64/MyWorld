@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Check, Plus, X } from 'lucide-react';
+import { useAppTheme } from '@/stores/themeStore';
 import type { ExtractedContact } from '@/types/journal';
 import * as contactService from '@/services/contactService';
 
@@ -7,10 +8,10 @@ interface ContactSyncCardProps {
   contact: ExtractedContact;
   onSync: (name: string) => void;
   onIgnore: (name: string) => void;
-  dark?: boolean;
 }
 
-export function ContactSyncCard({ contact, onSync, onIgnore, dark = true }: ContactSyncCardProps) {
+export function ContactSyncCard({ contact, onSync, onIgnore }: ContactSyncCardProps) {
+  const appTheme = useAppTheme();
   const [syncing, setSyncing] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [createNotes, setCreateNotes] = useState(contact.event_summary);
@@ -49,13 +50,13 @@ export function ContactSyncCard({ contact, onSync, onIgnore, dark = true }: Cont
 
   const matched = !!contact.existing_contact_id;
 
-  const TXT = dark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.85)';
-  const TXT_DIM = dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
-  const TXT_MUTED = dark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
-  const SURFACE = dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
-  const INPUT_BG = dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)';
-  const HOVER_BG = dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)';
-  const BTN_IGNORE = dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
+  const TXT = appTheme.ink;
+  const TXT_DIM = appTheme.inkMuted80;
+  const TXT_MUTED = appTheme.inkMuted48;
+  const SURFACE = appTheme.canvasParchment;
+  const INPUT_BG = appTheme.canvas;
+  const HOVER_BG = appTheme.divider;
+  const BTN_IGNORE = appTheme.inkMuted48;
 
   return (
     <div className="rounded-xl p-4 flex flex-col gap-3" style={{ backgroundColor: SURFACE }}>

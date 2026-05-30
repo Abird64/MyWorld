@@ -3,65 +3,129 @@ import { NavBar } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
 import { useSkillStore } from '@/stores/skillStore';
 import { SKILL_ORDER } from '@/styles/theme';
-import { appTheme } from '@/styles/theme';
-import { RadarChart } from '@/components/skills/RadarChart';
+import { useAppTheme } from '@/stores/themeStore';
 import { AttributeCard } from '@/components/skills/AttributeCard';
-import { TitleSummary } from '@/components/skills/TitleSummary';
+import { ActivityHeatmap } from '@/components/skills/ActivityHeatmap';
+import { SourceBreakdown } from '@/components/skills/SourceBreakdown';
 
+const LEVEL_TITLES: Record<number, string> = {
+  1: '入门', 2: '初窥', 3: '略懂',
+  4: '通晓', 5: '精熟', 6: '专深',
+  7: '卓越', 8: '宗师', 9: '入圣',
+  10: '化境',
+};
+
+function getOverallLevel(skills: { level: number }[]): number {
+  if (skills.length === 0) return 0;
+  return Math.round(skills.reduce((sum, s) => sum + s.level, 0) / skills.length);
+}
 
 export function SkillsPage() {
-  const { skills, isLoading, fetchSkills } = useSkillStore();
+  const appTheme = useAppTheme();
+  const { skills, isLoading, activity, sources, fetchSkills, fetchActivity, fetchSources } = useSkillStore();
 
   useEffect(() => {
     fetchSkills();
-  }, [fetchSkills]);
+    fetchActivity();
+    fetchSources();
+  }, [fetchSkills, fetchActivity, fetchSources]);
+
+  const totalXp = skills.reduce((sum, s) => sum + s.total_xp, 0);
+  const avgLevel = getOverallLevel(skills);
+  const title = LEVEL_TITLES[avgLevel] || '超凡';
+
+  // XP progress to next average level
+  const nextLevelXp = 100 * avgLevel;
+  const currentLevelXp = totalXp - (100 * avgLevel * (avgLevel - 1) / 2);
+  const xpProgress = nextLevelXp > 0 ? Math.min(currentLevelXp / (nextLevelXp * skills.length), 1) : 0;
 
   return (
-    <PageContainer className="relative">
-      <NavBar title="修为" />
+    <PageContainer>
+      <NavBar title="成长" />
 
-      {/* 主内容 */}
-      <div className="flex-1 overflow-y-auto flex flex-col items-center px-4 sm:px-8 pb-8">
-        <div className="h-8" />
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 pb-8">
+        <div className="max-w-[600px] mx-auto">
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <p className="text-lg" style={{ color: appTheme.inkMuted48 }}>加载中...</p>
-          </div>
-        ) : skills.length === 0 ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <p className="text-xl mb-2" style={{ color: appTheme.inkMuted80 }}>修为未启</p>
-              <p className="text-sm" style={{ color: appTheme.inkMuted48 }}>完成任务、写日记均可获得属性经验</p>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <p className="text-lg" style={{ color: appTheme.inkMuted48 }}>加载中...</p>
             </div>
-          </div>
-        ) : (
-          <div className="w-full max-w-[1000px] space-y-8">
-            {/* 第一行：雷达图 + 属性卡片 */}
-            <div className="flex flex-col sm:flex-row gap-8 items-start">
-              {/* 左侧：雷达图 */}
-              <div className="flex-shrink-0 pt-4 mx-auto sm:mx-0">
-                <RadarChart skills={skills} size={240} />
-              </div>
-
-              {/* 右侧：六维属性卡片 */}
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {SKILL_ORDER.map((skillId) => {
-                  const skill = skills.find((s) => s.id === skillId);
-                  if (!skill) return null;
-                  return <AttributeCard key={skillId} skill={skill} />;
-                })}
+          ) : skills.length === 0 ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <p className="text-xl mb-2" style={{ color: appTheme.inkMuted80 }}>成长未启</p>
+                <p className="text-sm" style={{ color: appTheme.inkMuted48 }}>完成任务、写日记均可获得属性经验</p>
               </div>
             </div>
+          ) : (
+            <div className="space-y-8 pt-4">
 
-            {/* 第二行：称号总览 */}
-            <TitleSummary skills={skills} />
-          </div>
-        )}
+              {/* ─── Hero 区域 ─── */}
+              <div className="text-center">
+                <div
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-4"
+                  style={{ backgroundColor: appTheme.primary, color: '#fff' }}
+                >
+                  ◈ Lv.{avgLevel}
+                </div>
+                <div
+                  className="text-5xl font-bold tracking-tight"
+                  style={{ color: appTheme.ink, fontFamily: 'var(--font-display, system-ui)' }}
+                >
+                  {totalXp.toLocaleString()}
+                </div>
+                <p className="text-base mt-1" style={{ color: appTheme.inkMuted48 }}>经验值</p>
+              </div>
 
-        <div className="h-24" />
+              {/* ─── XP 进度条 ─── */}
+              <div>
+                <div className="flex justify-between text-xs mb-2" style={{ color: appTheme.inkMuted48 }}>
+                  <span>Lv.{avgLevel} · {title}</span>
+                  <span>{currentLevelXp} / {nextLevelXp * skills.length || totalXp}</span>
+                </div>
+                <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: appTheme.canvasParchment }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-700 ease-out"
+                    style={{
+                      width: `${xpProgress * 100}%`,
+                      background: `linear-gradient(90deg, ${appTheme.primary}, #5856d6, #af52de)`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* ─── 六维属性 ─── */}
+              <div>
+                <h3 className="text-base font-semibold mb-4" style={{ color: appTheme.ink }}>六维属性</h3>
+                <div className="space-y-4">
+                  {SKILL_ORDER.map((skillId) => {
+                    const skill = skills.find((s) => s.id === skillId);
+                    if (!skill) return null;
+                    return <AttributeCard key={skillId} skill={skill} />;
+                  })}
+                </div>
+              </div>
+
+              {/* ─── 活跃记录 ─── */}
+              <div>
+                <h3 className="text-base font-semibold mb-4" style={{ color: appTheme.ink }}>活跃记录</h3>
+                <div className="rounded-2xl p-4" style={{ backgroundColor: appTheme.canvasParchment }}>
+                  <ActivityHeatmap activity={activity} />
+                </div>
+              </div>
+
+              {/* ─── 经验来源 ─── */}
+              <div>
+                <h3 className="text-base font-semibold mb-4" style={{ color: appTheme.ink }}>经验来源</h3>
+                <SourceBreakdown sources={sources} />
+              </div>
+
+            </div>
+          )}
+
+          <div className="h-16" />
+        </div>
       </div>
-
     </PageContainer>
   );
 }

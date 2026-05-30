@@ -1,5 +1,5 @@
 import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   variant?: 'default' | 'search' | 'underline';
@@ -7,6 +7,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className = '', variant = 'default', style, ...props }, ref) => {
+    const appTheme = useAppTheme();
     const base = 'w-full px-4 py-2.5 text-[17px] transition-all focus:outline-none';
 
     const variantStyles: Record<string, React.CSSProperties> = {
@@ -51,6 +52,7 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className = '', variant = 'default', style, ...props }, ref) => {
+    const appTheme = useAppTheme();
     const base = 'w-full text-[17px] focus:outline-none resize-none';
 
     const variantStyles: Record<string, React.CSSProperties> = {

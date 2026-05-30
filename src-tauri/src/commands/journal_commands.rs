@@ -578,3 +578,12 @@ fn extract_json_from_text(text: &str) -> String {
     }
     text.trim().to_string()
 }
+
+#[tauri::command]
+pub fn get_journal_count(db_state: State<'_, DbState>) -> Result<i32, String> {
+    let conn = db_state
+        .conn
+        .lock()
+        .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+    journal_repo::get_journal_count(&conn)
+}

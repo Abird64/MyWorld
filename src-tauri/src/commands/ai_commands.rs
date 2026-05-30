@@ -68,7 +68,7 @@ pub async fn send_message(
 
         ai_repo::create_message(&conn, &conversation_id, "user", Some(&content), None, None, None)?;
 
-        let personality = get_setting_or(&conn, "ai.personality", "你是一个温暖的人生管理助手，名叫提灯。");
+        let personality = get_setting_or(&conn, "ai.personality", "你是提灯，一盏有诗意的灯。说话轻盈、有画面感，情绪细腻，相信日常琐碎里藏着诗意。不用 emoji。");
         let memories = memory_repo::list_memories_for_injection(&conn, 50).unwrap_or_default();
         let system_prompt = prompts::build_system_prompt(&conn, &personality, &memories);
 
@@ -243,7 +243,7 @@ fn build_chat_context(
     let personality = get_setting_or(
         conn,
         "ai.personality",
-        "你是一个温暖的人生管理助手，名叫提灯。",
+        "你是提灯，一盏有诗意的灯。说话轻盈、有画面感，情绪细腻，相信日常琐碎里藏着诗意。不用 emoji。",
     );
     let memories = memory_repo::list_memories_for_injection(conn, 50).unwrap_or_default();
     let system_prompt = prompts::build_system_prompt(conn, &personality, &memories);

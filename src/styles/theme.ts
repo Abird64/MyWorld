@@ -31,8 +31,13 @@ export interface AppTheme {
   warning: string;
 }
 
-/** 统一的 Apple 风格主题 */
-export const appTheme: AppTheme = {
+export interface AppThemeHelpers {
+  /** 返回基于 ink 色的半透明 rgba 字符串，适配深浅色模式 */
+  rgba: (opacity: number) => string;
+}
+
+/** 浅色主题 */
+export const appThemeLight: AppTheme = {
   primary: '#0066cc',
   primaryFocus: '#0071e3',
   primaryOnDark: '#2997ff',
@@ -54,6 +59,44 @@ export const appTheme: AppTheme = {
   danger: '#ff3b30',
   success: '#34c759',
   warning: '#ff9500',
+};
+
+/** 深色主题 */
+export const appThemeDark: AppTheme = {
+  primary: '#2997ff',
+  primaryFocus: '#40a9ff',
+  primaryOnDark: '#2997ff',
+  ink: '#f5f5f7',
+  canvas: '#1c1c1e',
+  canvasParchment: '#2c2c2e',
+  surfacePearl: '#232325',
+  surfaceDark: '#3a3a3c',
+  surfaceDark2: '#444446',
+  surfaceDark3: '#333335',
+  surfaceBlack: '#000000',
+  onPrimary: '#ffffff',
+  onDark: '#ffffff',
+  bodyMuted: '#666666',
+  inkMuted80: '#cccccc',
+  inkMuted48: '#8e8e93',
+  hairline: '#38383a',
+  divider: '#2c2c2e',
+  danger: '#ff453a',
+  success: '#30d158',
+  warning: '#ff9f0a',
+};
+
+/** 默认主题（浅色）— 向后兼容 */
+export const appTheme: AppTheme = appThemeLight;
+
+/** 浅色主题辅助函数 */
+export const appThemeLightHelpers: AppThemeHelpers = {
+  rgba: (o: number) => `rgba(0,0,0,${o})`,
+};
+
+/** 深色主题辅助函数 */
+export const appThemeDarkHelpers: AppThemeHelpers = {
+  rgba: (o: number) => `rgba(255,255,255,${o})`,
 };
 
 // ========== 兼容旧接口 ==========
@@ -126,20 +169,20 @@ export interface SkillColorInfo {
 }
 
 export const SKILL_COLORS: Record<string, SkillColorInfo> = {
-  knowledge:    { hex: '#3A8FB7', name: '学识' },
-  physique:     { hex: '#4B7F52', name: '筋骨' },
-  charm:        { hex: '#C83C3C', name: '风华' },
-  talent:       { hex: '#E8B959', name: '才情' },
-  worldliness:  { hex: '#B87353', name: '入世' },
-  cultivation:  { hex: '#8A6DA7', name: '修为' },
+  focus:      { hex: '#3A8FB7', name: '专注力' },
+  vitality:   { hex: '#4B7F52', name: '生命力' },
+  empathy:    { hex: '#C83C3C', name: '共情力' },
+  creativity: { hex: '#E8B959', name: '创造力' },
+  insight:    { hex: '#B87353', name: '洞察力' },
+  expression: { hex: '#8A6DA7', name: '表现力' },
 };
 
-export const SKILL_ORDER = ['knowledge', 'physique', 'charm', 'talent', 'worldliness', 'cultivation'];
+export const SKILL_ORDER = ['focus', 'vitality', 'empathy', 'creativity', 'insight', 'expression'];
 
 export const xpColors = {
-  knowledge: SKILL_COLORS.knowledge.hex,
-  talent: SKILL_COLORS.talent.hex,
-  physique: SKILL_COLORS.physique.hex,
+  focus: SKILL_COLORS.focus.hex,
+  creativity: SKILL_COLORS.creativity.hex,
+  vitality: SKILL_COLORS.vitality.hex,
 };
 
 // ========== 设计 Token ==========

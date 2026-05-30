@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, X, Search, ArrowUpDown, ListChecks } from 'lucide-react';
 import { CapsuleTabs, NavBar } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useSkillStore } from '@/stores/skillStore';
 import * as skillService from '@/services/skillService';
@@ -80,6 +80,7 @@ function filterTasks(tasks: Task[], tabId: string, searchQuery: string): Task[] 
 // ========== Page ==========
 
 export function TasksPage() {
+  const appTheme = useAppTheme();
   const txt = appTheme.ink;
   const txtLight = txt + '4D';
   const txtMid = txt + '80';

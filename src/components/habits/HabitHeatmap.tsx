@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { X } from 'lucide-react';
 import { getRecords } from '@/services/habitService';
 import type { HabitWithStreak, HabitRecord } from '@/types/habit';
@@ -11,6 +11,7 @@ interface HabitHeatmapProps {
 
 /** GitHub 风格热力图 */
 export function HabitHeatmap({ habit, onClose }: HabitHeatmapProps) {
+  const appTheme = useAppTheme();
   const [records, setRecords] = useState<HabitRecord[]>([]);
   const color = habit.color || appTheme.primary;
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import type { Schedule } from '@/types/schedule';
 
@@ -12,6 +12,7 @@ interface AgendaViewProps {
 const weekDayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
 export function AgendaView({ schedules, onEventClick }: AgendaViewProps) {
+  const appTheme = useAppTheme();
   const { getCalendarById } = useCalendarStore();
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
   // 按日期分组

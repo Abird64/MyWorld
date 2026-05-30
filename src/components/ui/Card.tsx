@@ -1,5 +1,5 @@
 import { forwardRef, type HTMLAttributes } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'task' | 'diary' | 'relation' | 'list';
@@ -9,6 +9,7 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className = '', variant = 'default', size = 'md', padding = true, children, ...props }, ref) => {
+    const appTheme = useAppTheme();
     const pad = padding
       ? size === 'sm' ? 'p-4'
         : size === 'lg' ? 'p-8'

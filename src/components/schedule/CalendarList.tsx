@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { Settings } from 'lucide-react';
 
 interface CalendarListProps {
@@ -9,6 +9,7 @@ interface CalendarListProps {
 }
 
 export function CalendarList({ onRefresh, onManage }: CalendarListProps) {
+  const appTheme = useAppTheme();
   const { calendars, visibleCalendarIds, toggleCalendar } = useCalendarStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 

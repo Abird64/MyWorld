@@ -1,5 +1,5 @@
 import type { Schedule } from '@/types/schedule';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 
 interface EventBlockProps {
@@ -14,6 +14,7 @@ interface EventBlockProps {
 }
 
 export function EventBlock({ event, top, height, left, width, onClick, taskSyncEvents, onTaskSyncClick }: EventBlockProps) {
+  const appTheme = useAppTheme();
   const isTaskSync = event.source_type === 'task_sync';
   const bgColor = event.color || appTheme.primary;
 

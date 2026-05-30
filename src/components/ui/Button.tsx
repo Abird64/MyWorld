@@ -1,8 +1,8 @@
 import { type ButtonHTMLAttributes, forwardRef } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'xp-knowledge' | 'xp-talent';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'xp-focus' | 'xp-creativity';
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -12,36 +12,37 @@ const sizes = {
   lg: 'px-6 py-3 text-lg',
 };
 
-const variantStyles: Record<string, React.CSSProperties> = {
-  primary: {
-    backgroundColor: appTheme.primary,
-    color: appTheme.onPrimary,
-  },
-  secondary: {
-    backgroundColor: 'transparent',
-    color: appTheme.primary,
-    border: `1px solid ${appTheme.primary}`,
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-    color: appTheme.primary,
-  },
-  danger: {
-    backgroundColor: appTheme.danger,
-    color: '#ffffff',
-  },
-  'xp-knowledge': {
-    backgroundColor: 'rgba(42, 140, 183, 0.14)',
-    color: '#2A8CB7',
-  },
-  'xp-talent': {
-    backgroundColor: 'rgba(230, 184, 92, 0.14)',
-    color: '#E6B85C',
-  },
-};
-
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className = '', variant = 'primary', size = 'md', style, ...props }, ref) => {
+    const appTheme = useAppTheme();
+    const variantStyles: Record<string, React.CSSProperties> = {
+      primary: {
+        backgroundColor: appTheme.primary,
+        color: appTheme.onPrimary,
+      },
+      secondary: {
+        backgroundColor: 'transparent',
+        color: appTheme.primary,
+        border: `1px solid ${appTheme.primary}`,
+      },
+      ghost: {
+        backgroundColor: 'transparent',
+        color: appTheme.primary,
+      },
+      danger: {
+        backgroundColor: appTheme.danger,
+        color: '#ffffff',
+      },
+      'xp-focus': {
+        backgroundColor: 'rgba(42, 140, 183, 0.14)',
+        color: '#2A8CB7',
+      },
+      'xp-creativity': {
+        backgroundColor: 'rgba(230, 184, 92, 0.14)',
+        color: '#E6B85C',
+      },
+    };
+
     return (
       <button
         ref={ref}

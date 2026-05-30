@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import { SKILL_COLORS, SKILL_ORDER } from '@/styles/theme';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 interface CreateTaskModalProps {
   show: boolean;
@@ -21,6 +21,7 @@ export interface CreateTaskData {
 }
 
 export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProps) {
+  const appTheme = useAppTheme();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('');
   const [estimatedMinutes, setEstimatedMinutes] = useState('');

@@ -3,7 +3,8 @@ import { Check, X, Trash2, Loader2, CircleCheck, Search, Send, Pencil, Zap } fro
 import type { ToolCallDef } from '@/types/ai';
 import { parseGenericArgs } from '@/utils/aiParsers';
 import { TOOL_LABELS } from '@/utils/aiLabels';
-import { SKILL_COLORS, appTheme } from '@/styles/theme';
+import { SKILL_COLORS } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 /** skill_id → 中文名 */
 const SKILL_NAME_MAP: Record<string, string> = {};
@@ -21,6 +22,7 @@ interface ToolCallCardProps {
 }
 
 export function ToolCallCard(props: ToolCallCardProps) {
+  const appTheme = useAppTheme();
   const { toolCall } = props;
 
   const info = TOOL_LABELS[toolCall.function.name];
@@ -51,6 +53,7 @@ export function ToolCallCard(props: ToolCallCardProps) {
 // ========== 分组卡片：创建类 ==========
 
 function CreateCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info }: ToolCallCardProps) {
+  const appTheme = useAppTheme();
   const params = parseGenericArgs(toolCall);
   const [modifyMode, setModifyMode] = useState(false);
 
@@ -83,6 +86,7 @@ function CreateCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info
 // ========== 分组卡片：执行类（完成/确认） ==========
 
 function ExecuteCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info }: ToolCallCardProps) {
+  const appTheme = useAppTheme();
   const params = parseGenericArgs(toolCall);
   const [modifyMode, setModifyMode] = useState(false);
   const query = (params.query as string) || '';
@@ -118,6 +122,7 @@ function ExecuteCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, inf
 // ========== 分组卡片：删除类 ==========
 
 function DeleteCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info }: ToolCallCardProps) {
+  const appTheme = useAppTheme();
   const params = parseGenericArgs(toolCall);
   const [modifyMode, setModifyMode] = useState(false);
   const query = (params.query as string) || '';
@@ -150,6 +155,7 @@ function DeleteCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info
 // ========== 分组卡片：修改类 ==========
 
 function UpdateCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info }: ToolCallCardProps) {
+  const appTheme = useAppTheme();
   const params = parseGenericArgs(toolCall);
   const [modifyMode, setModifyMode] = useState(false);
   const query = (params.query as string) || '';
@@ -185,6 +191,7 @@ function UpdateCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info
 // ========== 分组卡片：查询类 ==========
 
 function QueryCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info }: ToolCallCardProps) {
+  const appTheme = useAppTheme();
   const params = parseGenericArgs(toolCall);
   const [modifyMode, setModifyMode] = useState(false);
   const query = (params.query as string) || (params.date as string) || '';
@@ -219,6 +226,7 @@ function QueryCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info 
 // ========== 兜底卡片 ==========
 
 function GenericCard({ toolCall, isExecuting, onConfirm, onCancel, info }: ToolCallCardProps) {
+  const appTheme = useAppTheme();
   const params = parseGenericArgs(toolCall);
   const detailLines = buildDetailLines(toolCall.function.name, params);
 
@@ -261,6 +269,7 @@ function CardActions({
   confirmLabel: string;
   confirmColor: string;
 }) {
+  const appTheme = useAppTheme();
   return (
     <div className="flex" style={{ borderTop: `1px solid ${appTheme.hairline}` }}>
       <button
@@ -307,6 +316,7 @@ function CardActions({
 }
 
 function CardModifyInput({ onSubmit, onBack }: { onSubmit: (text: string) => void; onBack: () => void }) {
+  const appTheme = useAppTheme();
   const [text, setText] = useState('');
 
   const handleSubmit = () => {

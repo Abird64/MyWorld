@@ -1,21 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Card, NavBar } from '@/components/ui';
-import { useWeightsStore, type Weights } from '@/stores/weightsStore';
 import { useSettingStore } from '@/stores/settingStore';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme, useThemeMode } from '@/stores/themeStore';
 import { PageContainer } from '@/components/layout';
 import { BUILTIN_PROMPTS } from '@/utils/builtinPrompts';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
 import { Plus, Pencil, Trash2, X, Check, Lock, Download, AlertTriangle } from 'lucide-react';
 import * as scheduleService from '@/services/scheduleService';
 import { invoke } from '@tauri-apps/api/core';
-
-const weightLabels: Record<keyof Weights, string> = {
-  urgency: '紧急度',
-  value: '价值',
-  cost: '成本（速赢）',
-};
 
 const AI_PROVIDERS = [
   { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1' },
@@ -38,22 +31,22 @@ interface SettingsStyles {
   overlay: (opacity: number) => string;
 }
 
-const s: SettingsStyles = {
-  card: appTheme.canvas,
-  cardBorder: appTheme.hairline,
-  text: appTheme.ink,
-  textSub: `${appTheme.ink}99`,
-  accent: appTheme.primary,
-  accentDim: `${appTheme.primary}33`,
-  danger: appTheme.danger,
-  dangerDim: `${appTheme.danger}20`,
-  inputBg: 'rgba(0,0,0,0.06)',
-  inputBorder: '#CCC',
-  overlay: (opacity: number) => `rgba(0,0,0,${opacity})`,
-};
-
 export function SettingsPage() {
-  const weights = useWeightsStore();
+  const appTheme = useAppTheme();
+  const s: SettingsStyles = {
+    card: appTheme.canvas,
+    cardBorder: appTheme.hairline,
+    text: appTheme.ink,
+    textSub: `${appTheme.ink}99`,
+    accent: appTheme.primary,
+    accentDim: `${appTheme.primary}33`,
+    danger: appTheme.danger,
+    dangerDim: `${appTheme.danger}20`,
+    inputBg: `${appTheme.ink}0A`,
+    inputBorder: `${appTheme.ink}33`,
+    overlay: (opacity: number) => `${appTheme.ink}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`,
+  };
+  const { mode, setMode } = useThemeMode();
   const settings = useSettingStore();
   const { calendars, fetchCalendars } = useCalendarStore();
 
@@ -116,7 +109,7 @@ export function SettingsPage() {
     { id: 'schedules', label: '日程', description: '所有日程安排' },
     { id: 'contacts', label: '人脉', description: '所有联系人及联系方式' },
     { id: 'journals', label: '日记', description: '用户自己写的日记正文（.md 文件）' },
-    { id: 'ai_diary', label: 'AI日省', description: 'AI 生成的日省反思和尘笺' },
+    { id: 'ai_diary', label: 'AI提灯总结', description: 'AI 生成的提灯总结和尘笺' },
     { id: 'skills', label: '技能', description: '所有属性和经验记录' },
     { id: 'ai_conversations', label: 'AI对话', description: '所有提灯对话历史' },
     { id: 'ai_favorites', label: '收藏夹', description: '所有收藏的AI对话内容' },
@@ -195,6 +188,32 @@ export function SettingsPage() {
       <div className="flex-1 overflow-y-auto flex flex-col items-center px-4 sm:px-8 pt-6 pb-8">
         <div className="w-full max-w-[800px] space-y-5">
 
+          {/* ===== 外观 ===== */}
+          <Section title="外观" styles={s}>
+            <div className="flex items-center justify-between">
+              <span className="text-base" style={{ color: s.textSub }}>主题模式</span>
+              <div className="flex rounded-full p-0.5" style={{ backgroundColor: `${appTheme.ink}0D` }}>
+                {([
+                  { id: 'light' as const, label: '浅色' },
+                  { id: 'dark' as const, label: '深色' },
+                ]).map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setMode(opt.id)}
+                    className="px-4 py-1.5 rounded-full text-sm transition-all"
+                    style={{
+                      backgroundColor: mode === opt.id ? appTheme.canvas : 'transparent',
+                      color: mode === opt.id ? appTheme.ink : `${appTheme.ink}80`,
+                      boxShadow: mode === opt.id ? `0 0 0 0.5px ${appTheme.hairline}` : 'none',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Section>
+
           {/* ===== 通知设置 ===== */}
           <Section title="通知设置" styles={s}>
             <ToggleRow
@@ -209,22 +228,6 @@ export function SettingsPage() {
               onChange={(v) => set('notification.contact_reminder', String(v))}
               styles={s}
             />
-          </Section>
-
-          {/* ===== 任务推荐权重 ===== */}
-          <Section title="任务推荐权重" styles={s}>
-            <p className="text-sm mb-4" style={{ color: s.textSub }}>
-              系统根据这三个维度加权评分推荐最优任务
-            </p>
-            {(['urgency', 'value', 'cost'] as const).map((key) => (
-              <SliderRow
-                key={key}
-                label={weightLabels[key]}
-                value={Math.round(weights[key] * 100)}
-                onChange={(v) => weights.setWeights({ [key]: v / 100 })}
-                styles={s}
-              />
-            ))}
           </Section>
 
           {/* ===== AI 助手设置 ===== */}
@@ -680,8 +683,8 @@ export function SettingsPage() {
 function Section({ title, children, styles }: { title: string; children: React.ReactNode; styles: SettingsStyles }) {
   return (
     <Card
-      className="w-full p-5 rounded-xl"
-      style={{ backgroundColor: styles.card, border: `1px solid ${styles.cardBorder}` }}
+      className="w-full p-5"
+      style={{ backgroundColor: styles.card, border: `0.5px solid ${styles.cardBorder}` }}
     >
       <h3 className="text-xl mb-4 font-semibold" style={{ color: styles.text }}>
         {title}
@@ -717,34 +720,6 @@ function ToggleRow({ label, checked, onChange, styles, disabled = false }: {
           style={{ left: checked ? '22px' : '2px' }}
         />
       </button>
-    </div>
-  );
-}
-
-function SliderRow({ label, value, onChange, styles }: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  styles: SettingsStyles;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-base" style={{ color: styles.textSub }}>{label}</span>
-        <span className="text-sm" style={{ color: styles.textSub }}>{value}%</span>
-      </div>
-      <input
-        type="range"
-        min="0"
-        max="100"
-        value={value}
-        onChange={(e) => onChange(parseInt(e.target.value))}
-        className="w-full h-2 rounded-full appearance-none cursor-pointer"
-        style={{
-          accentColor: styles.accent,
-          background: `linear-gradient(to right, ${styles.accent} ${value}%, ${styles.overlay(0.12)} ${value}%)`,
-        }}
-      />
     </div>
   );
 }

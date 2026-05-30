@@ -1,21 +1,16 @@
 import { ChevronLeft } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { WindowControls } from '@/components/layout/WindowControls';
 
 interface NavBarProps {
   title: string;
-  navColor?: string;
   showBack?: boolean;
   onBack?: () => void;
 }
 
-export function NavBar({
-  title,
-  navColor = appTheme.surfaceBlack,
-  showBack,
-  onBack,
-}: NavBarProps) {
+export function NavBar({ title, showBack, onBack }: NavBarProps) {
+  const appTheme = useAppTheme();
   const goBack = useUIStore((s) => s.goBack);
   const activeSubPage = useUIStore((s) => s.activeSubPage);
   const shouldShowBack = showBack ?? !!activeSubPage;
@@ -27,8 +22,8 @@ export function NavBar({
       className="flex items-center justify-between px-4 flex-shrink-0"
       style={{
         height: 44,
-        backgroundColor: navColor,
-        borderBottom: '0.5px solid rgba(255,255,255,0.1)',
+        backgroundColor: 'transparent',
+        borderBottom: `0.5px solid ${appTheme.hairline}`,
       }}
     >
       {/* 左侧 */}
@@ -37,14 +32,14 @@ export function NavBar({
           <button
             onClick={handleBack}
             className="flex items-center gap-0.5 text-sm btn-press"
-            style={{ color: appTheme.primaryOnDark }}
+            style={{ color: appTheme.primary }}
           >
             <ChevronLeft size={20} />
             <span>返回</span>
           </button>
         )}
         {!shouldShowBack && (
-          <span className="text-[15px] font-semibold" style={{ color: appTheme.onDark }}>
+          <span className="text-[15px] font-semibold" style={{ color: appTheme.ink }}>
             {title}
           </span>
         )}
@@ -52,7 +47,7 @@ export function NavBar({
 
       {/* 中央 — 子页面标题 */}
       {shouldShowBack && (
-        <span className="text-[15px] font-semibold" style={{ color: appTheme.onDark }}>
+        <span className="text-[15px] font-semibold" style={{ color: appTheme.ink }}>
           {title}
         </span>
       )}

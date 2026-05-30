@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavBar } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
 import { useMemoryStore } from '@/stores/memoryStore';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { MEMORY_TYPE_LABELS, MEMORY_TYPE_ICONS } from '@/types/memory';
 import type { Memory } from '@/types/memory';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
@@ -39,6 +39,7 @@ function groupByType(memories: Memory[]): Map<string, Memory[]> {
 }
 
 export function MemoriesPage() {
+  const appTheme = useAppTheme();
   const { memories, loading, selectedType, fetchMemories, deleteMemory, setSelectedType } =
     useMemoryStore();
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
@@ -92,7 +93,7 @@ export function MemoriesPage() {
               style={{
                 backgroundColor: isActive ? appTheme.primary : 'transparent',
                 color: isActive ? '#fff' : appTheme.ink,
-                border: `1px solid ${isActive ? appTheme.primary : 'rgba(0,0,0,0.15)'}`,
+                border: `1px solid ${isActive ? appTheme.primary : appTheme.hairline}`,
                 opacity: isActive ? 1 : 0.7,
               }}
             >
@@ -165,7 +166,7 @@ export function MemoriesPage() {
                               <p
                                 className="mt-1 text-xs px-3 py-2 rounded-xl opacity-70"
                                 style={{
-                                  backgroundColor: 'rgba(0,0,0,0.03)',
+                                  backgroundColor: appTheme.divider,
                                   color: appTheme.ink,
                                 }}
                               >
@@ -196,7 +197,7 @@ export function MemoriesPage() {
                               onClick={() => setConfirmDelete(null)}
                               className="px-3 py-1 rounded-lg text-xs"
                               style={{
-                                backgroundColor: 'rgba(0,0,0,0.06)',
+                                backgroundColor: appTheme.canvasParchment,
                                 color: appTheme.ink,
                               }}
                             >

@@ -5,11 +5,12 @@ import { HabitCard } from '@/components/habits/HabitCard';
 import { CreateHabitModal } from '@/components/habits/CreateHabitModal';
 import { HabitHeatmap } from '@/components/habits/HabitHeatmap';
 import { useHabitStore } from '@/stores/habitStore';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { Plus } from 'lucide-react';
 import type { HabitWithStreak, CreateHabitInput, UpdateHabitInput } from '@/types/habit';
 
 export function HabitsPage() {
+  const appTheme = useAppTheme();
   const { habits, weekMatrix, fetchAll, checkHabit, uncheckHabit, createHabit, updateHabit, deleteHabit } = useHabitStore();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<HabitWithStreak | null>(null);
@@ -56,7 +57,7 @@ export function HabitsPage() {
         <div className="w-full max-w-[1000px] space-y-6">
           {/* 今日概览 */}
           {totalHabits > 0 && (
-            <div className="rounded-2xl p-4 flex items-center gap-4" style={{ backgroundColor: `${appTheme.primary}12` }}>
+            <div className="rounded-[18px] p-4 flex items-center gap-4" style={{ backgroundColor: `${appTheme.primary}12`, border: `0.5px solid ${appTheme.hairline}` }}>
               <div
                 className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold"
                 style={{ backgroundColor: appTheme.primary, color: appTheme.ink }}
@@ -86,7 +87,7 @@ export function HabitsPage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl p-12 text-center space-y-4" style={{ backgroundColor: appTheme.canvas }}>
+            <div className="rounded-[18px] p-12 text-center space-y-4" style={{ backgroundColor: appTheme.canvas, border: `0.5px solid ${appTheme.hairline}` }}>
               <p className="text-lg" style={{ color: `${appTheme.ink}66` }}>还没有习惯</p>
               <button
                 onClick={() => { setEditing(null); setShowForm(true); }}

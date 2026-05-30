@@ -38,3 +38,20 @@ pub fn set_task_skills(
         .collect();
     skill_repo::set_task_skills(&conn, &task_id, &pairs)
 }
+
+#[tauri::command]
+pub fn get_skill_activity(
+    state: State<'_, DbState>,
+    days: Option<i32>,
+) -> Result<Vec<skill_repo::DayActivity>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    skill_repo::get_skill_activity(&conn, days.unwrap_or(84))
+}
+
+#[tauri::command]
+pub fn get_xp_sources(
+    state: State<'_, DbState>,
+) -> Result<Vec<skill_repo::XpSource>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    skill_repo::get_xp_sources(&conn)
+}

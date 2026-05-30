@@ -2,7 +2,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { X, Sparkles } from 'lucide-react';
 import { SKILL_COLORS } from '@/styles/theme';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import type { CompleteResult } from '@/types/task';
 import type { ExtractedContact } from '@/types/journal';
 import { ContactSyncCard } from './ContactSyncCard';
@@ -34,23 +34,22 @@ export function ReflectionPanel({
   onContactIgnore,
   onConfirmAll,
 }: ReflectionPanelProps) {
+  const appTheme = useAppTheme();
   if (!show) return null;
 
   const hasContacts = contacts.length > 0;
   const hasReflection = !!reflection;
 
-  // Panel uses surfaceBlack background (dark)
-  const navIsDark = true;
-  const TXT = navIsDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.85)';
-  const TXT_DIM = navIsDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
-  const TXT_PROSE = navIsDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.8)';
-  const SURFACE_BG = navIsDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
-  const BTN_BG = navIsDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
-  const BTN_HOVER = navIsDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.14)';
-  const BTN_TEXT = navIsDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)';
-  const LABEL_DIM = navIsDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
-  const MUTED = navIsDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
-  const BORDER = navIsDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  const TXT = appTheme.ink;
+  const TXT_DIM = `${appTheme.ink}99`;
+  const TXT_PROSE = `${appTheme.ink}CC`;
+  const SURFACE_BG = `${appTheme.ink}08`;
+  const BTN_BG = `${appTheme.ink}0D`;
+  const BTN_HOVER = `${appTheme.ink}1A`;
+  const BTN_TEXT = `${appTheme.ink}99`;
+  const LABEL_DIM = `${appTheme.ink}66`;
+  const MUTED = `${appTheme.ink}33`;
+  const BORDER = `${appTheme.ink}14`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -60,17 +59,20 @@ export function ReflectionPanel({
       {/* 面板 */}
       <div
         className="relative w-full max-w-[640px] max-h-[85vh] rounded-[18px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300"
-        style={{ backgroundColor: appTheme.surfaceBlack }}
+        style={{ backgroundColor: appTheme.canvas }}
       >
         {/* 头部 */}
         <div className="flex-shrink-0 flex items-center justify-between px-8 pt-6 pb-4 border-b" style={{ borderColor: BORDER }}>
           <div className="flex items-center gap-3">
             <Sparkles size={22} style={{ color: appTheme.primary }} />
-            <h2 className="text-xl" style={{ color: TXT }}>日省 · {date}</h2>
+            <h2 className="text-base font-medium" style={{ color: TXT }}>提灯总结 · {date}</h2>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+            style={{ backgroundColor: 'transparent' }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = `${appTheme.ink}0D`)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
             <X size={18} style={{ color: TXT_DIM }} />
           </button>
@@ -94,7 +96,7 @@ export function ReflectionPanel({
                       <span className="text-sm" style={{ color }}>
                         {SKILL_COLORS[s.skill_id]?.name ?? s.skill_name}
                       </span>
-                      <span className="text-base font-semibold" style={{ color: TXT }}>
+                      <span className="text-sm font-semibold" style={{ color: TXT }}>
                         +{s.xp}
                       </span>
                     </div>
@@ -134,7 +136,7 @@ export function ReflectionPanel({
             <div className="rounded-2xl p-5" style={{ backgroundColor: SURFACE_BG }}>
               <p className="text-sm mb-3 tracking-wider" style={{ color: LABEL_DIM }}>提灯的旁白</p>
               <div
-                className={`text-base leading-relaxed prose-sm max-w-none ${navIsDark ? 'prose-invert' : ''}`}
+                className="text-sm leading-relaxed prose-sm max-w-none"
                 style={{ color: TXT_PROSE }}
               >
                 <Markdown remarkPlugins={[remarkGfm]}>{reflection}</Markdown>
@@ -170,7 +172,6 @@ export function ReflectionPanel({
                     contact={c}
                     onSync={() => onContactSync(i)}
                     onIgnore={() => onContactIgnore(i)}
-                    dark={navIsDark}
                   />
                 ))}
               </div>

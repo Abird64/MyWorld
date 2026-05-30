@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useThemeStore } from '@/stores/themeStore';
 
-interface WindowControlsProps {
-  isDark?: boolean;
-}
-
-export function WindowControls({ isDark = true }: WindowControlsProps) {
+export function WindowControls() {
   const [hovered, setHovered] = useState<number | null>(null);
+  const mode = useThemeStore((s) => s.mode);
+  const isDark = mode === 'dark';
 
   const appWindow = getCurrentWindow();
 
@@ -31,18 +30,17 @@ export function WindowControls({ isDark = true }: WindowControlsProps) {
     },
   ];
 
-  const defaultBg = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
   const iconStroke = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       {buttons.map((btn) => (
         <button
           key={btn.id}
           title={btn.label}
-          className="w-8 h-8 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center"
+          className="w-4 h-4 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center"
           style={{
-            backgroundColor: hovered === btn.id ? btn.color : defaultBg,
+            backgroundColor: btn.color,
           }}
           onMouseEnter={() => setHovered(btn.id)}
           onMouseLeave={() => setHovered(null)}
@@ -50,8 +48,8 @@ export function WindowControls({ isDark = true }: WindowControlsProps) {
         >
           {hovered === btn.id && (
             <svg
-              width="10"
-              height="10"
+              width="7"
+              height="7"
               viewBox="0 0 10 10"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -60,7 +58,7 @@ export function WindowControls({ isDark = true }: WindowControlsProps) {
                 <path
                   d="M1 5H9"
                   stroke={iconStroke}
-                  strokeWidth="1.2"
+                  strokeWidth="1.5"
                   strokeLinecap="round"
                 />
               )}
@@ -72,7 +70,7 @@ export function WindowControls({ isDark = true }: WindowControlsProps) {
                   height="6"
                   rx="0.5"
                   stroke={iconStroke}
-                  strokeWidth="1.2"
+                  strokeWidth="1.5"
                   fill="none"
                 />
               )}
@@ -80,7 +78,7 @@ export function WindowControls({ isDark = true }: WindowControlsProps) {
                 <path
                   d="M2 2L8 8M8 2L2 8"
                   stroke={iconStroke}
-                  strokeWidth="1.2"
+                  strokeWidth="1.5"
                   strokeLinecap="round"
                 />
               )}

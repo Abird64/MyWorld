@@ -1,5 +1,6 @@
 import type { Skill } from '@/types/skill';
-import { SKILL_COLORS, SKILL_ORDER, appTheme } from '@/styles/theme';
+import { SKILL_COLORS, SKILL_ORDER } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 interface TitleSummaryProps {
   skills: Skill[];
@@ -13,6 +14,7 @@ const LEVEL_TITLES: Record<number, string> = {
 };
 
 export function TitleSummary({ skills }: TitleSummaryProps) {
+  const appTheme = useAppTheme();
   const totalLevel = skills.reduce((sum, s) => sum + s.level, 0);
   const totalXp = skills.reduce((sum, s) => sum + s.total_xp, 0);
 
@@ -36,7 +38,7 @@ export function TitleSummary({ skills }: TitleSummaryProps) {
         <div className="w-px h-8" style={{ backgroundColor: `${appTheme.ink}1A` }} />
         <div className="text-center">
           <div className="text-2xl font-bold" style={{ color: appTheme.ink }}>{totalXp.toLocaleString()}</div>
-          <div className="text-xs" style={{ color: `${appTheme.ink}59` }}>总修为</div>
+          <div className="text-xs" style={{ color: `${appTheme.ink}59` }}>总经验值</div>
         </div>
         <div className="w-px h-8" style={{ backgroundColor: `${appTheme.ink}1A` }} />
         <div className="text-center">

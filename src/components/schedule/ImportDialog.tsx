@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import * as calendarService from '@/services/calendarService';
 import type { Calendar } from '@/types/schedule';
 import { X } from 'lucide-react';
@@ -12,6 +12,7 @@ interface ImportDialogProps {
 }
 
 export function ImportDialog({ eventCount, onConfirm, onCancel }: ImportDialogProps) {
+  const appTheme = useAppTheme();
   const { calendars } = useCalendarStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

@@ -57,6 +57,11 @@ export async function completeDiary(date: string): Promise<CompleteResult> {
   });
 }
 
+/** 获取日记总天数 */
+export async function getJournalCount(): Promise<number> {
+  return tauriInvoke<number>('get_journal_count');
+}
+
 /** 日省反思结果 */
 export interface DailyReflectionResult {
   reflection: string;

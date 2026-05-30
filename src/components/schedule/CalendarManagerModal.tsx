@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { X, Plus, Trash2 } from 'lucide-react';
 
 const PRESET_COLORS = [
@@ -14,6 +14,7 @@ interface Props {
 }
 
 export function CalendarManagerModal({ onClose }: Props) {
+  const appTheme = useAppTheme();
   const { calendars, fetchCalendars, createCalendar, updateCalendar, deleteCalendar } = useCalendarStore();
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#3A8FB7');

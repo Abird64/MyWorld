@@ -1,5 +1,5 @@
 import type { Schedule } from '@/types/schedule';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { EventBlock } from './EventBlock';
 import {
   HOUR_START,
@@ -21,6 +21,7 @@ const weekDayNames = ['周日', '周一', '周二', '周三', '周四', '周五'
 const GAP = 1.6;
 
 export function DayView({ date, schedules, onEventClick, onBack, backLabel = '返回周视图' }: DayViewProps) {
+  const appTheme = useAppTheme();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const isToday = date.getTime() === today.getTime();

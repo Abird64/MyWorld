@@ -8,7 +8,7 @@ import { ChatView } from '@/components/ai/ChatView';
 import { useAiStore } from '@/stores/aiStore';
 import { useFavoriteStore } from '@/stores/favoriteStore';
 import { useMemoryStore } from '@/stores/memoryStore';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme, useThemeHelpers, useThemeStore } from '@/stores/themeStore';
 import type { PageTheme } from '@/styles/theme';
 import { MEMORY_TYPE_LABELS, MEMORY_TYPE_ICONS } from '@/types/memory';
 import type { Memory } from '@/types/memory';
@@ -45,18 +45,21 @@ function groupByType(memories: Memory[]): Map<string, Memory[]> {
 type ViewMode = 'chat' | 'favorites' | 'memories';
 
 export function HomePage() {
+  const appTheme = useAppTheme();
   const [input, setInput] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const s = (o: number) => `rgba(0,0,0,${o})`;
+  const h = useThemeHelpers();
+  const s = h.rgba;
 
+  const themeMode = useThemeStore((s) => s.mode);
   const t: PageTheme = {
     id: 'lantern', name: '拾阶',
     bg: appTheme.canvas, nav: appTheme.surfaceBlack,
     accent: appTheme.primary, accentLight: `${appTheme.primary}33`,
     text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink,
-    isDark: false, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success,
+    isDark: themeMode === 'dark', danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success,
   };
 
   const {
@@ -158,16 +161,21 @@ export function HomePage() {
         className="flex items-center gap-2 px-4 py-2 flex-shrink-0"
         style={{ borderBottom: `0.5px solid ${appTheme.hairline}` }}
       >
+        {/* 对话列表切换 */}
         <button
-          onClick={handleNewConversation}
+          onClick={() => { setShowConversations(!showConversations); setViewMode('chat'); }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all btn-press"
           style={{
-            backgroundColor: viewMode === 'chat' ? appTheme.primary + '14' : 'transparent',
-            color: viewMode === 'chat' ? appTheme.primary : appTheme.inkMuted48,
+            backgroundColor: showConversations ? s(0.08) : 'transparent',
+            color: appTheme.inkMuted48,
           }}
         >
-          <Plus size={14} /> 新对话
+          <MessageSquare size={14} />
+          <span className="hidden sm:inline">历史</span>
         </button>
+
+        <div className="flex-1" />
+
         <button
           onClick={() => switchView('favorites')}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all btn-press"
@@ -188,20 +196,15 @@ export function HomePage() {
         >
           <BookOpen size={14} /> 小本本
         </button>
-
-        <div className="flex-1" />
-
-        {/* 对话列表切换 */}
         <button
-          onClick={() => { setShowConversations(!showConversations); setViewMode('chat'); }}
+          onClick={handleNewConversation}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all btn-press"
           style={{
-            backgroundColor: showConversations ? s(0.08) : 'transparent',
-            color: appTheme.inkMuted48,
+            backgroundColor: viewMode === 'chat' ? appTheme.primary + '14' : 'transparent',
+            color: viewMode === 'chat' ? appTheme.primary : appTheme.inkMuted48,
           }}
         >
-          <MessageSquare size={14} />
-          <span className="hidden sm:inline">历史</span>
+          <Plus size={14} /> 新对话
         </button>
       </div>
 

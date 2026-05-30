@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Check, Circle, Trash2, Plus } from 'lucide-react';
 import { SKILL_COLORS, SKILL_ORDER } from '@/styles/theme';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import * as skillService from '@/services/skillService';
 import { formatDateTime } from '@/utils/dateFormat';
 import type { Task } from '@/types/task';
@@ -44,6 +44,7 @@ export function TaskDetailPanel({
   onCompleteSubtask,
   onDeleteSubtask,
 }: TaskDetailPanelProps) {
+  const appTheme = useAppTheme();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [status, setStatus] = useState(task.status);

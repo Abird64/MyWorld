@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import type { Schedule, UpdateScheduleInput } from '@/types/schedule';
 
@@ -45,9 +45,10 @@ function parseRecurringInstanceId(id: string): { baseId: string; dateStr: string
 type EditScope = 'this' | 'all';
 
 export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDeleteInstance, onClose }: EventDetailProps) {
+  const appTheme = useAppTheme();
   const { calendars, getCalendarById } = useCalendarStore();
-  const inputBg = 'rgba(0,0,0,0.04)';
-  const surfaceBg = 'rgba(0,0,0,0.03)';
+  const inputBg = appTheme.canvasParchment;
+  const surfaceBg = appTheme.divider;
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(event.title);
   const [startAt, setStartAt] = useState(toLocalDatetime(event.start_at));
@@ -337,7 +338,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
 
             {/* 重复规则 */}
             {event.rrule && (
-              <div className="text-xs rounded-lg px-3 py-2" style={{ color: `${appTheme.ink}80`, backgroundColor: 'rgba(0,0,0,0.02)' }}>
+              <div className="text-xs rounded-lg px-3 py-2" style={{ color: `${appTheme.ink}80`, backgroundColor: appTheme.divider }}>
                 重复: {event.rrule}
               </div>
             )}
@@ -372,7 +373,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
                   onClick={() => handleScopeChoice('this')}
                   className="w-full px-4 py-3 rounded-xl text-sm text-left transition-colors"
                   style={{ border: `1px solid ${appTheme.primary}33`, backgroundColor: inputBg }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)')}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = appTheme.canvasParchment)}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = inputBg)}
                 >
                   <div className="font-medium" style={{ color: appTheme.ink }}>只{showScopeChoice === 'edit' ? '修改' : '删除'}这一次</div>
@@ -384,7 +385,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
                   onClick={() => handleScopeChoice('all')}
                   className="w-full px-4 py-3 rounded-xl text-sm text-left transition-colors"
                   style={{ border: `1px solid ${appTheme.primary}33`, backgroundColor: inputBg }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)')}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = appTheme.canvasParchment)}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = inputBg)}
                 >
                   <div className="font-medium" style={{ color: appTheme.ink }}>{showScopeChoice === 'edit' ? '修改' : '删除'}所有实例</div>
@@ -409,7 +410,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
         {/* 删除确认（非重复事件） */}
         {showDeleteConfirm && !isRecurringInstance && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50">
-            <div className="bg-[#F8F5F0] rounded-2xl p-5 w-[300px]">
+            <div className="rounded-2xl p-5 w-[300px]" style={{ backgroundColor: appTheme.canvas }}>
               <h3 className="text-lg font-medium mb-3" style={{ color: appTheme.ink }}>确认删除</h3>
               <p className="text-sm mb-4" style={{ color: `${appTheme.ink}B2` }}>
                 确定要删除「{event.title}」吗？

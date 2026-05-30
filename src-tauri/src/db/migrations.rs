@@ -448,6 +448,25 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
         [],
     );
 
+    // 增量迁移：技能 ID 英文重命名
+    // knowledge→focus, physique→vitality, talent→creativity, worldliness→insight, charm→empathy, cultivation→expression
+    // 先更新子表（避免外键冲突），再更新主表
+    let skill_id_map: &[(&str, &str)] = &[
+        ("knowledge", "focus"),
+        ("physique", "vitality"),
+        ("talent", "creativity"),
+        ("worldliness", "insight"),
+        ("charm", "empathy"),
+        ("cultivation", "expression"),
+    ];
+    for &(old_id, new_id) in skill_id_map {
+        let _ = conn.execute("UPDATE task_skills SET skill_id = ?1 WHERE skill_id = ?2", rusqlite::params![new_id, old_id]);
+        let _ = conn.execute("UPDATE skill_events SET skill_id = ?1 WHERE skill_id = ?2", rusqlite::params![new_id, old_id]);
+        let _ = conn.execute("UPDATE skills SET id = ?1 WHERE id = ?2", rusqlite::params![new_id, old_id]);
+        // habits 表也可能引用旧 skill_id
+        let _ = conn.execute("UPDATE habits SET skill_id = ?1 WHERE skill_id = ?2", rusqlite::params![new_id, old_id]);
+    }
+
     log::info!("Database migrations completed");
     Ok(())
 }

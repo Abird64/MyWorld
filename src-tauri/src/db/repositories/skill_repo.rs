@@ -61,12 +61,12 @@ fn gen_id() -> String {
 
 /// 6个默认技能的定义
 const DEFAULT_SKILLS: &[(&str, &str, &str)] = &[
-    ("knowledge", "学识", "#3A8FB7"),
-    ("physique", "筋骨", "#4B7F52"),
-    ("charm", "风华", "#C83C3C"),
-    ("talent", "才情", "#E8B959"),
-    ("worldliness", "入世", "#B87353"),
-    ("cultivation", "修为", "#8A6DA7"),
+    ("focus", "专注力", "#3A8FB7"),
+    ("vitality", "生命力", "#4B7F52"),
+    ("empathy", "共情力", "#C83C3C"),
+    ("creativity", "创造力", "#E8B959"),
+    ("insight", "洞察力", "#B87353"),
+    ("expression", "表现力", "#8A6DA7"),
 ];
 
 /// 初始化6个默认技能（INSERT OR IGNORE，安全重复调用）
@@ -89,12 +89,12 @@ pub fn list_skills(conn: &Connection) -> Result<Vec<Skill>, String> {
     let mut stmt = conn
         .prepare(&format!(
             "SELECT {} FROM skills ORDER BY CASE id
-               WHEN 'knowledge' THEN 0
-               WHEN 'physique' THEN 1
-               WHEN 'charm' THEN 2
-               WHEN 'talent' THEN 3
-               WHEN 'worldliness' THEN 4
-               WHEN 'cultivation' THEN 5
+               WHEN 'focus' THEN 0
+               WHEN 'vitality' THEN 1
+               WHEN 'empathy' THEN 2
+               WHEN 'creativity' THEN 3
+               WHEN 'insight' THEN 4
+               WHEN 'expression' THEN 5
                ELSE 6
              END",
             SKILL_COLUMNS
@@ -165,6 +165,72 @@ fn xp_to_level(total_xp: i32) -> i32 {
         }
     }
     1
+}
+
+/// 每日活跃记录
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DayActivity {
+    pub day: String,
+    pub total_xp: i32,
+}
+
+/// 获取最近 N 天每天的 XP 总量
+pub fn get_skill_activity(conn: &Connection, days: i32) -> Result<Vec<DayActivity>, String> {
+    let mut stmt = conn
+        .prepare(&format!(
+            "SELECT date(created_at) as day, SUM(xp_amount) as total_xp
+             FROM skill_events
+             WHERE created_at >= date('now', '-{} days')
+             GROUP BY date(created_at)
+             ORDER BY day",
+            days
+        ))
+        .map_err(|e| format!("Failed to prepare get_skill_activity: {}", e))?;
+
+    let activities = stmt
+        .query_map([], |row| {
+            Ok(DayActivity {
+                day: row.get("day")?,
+                total_xp: row.get("total_xp")?,
+            })
+        })
+        .map_err(|e| format!("Failed to query skill_activity: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect skill_activity: {}", e))?;
+
+    Ok(activities)
+}
+
+/// 经验来源统计
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct XpSource {
+    pub source_type: String,
+    pub total_xp: i32,
+}
+
+/// 按来源类型统计 XP 总量
+pub fn get_xp_sources(conn: &Connection) -> Result<Vec<XpSource>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT source_type, SUM(xp_amount) as total_xp
+             FROM skill_events
+             GROUP BY source_type
+             ORDER BY total_xp DESC",
+        )
+        .map_err(|e| format!("Failed to prepare get_xp_sources: {}", e))?;
+
+    let sources = stmt
+        .query_map([], |row| {
+            Ok(XpSource {
+                source_type: row.get("source_type")?,
+                total_xp: row.get("total_xp")?,
+            })
+        })
+        .map_err(|e| format!("Failed to query xp_sources: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect xp_sources: {}", e))?;
+
+    Ok(sources)
 }
 
 /// 检查并升级技能等级（在 XP 增加后调用）

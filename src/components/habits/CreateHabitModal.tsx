@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { X, Trash2 } from 'lucide-react';
 import type { HabitWithStreak, CreateHabitInput, UpdateHabitInput } from '@/types/habit';
 
@@ -14,6 +14,7 @@ interface CreateHabitModalProps {
 }
 
 export function CreateHabitModal({ editing, onSubmit, onCancel, onDelete }: CreateHabitModalProps) {
+  const appTheme = useAppTheme();
   const [name, setName] = useState(editing?.name ?? '');
   const [icon, setIcon] = useState(editing?.icon ?? '✨');
   const [color, setColor] = useState(editing?.color ?? COLOR_OPTIONS[0]);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import type { HabitWithStreak, WeekMatrix } from '@/types/habit';
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
@@ -12,6 +12,7 @@ interface HabitCardProps {
 }
 
 export function HabitCard({ habit, weekMatrix, onToggle, onEdit }: HabitCardProps) {
+  const appTheme = useAppTheme();
   const [isAnimating, setIsAnimating] = useState(false);
   const accentColor = habit.color || appTheme.primary;
 
@@ -30,9 +31,10 @@ export function HabitCard({ habit, weekMatrix, onToggle, onEdit }: HabitCardProp
     <button
       onClick={handleToggle}
       onContextMenu={(e) => { e.preventDefault(); onEdit(habit); }}
-      className="rounded-2xl p-5 text-left transition-all w-full"
+      className="rounded-[18px] p-5 text-left transition-all w-full"
       style={{
         backgroundColor: appTheme.canvas,
+        border: `0.5px solid ${appTheme.hairline}`,
         borderLeft: `4px solid ${accentColor}`,
         transform: isAnimating ? 'scale(0.95)' : 'scale(1)',
         opacity: isAnimating && habit.checked_today ? 0.7 : 1,

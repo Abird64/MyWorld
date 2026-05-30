@@ -19,7 +19,7 @@ import * as scheduleService from '@/services/scheduleService';
 import { startNotificationChecker, stopNotificationChecker, setNotificationEnabled } from '@/services/notificationService';
 import { useSettingStore } from '@/stores/settingStore';
 import { addExdate } from '@/services/scheduleService';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { Plus } from 'lucide-react';
 import type { Schedule, CreateScheduleInput, UpdateScheduleInput } from '@/types/schedule';
 import type { ParsedIcsEvent } from '@/utils/icsParser';
@@ -48,6 +48,7 @@ function formatWeekLabel(weekMonday: Date): string {
 }
 
 export function SchedulePage() {
+  const appTheme = useAppTheme();
   const getSetting = useSettingStore((s) => s.get);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [weekMonday, setWeekMonday] = useState(() => getWeekMonday(new Date()));

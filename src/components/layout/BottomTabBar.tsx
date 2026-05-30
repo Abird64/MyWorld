@@ -1,6 +1,6 @@
 import { Sparkles, Users, Calendar, User } from 'lucide-react';
 import { useUIStore, type MainTab } from '@/stores/uiStore';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 const tabs: { id: MainTab; label: string; icon: typeof Sparkles }[] = [
   { id: 'chat', label: '提灯', icon: Sparkles },
@@ -10,6 +10,7 @@ const tabs: { id: MainTab; label: string; icon: typeof Sparkles }[] = [
 ];
 
 export function BottomTabBar() {
+  const appTheme = useAppTheme();
   const activeTab = useUIStore((s) => s.activeTab);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
 

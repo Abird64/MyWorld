@@ -1,16 +1,14 @@
 import { useRef } from 'react';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
+import { useAppTheme } from '@/stores/themeStore';
 
 interface PromptPouchProps {
   prompts: PromptTemplate[];
   onSelect: (prompt: PromptTemplate) => void;
-  /** 主题强调色，用于标签 hover 态 */
-  accentColor?: string;
-  /** 主题文字色 */
-  textColor?: string;
 }
 
-export function PromptPouch({ prompts, onSelect, accentColor = '#58A968', textColor = '#EBEBE6' }: PromptPouchProps) {
+export function PromptPouch({ prompts, onSelect }: PromptPouchProps) {
+  const appTheme = useAppTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   if (prompts.length === 0) return null;
@@ -34,28 +32,25 @@ export function PromptPouch({ prompts, onSelect, accentColor = '#58A968', textCo
           onClick={() => onSelect(p)}
           className="flex-shrink-0 px-2.5 py-1 rounded-full text-xs transition-all border whitespace-nowrap"
           style={{
-            color: `${textColor}99`,
-            backgroundColor: `${textColor}0D`,
-            borderColor: `${textColor}0D`,
+            color: `${appTheme.ink}99`,
+            backgroundColor: `${appTheme.ink}08`,
+            borderColor: `${appTheme.ink}0D`,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.color = textColor;
-            e.currentTarget.style.backgroundColor = `${accentColor}26`;
-            e.currentTarget.style.borderColor = `${accentColor}40`;
+            e.currentTarget.style.color = appTheme.primary;
+            e.currentTarget.style.backgroundColor = `${appTheme.primary}12`;
+            e.currentTarget.style.borderColor = `${appTheme.primary}33`;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.color = `${textColor}99`;
-            e.currentTarget.style.backgroundColor = `${textColor}0D`;
-            e.currentTarget.style.borderColor = `${textColor}0D`;
+            e.currentTarget.style.color = `${appTheme.ink}99`;
+            e.currentTarget.style.backgroundColor = `${appTheme.ink}08`;
+            e.currentTarget.style.borderColor = `${appTheme.ink}0D`;
           }}
           title={p.prompt}
         >
           {p.title}
         </button>
       ))}
-      <style>{`
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-      `}</style>
     </div>
   );
 }

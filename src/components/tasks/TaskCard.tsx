@@ -1,6 +1,6 @@
 import { Check, Circle, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatDate, isOverdue } from '@/utils/dateFormat';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import type { Task } from '@/types/task';
 
 interface TaskCardProps {
@@ -30,6 +30,7 @@ export function TaskCard({
   onSubtaskClick,
   onSubtaskComplete,
 }: TaskCardProps) {
+  const appTheme = useAppTheme();
   const completed = task.status === 'completed';
   const txtMid = appTheme.ink + '80';
   const bgSubtle = appTheme.ink + '0D';
@@ -43,8 +44,8 @@ export function TaskCard({
   return (
     <div>
       <div
-        className="backdrop-blur-sm rounded-[18px] p-4 cursor-pointer relative group h-[130px] overflow-hidden"
-        style={{ backgroundColor: appTheme.canvas }}
+        className="rounded-[18px] p-4 cursor-pointer relative group h-[130px] overflow-hidden"
+        style={{ backgroundColor: appTheme.canvas, border: `0.5px solid ${appTheme.hairline}` }}
         onClick={() => {
           if (multiSelectMode) {
             onToggleSelect(task.id);
@@ -142,8 +143,8 @@ export function TaskCard({
             <div
               key={sub.id}
               onClick={() => onSubtaskClick(sub)}
-              className="backdrop-blur-sm rounded-2xl px-4 py-3 flex items-center gap-3 cursor-pointer transition-colors"
-              style={{ backgroundColor: appTheme.canvas + '66' }}
+              className="rounded-[18px] px-4 py-3 flex items-center gap-3 cursor-pointer transition-colors"
+              style={{ backgroundColor: appTheme.canvasParchment }}
             >
               <button
                 onClick={(e) => { e.stopPropagation(); onSubtaskComplete(e, sub.id); }}

@@ -1,5 +1,5 @@
 import { useJournalStore } from '@/stores/journalStore';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -17,6 +17,7 @@ function getToday(): string {
 }
 
 export function TimelineDropdown() {
+  const appTheme = useAppTheme();
   const {
     timelineYear: year,
     timelineMonth: month,

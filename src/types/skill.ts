@@ -1,7 +1,7 @@
 /** 技能 - 对应后端 skill_repo::Skill */
 export interface Skill {
-  id: string;          // 'knowledge', 'physique', 'charm', 'talent', 'worldliness', 'cultivation'
-  name: string;        // '学识', '筋骨', '风华', '才情', '入世', '修为'
+  id: string;          // 'focus', 'vitality', 'empathy', 'creativity', 'insight', 'expression'
+  name: string;        // '专注力', '生命力', '共情力', '创造力', '洞察力', '表现力'
   description: string | null;
   icon: string | null;
   color: string | null;
@@ -25,4 +25,16 @@ export interface TaskSkill {
 export interface SetTaskSkillsInput {
   skill_id: string;
   xp_amount: number;
+}
+
+/** 每日活跃记录 */
+export interface DayActivity {
+  day: string;
+  total_xp: number;
+}
+
+/** 经验来源统计 */
+export interface XpSource {
+  source_type: string;
+  total_xp: number;
 }

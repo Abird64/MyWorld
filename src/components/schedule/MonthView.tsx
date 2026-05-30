@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import type { Schedule } from '@/types/schedule';
 
 
@@ -15,6 +15,7 @@ const weekDayNames = ['周一', '周二', '周三', '周四', '周五', '周六'
 const MAX_VISIBLE_EVENTS = 3;
 
 export function MonthView({ year, month, schedules, onEventClick, onDayClick }: MonthViewProps) {
+  const appTheme = useAppTheme();
   const [hoveredCellIdx, setHoveredCellIdx] = useState<number | null>(null);
   // 获取当月第一天
   const firstDay = new Date(year, month, 1);

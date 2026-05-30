@@ -19,12 +19,12 @@ struct XpAllocation {
 /// skill_id → 中文名（静态映射，6个默认技能）
 fn skill_name_by_id(skill_id: &str) -> &'static str {
     match skill_id {
-        "knowledge" => "学识",
-        "physique" => "筋骨",
-        "charm" => "风华",
-        "talent" => "才情",
-        "worldliness" => "入世",
-        "cultivation" => "修为",
+        "focus" => "专注力",
+        "vitality" => "生命力",
+        "empathy" => "共情力",
+        "creativity" => "创造力",
+        "insight" => "洞察力",
+        "expression" => "表现力",
         _ => "未知",
     }
 }

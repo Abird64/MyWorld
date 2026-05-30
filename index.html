@@ -2,6 +2,15 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // 深色模式防闪烁：在 body 渲染前读取 localStorage 并应用 class
+      try {
+        const stored = JSON.parse(localStorage.getItem('shijie-theme') || '{}');
+        if (stored?.state?.mode === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch {}
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>拾阶</title>

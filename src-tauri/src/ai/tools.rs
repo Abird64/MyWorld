@@ -157,13 +157,13 @@ fn create_task_definition() -> ToolDefinition {
                     },
                     "xp_allocations": {
                         "type": "array",
-                        "description": "XP经验值分配方案。根据任务难度确定总XP（轻松3-5/普通6-10/困难11-16），再分配到1-3个相关属性上，单属性上限8。例：[{\"skill_id\":\"knowledge\",\"xp_amount\":5},{\"skill_id\":\"talent\",\"xp_amount\":3}]",
+                        "description": "XP经验值分配方案。根据任务难度确定总XP（轻松3-5/普通6-10/困难11-16），再分配到1-3个相关属性上，单属性上限8。例：[{\"skill_id\":\"focus\",\"xp_amount\":5},{\"skill_id\":\"creativity\",\"xp_amount\":3}]",
                         "items": {
                             "type": "object",
                             "properties": {
                                 "skill_id": {
                                     "type": "string",
-                                    "description": "属性ID：knowledge/physique/charm/talent/worldliness/cultivation"
+                                    "description": "属性ID：focus/vitality/empathy/creativity/insight/expression"
                                 },
                                 "xp_amount": {
                                     "type": "integer",
@@ -208,13 +208,13 @@ fn complete_task_definition() -> ToolDefinition {
                     },
                     "xp_allocations": {
                         "type": "array",
-                        "description": "XP经验值分配方案。根据任务难度确定总XP（轻松3-5/普通6-10/困难11-16），再分配到1-3个相关属性上，单属性上限8。例：[{\"skill_id\":\"knowledge\",\"xp_amount\":5},{\"skill_id\":\"talent\",\"xp_amount\":3}]",
+                        "description": "XP经验值分配方案。根据任务难度确定总XP（轻松3-5/普通6-10/困难11-16），再分配到1-3个相关属性上，单属性上限8。例：[{\"skill_id\":\"focus\",\"xp_amount\":5},{\"skill_id\":\"creativity\",\"xp_amount\":3}]",
                         "items": {
                             "type": "object",
                             "properties": {
                                 "skill_id": {
                                     "type": "string",
-                                    "description": "属性ID：knowledge/physique/charm/talent/worldliness/cultivation"
+                                    "description": "属性ID：focus/vitality/empathy/creativity/insight/expression"
                                 },
                                 "xp_amount": {
                                     "type": "integer",
@@ -594,13 +594,13 @@ pub fn settle_diary_definition() -> ToolDefinition {
                     },
                     "xp_allocations": {
                         "type": "array",
-                        "description": "XP经验值分配方案。根据日记内容判断侧重，总XP 3-10分配到2-4个相关属性，单属性上限5。例：今天学习了→knowledge+4,talent+2；今天运动了→physique+5,charm+2；今天社交了→charm+4,worldliness+3",
+                        "description": "XP经验值分配方案。根据日记内容判断侧重，总XP 3-10分配到2-4个相关属性，单属性上限5。例：今天学习了→focus+4,creativity+2；今天运动了→vitality+5,empathy+2；今天社交了→empathy+4,insight+3",
                         "items": {
                             "type": "object",
                             "properties": {
                                 "skill_id": {
                                     "type": "string",
-                                    "description": "属性ID：knowledge/physique/charm/talent/worldliness/cultivation"
+                                    "description": "属性ID：focus/vitality/empathy/creativity/insight/expression"
                                 },
                                 "xp_amount": {
                                     "type": "integer",
@@ -848,7 +848,7 @@ fn list_skills_definition() -> ToolDefinition {
         tool_type: "function".to_string(),
         function: FunctionDef {
             name: "list_skills".to_string(),
-            description: "查看六维属性面板。当用户问[我的属性/修为怎么样了/技能等级/看看成长]时调用。返回六维属性（学识/筋骨/风华/才情/入世/修为）的等级和经验值。".to_string(),
+            description: "查看六维属性面板。当用户问[我的属性/成长怎么样了/技能等级/看看成长]时调用。返回六维属性（专注力/生命力/共情力/创造力/洞察力/表现力）的等级和经验值。".to_string(),
             parameters: ToolParameters {
                 param_type: "object".to_string(),
                 properties: serde_json::json!({}),

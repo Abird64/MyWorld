@@ -358,7 +358,7 @@ pub fn complete_diary(
     date: &str,
 ) -> Result<super::task_repo::CompleteResult, String> {
     let default_allocations: Vec<(String, i32)> = [
-        "knowledge", "physique", "charm", "talent", "worldliness", "cultivation",
+        "focus", "vitality", "empathy", "creativity", "insight", "expression",
     ]
     .iter()
     .map(|s| (s.to_string(), 1))
@@ -413,4 +413,14 @@ pub fn complete_diary_with_xp(
 
     // 复用 complete_task 完成 XP 结算
     super::task_repo::complete_task(conn, &task_id)
+}
+
+/// 获取日记总天数
+pub fn get_journal_count(conn: &Connection) -> Result<i32, String> {
+    conn.query_row(
+        "SELECT COUNT(*) FROM journals",
+        [],
+        |row| row.get(0),
+    )
+    .map_err(|e| format!("Failed to count journals: {}", e))
 }

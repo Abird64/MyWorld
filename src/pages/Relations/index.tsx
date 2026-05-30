@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import { Plus, X, Trash2, Phone, MessageCircle, AtSign, Globe } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Plus, X, Trash2, Phone, MessageCircle, AtSign, Globe, Search } from 'lucide-react';
 import { NavBar, CapsuleTabs } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
 import { BirthdayBar } from '@/components/relations/BirthdayBar';
-import { appTheme } from '@/styles/theme';
+import { useAppTheme } from '@/stores/themeStore';
 import { useContactStore } from '@/stores/contactStore';
 import type { Contact, ContactMethodInput } from '@/types/contact';
 
@@ -160,8 +160,10 @@ function MethodRow({
 }
 
 export function RelationsPage() {
+  const appTheme = useAppTheme();
   const { contacts, isLoading, fetchContacts, createContact, updateContact, deleteContact } = useContactStore();
   const [activeCategory, setActiveCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 创建弹窗
   const [showCreate, setShowCreate] = useState(false);
@@ -203,9 +205,19 @@ export function RelationsPage() {
     }
   }, [showCreate]);
 
-  const filteredContacts = activeCategory === 'all'
-    ? contacts
-    : contacts.filter((c) => c.group_name === groupIdToLabel[activeCategory]);
+  const filteredContacts = useMemo(() => {
+    let list = activeCategory === 'all'
+      ? contacts
+      : contacts.filter((c) => c.group_name === groupIdToLabel[activeCategory]);
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter((c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.nickname && c.nickname.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [contacts, activeCategory, searchQuery]);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -324,10 +336,27 @@ export function RelationsPage() {
     <PageContainer className="relative">
       <NavBar title="相识" />
 
-      {/* 固定控制区：胶囊分类 */}
-      <div className="flex-shrink-0 flex flex-col items-center px-4 sm:px-8 pt-6 pb-4 relative z-10">
+      {/* 固定控制区：搜索 + 生日 + 分类 */}
+      <div className="flex-shrink-0 flex flex-col items-center px-4 sm:px-8 pt-4 pb-4 relative z-10">
         <div className="w-full max-w-[1000px] space-y-4">
+          {/* 搜索栏 */}
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: appTheme.inkMuted48 }} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索联系人"
+              className="w-full text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none"
+              style={{
+                backgroundColor: `${appTheme.ink}0A`,
+                color: appTheme.ink,
+              }}
+            />
+          </div>
+
           <BirthdayBar />
+
           <CapsuleTabs
             items={categories}
             activeId={activeCategory}
@@ -354,14 +383,16 @@ export function RelationsPage() {
                 <div
                   key={contact.id}
                   onClick={() => openDetail(contact)}
-                  className="rounded-[18px] p-4 flex items-center gap-4 hover:opacity-90 transition-colors cursor-pointer h-[110px] overflow-hidden"
-                  style={{ backgroundColor: appTheme.canvas }}
+                  className="rounded-[18px] p-4 flex items-center gap-4 transition-colors cursor-pointer h-[110px] overflow-hidden"
+                  style={{ backgroundColor: appTheme.canvas, border: `0.5px solid ${appTheme.hairline}` }}
                 >
                   {/* 头像 */}
                   <div
-                    className="w-[48px] h-[48px] rounded-full flex-shrink-0"
+                    className="w-[48px] h-[48px] rounded-full flex-shrink-0 flex items-center justify-center text-lg font-semibold text-white"
                     style={{ backgroundColor: getGroupColor(contact.group_name) }}
-                  />
+                  >
+                    {contact.name.charAt(0)}
+                  </div>
 
                   <div className="flex flex-col min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -639,9 +670,11 @@ export function RelationsPage() {
               {/* 头像预览 */}
               <div className="flex justify-center">
                 <div
-                  className="w-20 h-20 rounded-full"
+                  className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-semibold text-white"
                   style={{ backgroundColor: getGroupColor(editGroupName || selectedContact.group_name) }}
-                />
+                >
+                  {editName.charAt(0) || selectedContact.name.charAt(0)}
+                </div>
               </div>
 
               {/* 姓名 */}
