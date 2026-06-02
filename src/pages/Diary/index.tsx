@@ -6,7 +6,7 @@ import { TimelineDropdown } from '@/components/diary/TimelineDropdown';
 import { ReflectionPanel } from '@/components/diary/ReflectionPanel';
 import { useJournalStore } from '@/stores/journalStore';
 import { SKILL_COLORS } from '@/styles/theme';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import type { CompleteResult } from '@/types/task';
 
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
@@ -114,7 +114,7 @@ export function DiaryPage() {
             className="flex flex-col items-center min-w-[120px] cursor-pointer"
           >
             {isLoading ? (
-              <span className="text-sm" style={{ color: `${appTheme.ink}80` }}>加载中...</span>
+              <span className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>加载中...</span>
             ) : (
               <>
                 <span className="text-lg font-semibold" style={{ color: appTheme.ink }}>
@@ -150,9 +150,9 @@ export function DiaryPage() {
             useJournalStore.getState().setShowReflectionPanel(true);
           }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors text-sm"
-          style={{ color: `${appTheme.ink}66` }}
+          style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}
           onMouseEnter={(e) => (e.currentTarget.style.color = appTheme.ink)}
-          onMouseLeave={(e) => (e.currentTarget.style.color = `${appTheme.ink}66`)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = `${withAlpha(appTheme.ink, 0.4)}`)}
           title="查看提灯总结"
         >
           <span>✨</span>
@@ -174,7 +174,7 @@ export function DiaryPage() {
       <div className="flex-1 flex flex-col overflow-hidden px-4 sm:px-8">
         <div className="flex-1 overflow-y-auto max-w-[800px] w-full mx-auto">
           <style>{`
-            .diary-textarea::placeholder { color: ${appTheme.ink}4D; }
+            .diary-textarea::placeholder { color: ${withAlpha(appTheme.ink, 0.3)}; }
           `}</style>
           <textarea
             className="diary-textarea w-full h-full bg-transparent resize-none text-base focus:outline-none py-4"
@@ -190,7 +190,7 @@ export function DiaryPage() {
           />
         </div>
         <div className="flex-shrink-0 text-right py-2 max-w-[800px] w-full mx-auto">
-          <span className="text-xs" style={{ color: `${appTheme.ink}4D` }}>{wordCount} 字</span>
+          <span className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.3)}` }}>{wordCount} 字</span>
         </div>
       </div>
 
@@ -251,7 +251,7 @@ export function DiaryPage() {
                   <div
                     key={s.skill_id}
                     className="rounded-full px-4 py-1.5 flex items-center gap-2"
-                    style={{ backgroundColor: `${color}18` }}
+                    style={{ backgroundColor: `${withAlpha(color, 0.09)}` }}
                   >
                     <span className="text-sm" style={{ color }}>{s.skill_name}</span>
                     <span className="text-sm font-medium" style={{ color: appTheme.ink }}>+{s.xp}</span>
@@ -259,7 +259,7 @@ export function DiaryPage() {
                 );
               })}
             </div>
-            <p className="text-xs text-center" style={{ color: `${appTheme.ink}4D` }}>
+            <p className="text-xs text-center" style={{ color: `${withAlpha(appTheme.ink, 0.3)}` }}>
               共获得 {xpToast.xp_earned} XP · 点击关闭
             </p>
           </div>

@@ -88,7 +88,7 @@ pub fn initialize_default_skills(conn: &Connection) -> Result<(), String> {
 pub fn list_skills(conn: &Connection) -> Result<Vec<Skill>, String> {
     let mut stmt = conn
         .prepare(&format!(
-            "SELECT {} FROM skills ORDER BY CASE id
+            "SELECT {} FROM skills WHERE deleted_at IS NULL ORDER BY CASE id
                WHEN 'focus' THEN 0
                WHEN 'vitality' THEN 1
                WHEN 'empathy' THEN 2
@@ -113,7 +113,7 @@ pub fn list_skills(conn: &Connection) -> Result<Vec<Skill>, String> {
 /// 获取任务的所有技能XP分配
 pub fn get_task_skills(conn: &Connection, task_id: &str) -> Result<Vec<TaskSkill>, String> {
     let mut stmt = conn
-        .prepare("SELECT task_id, skill_id, xp_amount FROM task_skills WHERE task_id = ?1")
+        .prepare("SELECT task_id, skill_id, xp_amount FROM task_skills WHERE task_id = ?1 AND deleted_at IS NULL")
         .map_err(|e| format!("Failed to prepare get_task_skills: {}", e))?;
 
     let skills = stmt
@@ -125,16 +125,17 @@ pub fn get_task_skills(conn: &Connection, task_id: &str) -> Result<Vec<TaskSkill
     Ok(skills)
 }
 
-/// 设置任务的技能XP分配（先删后插）
+/// 设置任务的技能XP分配（先软删后插）
 pub fn set_task_skills(
     conn: &Connection,
     task_id: &str,
     skills: &[(String, i32)],
 ) -> Result<(), String> {
-    // 删除旧的分配
+    // 软删除旧的分配
+    let time = now();
     conn.execute(
-        "DELETE FROM task_skills WHERE task_id = ?1",
-        params![task_id],
+        "UPDATE task_skills SET deleted_at = ?1 WHERE task_id = ?2 AND deleted_at IS NULL",
+        params![time, task_id],
     )
     .map_err(|e| format!("Failed to clear task_skills: {}", e))?;
 
@@ -144,9 +145,10 @@ pub fn set_task_skills(
             continue;
         }
         let id = gen_id();
+        let time = now();
         conn.execute(
-            "INSERT INTO task_skills (id, task_id, skill_id, xp_amount) VALUES (?1, ?2, ?3, ?4)",
-            params![id, task_id, skill_id, xp_amount],
+            "INSERT INTO task_skills (id, task_id, skill_id, xp_amount, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+            params![id, task_id, skill_id, xp_amount, time],
         )
         .map_err(|e| format!("Failed to insert task_skill: {}", e))?;
     }
@@ -180,7 +182,7 @@ pub fn get_skill_activity(conn: &Connection, days: i32) -> Result<Vec<DayActivit
         .prepare(&format!(
             "SELECT date(created_at) as day, SUM(xp_amount) as total_xp
              FROM skill_events
-             WHERE created_at >= date('now', '-{} days')
+             WHERE created_at >= date('now', '-{} days') AND deleted_at IS NULL
              GROUP BY date(created_at)
              ORDER BY day",
             days
@@ -214,6 +216,7 @@ pub fn get_xp_sources(conn: &Connection) -> Result<Vec<XpSource>, String> {
         .prepare(
             "SELECT source_type, SUM(xp_amount) as total_xp
              FROM skill_events
+             WHERE deleted_at IS NULL
              GROUP BY source_type
              ORDER BY total_xp DESC",
         )
@@ -237,7 +240,7 @@ pub fn get_xp_sources(conn: &Connection) -> Result<Vec<XpSource>, String> {
 pub fn check_level_up(conn: &Connection, skill_id: &str) -> Result<(), String> {
     let (total_xp, current_level): (i32, i32) = conn
         .query_row(
-            "SELECT total_xp, level FROM skills WHERE id = ?1",
+            "SELECT total_xp, level FROM skills WHERE id = ?1 AND deleted_at IS NULL",
             params![skill_id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )

@@ -62,7 +62,7 @@ export function BirthdayBar() {
             </div>
             <p className="text-xs font-medium truncate" style={{ color: appTheme.ink }}>{b.name}</p>
             <p className="text-xs mt-0.5" style={{ color: appTheme.inkMuted48 }}>
-              {formatDate(b.upcoming_month, b.upcoming_day)}
+              {b.days_remaining === 0 ? '今天' : `${b.days_remaining}天后`}
             </p>
             {b.upcoming_age && (
               <span

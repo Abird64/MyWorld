@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { X } from 'lucide-react';
 import { getRecords } from '@/services/habitService';
 import type { HabitWithStreak, HabitRecord } from '@/types/habit';
@@ -101,7 +101,7 @@ export function HabitHeatmap({ habit, onClose }: HabitHeatmapProps) {
             <span className="text-2xl">{habit.icon || '✨'}</span>
             <h3 className="text-lg font-medium" style={{ color: appTheme.ink }}>{habit.name}</h3>
           </div>
-          <button onClick={onClose} className="p-1 rounded-full" style={{ color: `${appTheme.ink}88` }}>
+          <button onClick={onClose} className="p-1 rounded-full" style={{ color: `${withAlpha(appTheme.ink, 0.53)}` }}>
             <X size={20} />
           </button>
         </div>
@@ -110,15 +110,15 @@ export function HabitHeatmap({ habit, onClose }: HabitHeatmapProps) {
         <div className="flex gap-6">
           <div>
             <p className="text-2xl font-bold" style={{ color }}>{totalChecked}</p>
-            <p className="text-xs" style={{ color: `${appTheme.ink}66` }}>总打卡天数</p>
+            <p className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>总打卡天数</p>
           </div>
           <div>
             <p className="text-2xl font-bold" style={{ color }}>{maxStreak}</p>
-            <p className="text-xs" style={{ color: `${appTheme.ink}66` }}>最长连续</p>
+            <p className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>最长连续</p>
           </div>
           <div>
             <p className="text-2xl font-bold" style={{ color }}>{habit.streak}</p>
-            <p className="text-xs" style={{ color: `${appTheme.ink}66` }}>当前连续</p>
+            <p className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>当前连续</p>
           </div>
         </div>
 
@@ -132,7 +132,7 @@ export function HabitHeatmap({ habit, onClose }: HabitHeatmapProps) {
                   key={i}
                   className="text-[10px]"
                   style={{
-                    color: `${appTheme.ink}66`,
+                    color: `${withAlpha(appTheme.ink, 0.4)}`,
                     position: 'absolute',
                     marginLeft: `${m.col * 14}px`,
                   }}
@@ -147,7 +147,7 @@ export function HabitHeatmap({ habit, onClose }: HabitHeatmapProps) {
               <div className="flex flex-col gap-0.5 mr-1">
                 {['', '一', '', '三', '', '五', ''].map((label, i) => (
                   <div key={i} className="w-3 h-3 flex items-center">
-                    <span className="text-[8px]" style={{ color: `${appTheme.ink}44` }}>{label}</span>
+                    <span className="text-[8px]" style={{ color: `${withAlpha(appTheme.ink, 0.27)}` }}>{label}</span>
                   </div>
                 ))}
               </div>
@@ -160,7 +160,7 @@ export function HabitHeatmap({ habit, onClose }: HabitHeatmapProps) {
                       key={di}
                       className="w-3 h-3 rounded-[2px]"
                       style={{
-                        backgroundColor: cell.checked ? color : `${color}15`,
+                        backgroundColor: cell.checked ? color : `${withAlpha(color, 0.08)}`,
                       }}
                       title={cell.checked ? cell.date.toLocaleDateString() : undefined}
                     />

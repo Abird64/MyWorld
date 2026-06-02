@@ -1,10 +1,18 @@
-import { Sparkles, Users, Calendar, User } from 'lucide-react';
+import { LayoutDashboard, Calendar, User, type LucideIcon } from 'lucide-react';
 import { useUIStore, type MainTab } from '@/stores/uiStore';
 import { useAppTheme } from '@/stores/themeStore';
+import { LanternIcon } from '@/components/ui/LanternIcon';
 
-const tabs: { id: MainTab; label: string; icon: typeof Sparkles }[] = [
-  { id: 'chat', label: '提灯', icon: Sparkles },
-  { id: 'relations', label: '联系人', icon: Users },
+interface TabDef {
+  id: MainTab;
+  label: string;
+  icon: LucideIcon | typeof LanternIcon;
+  isCustom?: boolean;
+}
+
+const tabs: TabDef[] = [
+  { id: 'chat', label: '提灯', icon: LanternIcon, isCustom: true },
+  { id: 'dashboard', label: '看板', icon: LayoutDashboard },
   { id: 'schedule', label: '日历', icon: Calendar },
   { id: 'mine', label: '我的', icon: User },
 ];
@@ -35,7 +43,7 @@ export function BottomTabBar() {
             <Icon
               size={22}
               strokeWidth={isActive ? 2 : 1.5}
-              style={{ color: isActive ? appTheme.primary : appTheme.inkMuted48 }}
+              color={isActive ? appTheme.primary : appTheme.inkMuted48}
             />
             <span
               className="text-[10px]"

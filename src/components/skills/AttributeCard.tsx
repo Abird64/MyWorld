@@ -1,6 +1,6 @@
 import type { Skill } from '@/types/skill';
 import { SKILL_COLORS } from '@/styles/theme';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 
 interface AttributeCardProps {
   skill: Skill;
@@ -36,14 +36,14 @@ export function AttributeCard({ skill }: AttributeCardProps) {
   const color = info?.hex || '#888';
   const name = info?.name || skill.name;
   const icon = ATTR_ICONS[skill.id] || '●';
-  const { level, currentXp, xpToNext, progress } = getLevelInfo(skill.total_xp, skill.level);
+  const { level, currentXp, progress } = getLevelInfo(skill.total_xp, skill.level);
   const title = LEVEL_TITLES[level] || '超凡';
 
   return (
     <div className="flex items-center gap-3">
       <div
         className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-lg"
-        style={{ backgroundColor: `${color}20`, color }}
+        style={{ backgroundColor: `${withAlpha(color, 0.13)}`, color }}
       >
         {icon}
       </div>
@@ -54,7 +54,7 @@ export function AttributeCard({ skill }: AttributeCardProps) {
             Lv.{level} · {title} · {currentXp}/{100 * level} XP
           </span>
         </div>
-        <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${appTheme.ink}14` }}>
+        <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.08)}` }}>
           <div
             className="h-full rounded-full transition-all duration-700 ease-out"
             style={{ width: `${progress * 100}%`, backgroundColor: color }}

@@ -136,9 +136,36 @@ input, textarea, [contenteditable="true"] {
   transform: scale(0.95);
 }
 
-/* ========== 底部安全区 ========== */
+/* ========== 安全区域 ========== */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* ========== 移动端覆盖 ========== */
+@media (max-width: 767px) {
+  /* 根字体根据屏幕宽度缩放，让所有 rem 单位自适应 */
+  /* 375px 宽 → 16px，430px 宽 → ~15px，320px 宽 → ~13.6px */
+  html {
+    font-size: clamp(13px, 3.7vw, 16px);
+  }
+
+  /* 移动端允许文本选择 */
+  *, *::before, *::after {
+    user-select: auto;
+    -webkit-user-select: auto;
+  }
+  input, textarea, [contenteditable="true"], .chat-bubble, .chat-bubble * {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* 移动端隐藏滚动条 */
+  ::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* ========== 夜萤深色（默认） ========== */
@@ -187,3 +214,60 @@ body.light .glass {
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
+
+/* ========== 共享动画与组件样式 ========== */
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in {
+  animation: slide-in 0.25s ease-out;
+}
+
+.date-input, .time-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.date-input::-webkit-calendar-picker-indicator,
+.time-input::-webkit-calendar-picker-indicator {
+  opacity: 0.4;
+  cursor: pointer;
+  filter: grayscale(1);
+}
+.date-input::-webkit-calendar-picker-indicator:hover,
+.time-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.7;
+}
+
+.schedule-scroll::-webkit-scrollbar { display: none; }
+.schedule-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+
+select.custom-select { cursor: pointer; }
+select.custom-select option {
+  color: var(--select-color, inherit);
+  background: var(--select-bg, inherit);
+}
+
+.date-input::-webkit-datetime-edit,
+.time-input::-webkit-datetime-edit { color: inherit; }
+.date-input::-webkit-datetime-edit-fields-wrapper,
+.time-input::-webkit-datetime-edit-fields-wrapper { padding: 0; }
+.date-input::-webkit-datetime-edit-text,
+.time-input::-webkit-datetime-edit-text { color: var(--ink-25, rgba(255,255,255,0.25)); padding: 0 1px; }
+.date-input::-webkit-datetime-edit-month-field,
+.date-input::-webkit-datetime-edit-day-field,
+.date-input::-webkit-datetime-edit-year-field,
+.time-input::-webkit-datetime-edit-hour-field,
+.time-input::-webkit-datetime-edit-minute-field { color: inherit; }
+
+.task-search-input:focus { box-shadow: 0 0 0 2px var(--primary-30, rgba(76,175,118,0.3)); }
+.task-search-input::placeholder { color: var(--ink-30, rgba(255,255,255,0.3)); }
+.task-fab { background-color: var(--primary, #4CAF76); }
+.task-fab:hover { background-color: var(--primary-87, rgba(76,175,118,0.87)); }

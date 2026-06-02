@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import type { CreateScheduleInput } from '@/types/schedule';
 
@@ -123,7 +123,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
       onClick={onCancel}
     >
       <style>{`
-        .event-form-input::placeholder { color: ${appTheme.ink}4D; }
+        .event-form-input::placeholder { color: ${withAlpha(appTheme.ink, 0.3)}; }
       `}</style>
       <div
         className="rounded-[18px] p-6 w-[95vw] sm:w-[380px]"
@@ -142,7 +142,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
             className="event-form-input w-full px-4 py-3 rounded-2xl focus:outline-none text-sm"
             style={{
               color: appTheme.ink,
-              border: `1px solid ${appTheme.primary}4D`,
+              border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`,
               backgroundColor: appTheme.canvasParchment,
             }}
             autoFocus
@@ -150,7 +150,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
 
           {/* 开始时间 */}
           <div>
-            <label className="text-xs mb-1 block" style={{ color: `${appTheme.ink}80` }}>开始时间</label>
+            <label className="text-xs mb-1 block" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>开始时间</label>
             <input
               type="datetime-local"
               value={startAt}
@@ -158,7 +158,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
               className="w-full px-4 py-2.5 rounded-2xl focus:outline-none text-sm"
               style={{
                 color: appTheme.ink,
-                border: `1px solid ${appTheme.primary}4D`,
+                border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`,
                 backgroundColor: appTheme.canvasParchment,
               }}
             />
@@ -166,7 +166,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
 
           {/* 结束时间 */}
           <div>
-            <label className="text-xs mb-1 block" style={{ color: `${appTheme.ink}80` }}>结束时间</label>
+            <label className="text-xs mb-1 block" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>结束时间</label>
             <input
               type="datetime-local"
               value={endAt}
@@ -174,7 +174,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
               className="w-full px-4 py-2.5 rounded-2xl focus:outline-none text-sm"
               style={{
                 color: appTheme.ink,
-                border: `1px solid ${appTheme.primary}4D`,
+                border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`,
                 backgroundColor: appTheme.canvasParchment,
               }}
             />
@@ -182,14 +182,14 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
 
           {/* 日历 */}
           <div>
-            <label className="text-xs mb-2 block" style={{ color: `${appTheme.ink}80` }}>日历</label>
+            <label className="text-xs mb-2 block" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>日历</label>
             <select
               value={calendarId ?? ''}
               onChange={(e) => setCalendarId(e.target.value || null)}
               className="w-full px-3 py-2 rounded-xl text-sm outline-none"
               style={{
                 backgroundColor: appTheme.canvasParchment,
-                border: `1px solid ${appTheme.primary}4D`,
+                border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`,
                 color: appTheme.ink,
               }}
             >
@@ -204,7 +204,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
 
           {/* 重复规则 */}
           <div>
-            <label className="text-xs mb-2 block" style={{ color: `${appTheme.ink}80` }}>重复</label>
+            <label className="text-xs mb-2 block" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>重复</label>
             <div className="flex gap-2 flex-wrap">
               {repeatOptions.map((opt) => (
                 <button
@@ -220,7 +220,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
                     repeat === opt.id
                       ? { backgroundColor: appTheme.primary, color: appTheme.ink }
                       : {
-                          color: `${appTheme.ink}B2`,
+                          color: `${withAlpha(appTheme.ink, 0.7)}`,
                           backgroundColor: appTheme.canvasParchment,
                         }
                   }
@@ -233,7 +233,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
             {/* 间隔选择器：选中非 none 时显示 */}
             {repeat !== 'none' && (
               <div className="flex items-center gap-2 mt-3">
-                <span className="text-xs" style={{ color: `${appTheme.ink}99` }}>每隔</span>
+                <span className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }}>每隔</span>
                 <input
                   type="number"
                   min={1}
@@ -246,11 +246,11 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
                   className="w-14 px-2 py-1 rounded-xl text-center text-sm outline-none"
                   style={{
                     color: appTheme.ink,
-                    border: `1px solid ${appTheme.primary}4D`,
+                    border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`,
                     backgroundColor: appTheme.canvasParchment,
                   }}
                 />
-                <span className="text-xs" style={{ color: `${appTheme.ink}99` }}>
+                <span className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }}>
                   {intervalLabels[repeat]}
                 </span>
               </div>
@@ -273,7 +273,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
                       selectedDays.includes(day.id)
                         ? { backgroundColor: appTheme.primary, color: appTheme.ink }
                         : {
-                            color: `${appTheme.ink}B2`,
+                            color: `${withAlpha(appTheme.ink, 0.7)}`,
                             backgroundColor: appTheme.canvasParchment,
                           }
                     }
@@ -292,8 +292,8 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
               onClick={onCancel}
               className="px-5 py-2 rounded-full text-sm transition-colors"
               style={{
-                color: `${appTheme.ink}99`,
-                backgroundColor: isCancelHovered ? `${appTheme.ink}0D` : 'transparent',
+                color: `${withAlpha(appTheme.ink, 0.6)}`,
+                backgroundColor: isCancelHovered ? `${withAlpha(appTheme.ink, 0.05)}` : 'transparent',
               }}
               onMouseEnter={() => setIsCancelHovered(true)}
               onMouseLeave={() => setIsCancelHovered(false)}
@@ -304,7 +304,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
               type="submit"
               disabled={!title.trim()}
               className="px-5 py-2 rounded-full text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              style={{ color: appTheme.ink, backgroundColor: isSubmitHovered ? `${appTheme.primary}CC` : appTheme.primary }}
+              style={{ color: appTheme.ink, backgroundColor: isSubmitHovered ? `${withAlpha(appTheme.primary, 0.8)}` : appTheme.primary }}
               onMouseEnter={() => setIsSubmitHovered(true)}
               onMouseLeave={() => setIsSubmitHovered(false)}
             >

@@ -6,6 +6,7 @@ pub mod favorite_commands;
 pub mod habit_commands;
 pub mod journal_commands;
 pub mod memory_commands;
+pub mod pomodoro_commands;
 pub mod schedule_commands;
 pub mod skill_commands;
 pub mod sync_commands;

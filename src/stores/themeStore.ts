@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { appThemeLight, appThemeDark, appThemeLightHelpers, appThemeDarkHelpers, type AppTheme, type AppThemeHelpers } from '@/styles/theme';
+import { appThemeLight, appThemeDark, appThemeLightHelpers, appThemeDarkHelpers, withAlpha, type AppTheme, type AppThemeHelpers } from '@/styles/theme';
+export { withAlpha } from '@/styles/theme';
 
 type ThemeMode = 'light' | 'dark';
 

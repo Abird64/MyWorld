@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
-export type MainTab = 'chat' | 'relations' | 'schedule' | 'mine';
-export type SubPage = 'tasks' | 'diary' | 'habits' | 'skills' | 'settings' | null;
+export type MainTab = 'chat' | 'dashboard' | 'schedule' | 'mine';
+export type SubPage = 'tasks' | 'diary' | 'habits' | 'skills' | 'settings' | 'relations' | 'memories' | null;
 
 interface UIState {
   activeTab: MainTab;

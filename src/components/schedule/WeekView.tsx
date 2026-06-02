@@ -1,5 +1,5 @@
 import type { Schedule } from '@/types/schedule';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { EventBlock } from './EventBlock';
 import {
   HOUR_START,
@@ -68,7 +68,7 @@ export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) 
     <div className="w-full rounded-2xl relative" style={{ backgroundColor: appTheme.canvas }}>
       <div className="flex flex-col">
       {/* ========== 表头：星期标签 + 日期 ========== */}
-      <div className="flex flex-shrink-0" style={{ borderBottom: `1px solid ${appTheme.primary}66` }}>
+      <div className="flex flex-shrink-0" style={{ borderBottom: `1px solid ${withAlpha(appTheme.primary, 0.4)}` }}>
         {/* 时间轴占位 */}
         <div className="w-[36px] sm:w-[52px] flex-shrink-0" />
         {/* 7 列标题 */}
@@ -80,16 +80,16 @@ export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) 
               className={`flex-1 py-2 text-center ${
                 isToday ? '' : ''
               }`}
-              style={isToday ? { backgroundColor: `${appTheme.primary}1A` } : undefined}
+              style={isToday ? { backgroundColor: `${withAlpha(appTheme.primary, 0.1)}` } : undefined}
             >
-              <div className="text-xs" style={{ color: `${appTheme.ink}80` }}>{weekDayNames[idx]}</div>
+              <div className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>{weekDayNames[idx]}</div>
               <div
                 className={`text-lg font-light mt-0.5 w-8 h-8 flex items-center justify-center mx-auto ${
                   isToday ? 'rounded-full' : ''
                 }`}
                 style={isToday
                   ? { color: appTheme.ink, backgroundColor: appTheme.primary }
-                  : { color: `${appTheme.ink}CC` }
+                  : { color: `${withAlpha(appTheme.ink, 0.8)}` }
                 }
               >
                 {day.getDate()}
@@ -101,9 +101,9 @@ export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) 
 
       {/* ========== 全天事件区域 ========== */}
       {hasAllDayEvents && (
-        <div className="flex flex-shrink-0 min-h-[32px]" style={{ borderBottom: `1px solid ${appTheme.primary}33` }}>
+        <div className="flex flex-shrink-0 min-h-[32px]" style={{ borderBottom: `1px solid ${withAlpha(appTheme.primary, 0.2)}` }}>
           <div className="w-[36px] sm:w-[52px] flex-shrink-0 flex items-center justify-center">
-            <span className="text-[10px]" style={{ color: `${appTheme.ink}66` }}>全天</span>
+            <span className="text-[10px]" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>全天</span>
           </div>
           {allDayEventsByDay.map((dayEvents, dayIdx) => (
             <div key={dayIdx} className="flex-1 flex flex-col gap-1 py-1 px-0.5">
@@ -142,14 +142,14 @@ export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) 
             <div
               key={hour}
               className="absolute w-full text-right pr-2 text-[10px] -translate-y-1/2"
-              style={{ top: `${hourToPercent(hour)}%`, color: `${appTheme.ink}66` }}
+              style={{ top: `${hourToPercent(hour)}%`, color: `${withAlpha(appTheme.ink, 0.4)}` }}
             >
               {hour.toString().padStart(2, '0')}:00
             </div>
           ))}
           {/* 夜间压缩区标记 */}
           <div
-            className="absolute left-0 right-0 border-t border-dashed" style={{ borderColor: `${appTheme.primary}4D`, top: `${hourToPercent(7)}%` }}
+            className="absolute left-0 right-0 border-t border-dashed" style={{ borderColor: `${withAlpha(appTheme.primary, 0.3)}`, top: `${hourToPercent(7)}%` }}
           />
         </div>
 
@@ -159,7 +159,7 @@ export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) 
           {hours.map((hour) => (
             <div
               key={hour}
-              className="absolute w-full h-[1px] left-0" style={{ top: `${hourToPercent(hour)}%`, backgroundColor: `${appTheme.primary}33` }}
+              className="absolute w-full h-[1px] left-0" style={{ top: `${hourToPercent(hour)}%`, backgroundColor: `${withAlpha(appTheme.primary, 0.2)}` }}
             />
           ))}
 
@@ -167,7 +167,7 @@ export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) 
           {Array.from({ length: 6 }, (_, i) => (
             <div
               key={i}
-              className="absolute top-0 h-full w-[1px]" style={{ left: `${((i + 1) / 7) * 100}%`, backgroundColor: `${appTheme.primary}33` }}
+              className="absolute top-0 h-full w-[1px]" style={{ left: `${((i + 1) / 7) * 100}%`, backgroundColor: `${withAlpha(appTheme.primary, 0.2)}` }}
             />
           ))}
 
@@ -178,7 +178,7 @@ export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) 
             return (
               <div
                 key={`today-${idx}`}
-                className="absolute top-0 h-full" style={{ left: `${(idx / 7) * 100}%`, width: `${100 / 7}%`, backgroundColor: `${appTheme.primary}0D` }}
+                className="absolute top-0 h-full" style={{ left: `${(idx / 7) * 100}%`, width: `${100 / 7}%`, backgroundColor: `${withAlpha(appTheme.primary, 0.05)}` }}
               />
             );
           })}

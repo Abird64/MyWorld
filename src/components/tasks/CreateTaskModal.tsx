@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import { SKILL_COLORS, SKILL_ORDER } from '@/styles/theme';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 
 interface CreateTaskModalProps {
   show: boolean;
@@ -79,22 +79,22 @@ export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProp
 
   // 动态颜色
   const txt = appTheme.ink;
-  const txtHint = txt + '33';
-  const txtLight = txt + '4D';
-  const txtMid = txt + '80';
-  const txtBody = txt + 'B3';
-  const bgSubtle = txt + '0D';
-  const bgHover = txt + '1A';
-  const bgDisabled = txt + '1A';
-  const borderSubtle = txt + '1A';
+  const txtHint = withAlpha(txt, 0.2);
+  const txtLight = withAlpha(txt, 0.3);
+  const txtMid = withAlpha(txt, 0.5);
+  const txtBody = withAlpha(txt, 0.7);
+  const bgSubtle = withAlpha(txt, 0.05);
+  const bgHover = withAlpha(txt, 0.1);
+  const bgDisabled = withAlpha(txt, 0.1);
+  const borderSubtle = withAlpha(txt, 0.1);
 
   return (
     <>
       <style>{`
         #create-task-modal .focus-accent:focus { border-color: ${appTheme.primary}; outline: none; }
-        #create-task-modal .focus-ring-accent:focus { outline: none; box-shadow: 0 0 0 2px ${appTheme.primary}4D; }
+        #create-task-modal .focus-ring-accent:focus { outline: none; box-shadow: 0 0 0 2px ${withAlpha(appTheme.primary, 0.3)}; }
         #create-task-modal .btn-create { background-color: ${appTheme.primary}; }
-        #create-task-modal .btn-create:hover { background-color: ${appTheme.primary}DD; }
+        #create-task-modal .btn-create:hover { background-color: ${withAlpha(appTheme.primary, 0.87)}; }
         #create-task-modal .input-focus-accent:focus { border-color: ${appTheme.primary}; outline: none; }
         #create-task-modal input::placeholder,
         #create-task-modal textarea::placeholder { color: ${txtHint}; }

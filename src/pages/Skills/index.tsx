@@ -4,16 +4,10 @@ import { PageContainer } from '@/components/layout';
 import { useSkillStore } from '@/stores/skillStore';
 import { SKILL_ORDER } from '@/styles/theme';
 import { useAppTheme } from '@/stores/themeStore';
+import { LEVEL_TITLES } from '@/utils/dateFormat';
 import { AttributeCard } from '@/components/skills/AttributeCard';
 import { ActivityHeatmap } from '@/components/skills/ActivityHeatmap';
 import { SourceBreakdown } from '@/components/skills/SourceBreakdown';
-
-const LEVEL_TITLES: Record<number, string> = {
-  1: '入门', 2: '初窥', 3: '略懂',
-  4: '通晓', 5: '精熟', 6: '专深',
-  7: '卓越', 8: '宗师', 9: '入圣',
-  10: '化境',
-};
 
 function getOverallLevel(skills: { level: number }[]): number {
   if (skills.length === 0) return 0;

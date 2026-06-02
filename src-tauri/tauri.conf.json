@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "提灯",
-  "version": "2.0.0",
+  "version": "2.4.2",
   "identifier": "com.lantern.app",
   "build": {
     "frontendDist": "../dist",
@@ -40,9 +40,7 @@
         "silent": true
       }
     },
-    "resources": {
-      "target/release/WebView2Loader.dll": "WebView2Loader.dll"
-    },
+    "resources": {},
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }

@@ -1,100 +1,78 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Copy, StopCircle, Check, Star, ArrowUp } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { LanternSvg, ShiningText } from '@/components/ui';
+import { LanternSvg, ShiningText, Fireflies } from '@/components/ui';
 import { TypewriterText } from '@/components/ui/TypewriterText';
 import { ToolCallCard } from '@/components/ai/ToolCallCard';
 import { PromptPouch } from '@/components/ai/PromptPouch';
 import { useAiStore } from '@/stores/aiStore';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useFavoriteStore } from '@/stores/favoriteStore';
 import { parseToolCalls } from '@/utils/aiParsers';
 import { BUILTIN_PROMPTS } from '@/utils/builtinPrompts';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
+import { CREATIVITY_COLOR } from '@/styles/theme';
 import type { PageTheme } from '@/styles/theme';
 import type { RefObject, KeyboardEvent } from 'react';
 
+// ── 提灯轮播语 ──
+// 灵感来源：王者荣耀·桑启台词，经改编适配提灯产品语境
 const LANTERN_PROMPTS = [
-  // ── 日常问候 ──
-  '提灯在等你说话呢',
-  '今天心情怎么样？',
-  '在下提灯，有何贵干',
-  '有什么想聊的吗？',
-  '记录一下今天吧',
+  // ── 萤火与故事 ──
+  '将沿途的故事一一记下',
+  '愿陪伴我的微光，也能照亮你的旅途',
+  '你的故事，已被我记下了',
+  '有故事和萤火的地方，就是家乡',
+  '与萤火一起，收集更多的故事',
+  '萤火虽小，愿为其芒',
+  '这一页故事讲完了，让我们翻开下一页',
+  '比风景更美的，是旅途中的人和故事',
+  '那些曾经历的，都将变成回忆，陪伴我们继续前行',
+  '当故事还在讲述，过去就还在传承',
+  '将过去讲给更多人听，或许是最好的铭记',
+  '你也有自己的萤火，只是暂时看不见而已',
+  '就算再小的萤光，也能凝成希望',
+  '故事总有结局，但那也是新故事的开始',
+  '羁绊发芽，故事生长',
+  '故事往往开始于相遇，但离别却并非结束',
+
+  // ── 夜与光 ──
+  '只要眼里有光，黑夜就永远不会降临',
+  '越是昏暗的夜，星星就越是美丽',
+  '最重要的东西，只有用心才能看见',
+  '远游山川，星河在天',
+  '太阳虽然下山，但青草，却在偷偷发芽',
+  '太阳熄灭的时候，群星就会苏醒',
+  '宇宙太黑，于是我们相互靠近，将彼此点亮',
+  '你相信有永远不会熄灭的光吗？我相信',
+  '萤火，就是故人的化身',
+  '洒下希望的种子',
+  '流光一瞬',
+  '风生万物',
+
+  // ── 前行与勇气 ──
+  '最奇妙的旅行，往往开始于最不起眼的地方',
+  '与其担心美好会消逝，不如先让它开始',
+  '想得太多，你就会失去前行的勇气',
+  '心怀希望，勇敢道别',
+  '比起告别，我更害怕从未相遇',
+  '没关系，过去的没了，那就再建一个新的',
+  '向前看',
+  '乘风启程',
+  '一起去旅行吧',
+  '好好享受旅行的时光吧',
+
+  // ── 温柔日常 ──
   '来，说说你的故事',
   '提灯在此，愿闻其详',
-  '今天过得好吗？',
-  '有什么想记下来的事吗？',
-  '说点什么吧，我在听',
-  '今天有什么新鲜事？',
-  '想聊点什么？',
-  '提灯恭候多时了',
-  '来都来了，聊两句？',
-  '今天有没有什么小确幸？',
-  '累了就来坐坐吧',
-  '有什么烦心事吗？',
-  '提灯陪你聊会儿天',
-  '今天学到了什么？',
-  '有什么开心的事想分享？',
-  '提灯在此，随时奉陪',
-  '今天有没有好好吃饭？',
-  '新的一天，有什么计划？',
-  '提灯听你慢慢说',
-
-  // ── 古诗词 ──
-  '人生如逆旅，我亦是行人',
-  '山中何事？松花酿酒，春水煎茶',
-  '且将新火试新茶，诗酒趁年华',
-  '浮世三千，吾爱有三：日月与卿',
-  '掬水月在手，弄花香满衣',
-  '行到水穷处，坐看云起时',
-  '晚来天欲雪，能饮一杯无？',
-  '此心安处是吾乡',
-  '人间有味是清欢',
-  '欲买桂花同载酒，终不似，少年游',
-  '一蓑烟雨任平生',
-  '吹灭读书灯，一身都是月',
-  '世界微尘里，吾宁爱与憎',
-  '长风破浪会有时，直挂云帆济沧海',
-  '莫听穿林打叶声，何妨吟啸且徐行',
-  '春风得意马蹄疾，一日看尽长安花',
-  '小舟从此逝，江海寄余生',
-  '但愿人长久，千里共婵娟',
-  '落霞与孤鹜齐飞，秋水共长天一色',
-  '采菊东篱下，悠然见南山',
-  '明月松间照，清泉石上流',
-  '竹杖芒鞋轻胜马，谁怕？',
-  '人生天地间，忽如远行客',
-  '浮生若梦，为欢几何？',
-  '今人不见古时月，今月曾经照古人',
-  '知否知否，应是绿肥红瘦',
-  '赌书消得泼茶香，当时只道是寻常',
-  '流光容易把人抛，红了樱桃，绿了芭蕉',
-  '桃李春风一杯酒，江湖夜雨十年灯',
-  '我见青山多妩媚，料青山见我应如是',
-
-  // ── 哲思随想 ──
-  '提灯夜行，亦是风景',
-  '日拱一卒，功不唐捐',
-  '慢慢来，比较快',
-  '种一棵树最好的时间是十年前，其次是现在',
-  '今天的你，也是独一无二的',
-  '不积跬步，无以至千里',
-  '每一步都算数',
-  '你比你想象的更强大',
-  '生活不止眼前的苟且',
-  '保持热爱，奔赴山海',
-  '所有的经历都是礼物',
-  '慢慢走，欣赏啊',
-  '星星之火，可以燎原',
-  '千里之行，始于足下',
-  '知行合一，方为上策',
-  '既来之，则安之',
-  '活在当下，便是最好',
-  '万事开头难',
-  '但行好事，莫问前程',
-  '念念不忘，必有回响',
+  '别难过，被泪水洗过的眼睛，会变得更干净',
+  '遇见你，感觉真好',
+  '又想起了一些过去的事',
+  '没什么，只是沙子迷住了眼',
+  '小草萌发，天地将绿',
+  '别怕，休息一下就好了',
+  '一株小草，也能改变一方世界',
 ];
 
 async function copyText(text: string | null) {
@@ -137,6 +115,7 @@ export function ChatView({
   const appTheme = useAppTheme();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const emptyStateRef = useRef<HTMLDivElement>(null);
 
   // 加载锦囊（内置 + 自定义）
   const allPrompts = useMemo(() => {
@@ -193,11 +172,12 @@ export function ChatView({
       {/* 消息列表 */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
         {!currentConversation || messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center">
+          <div ref={emptyStateRef} className="h-full flex flex-col items-center justify-center relative">
+            <Fireflies count={7} mouseTarget={emptyStateRef} />
             <div className="relative w-[200px] h-[240px] flex items-center justify-center mb-6">
               <div
                 className="absolute inset-0 blur-3xl opacity-40 rounded-full scale-110"
-                style={{ backgroundColor: `${t.accent}33` }}
+                style={{ backgroundColor: `${withAlpha(t.accent, 0.2)}` }}
               />
               <LanternSvg accentColor={t.accent} isDark={t.isDark} />
             </div>
@@ -231,7 +211,7 @@ export function ChatView({
                         className="chat-bubble markdown-body px-4 py-3 rounded-2xl text-sm leading-relaxed"
                         style={{
                           backgroundColor: isUser
-                            ? `${t.accent}33`
+                            ? `${withAlpha(t.accent, 0.2)}`
                             : isTool
                               ? s(0.03)
                               : s(0.08),
@@ -303,16 +283,16 @@ export function ChatView({
                             className="flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors"
                             style={{
                               color: isFavorited(msg.id)
-                                ? '#E8B959'
+                                ? CREATIVITY_COLOR
                                 : s(0.25),
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.color = '#E8B959';
+                              e.currentTarget.style.color = CREATIVITY_COLOR;
                               e.currentTarget.style.backgroundColor = s(0.08);
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.color = isFavorited(msg.id)
-                                ? '#E8B959'
+                                ? CREATIVITY_COLOR
                                 : s(0.25);
                               e.currentTarget.style.backgroundColor =
                                 'transparent';
@@ -324,7 +304,7 @@ export function ChatView({
                             <Star
                               size={12}
                               fill={
-                                isFavorited(msg.id) ? '#E8B959' : 'none'
+                                isFavorited(msg.id) ? CREATIVITY_COLOR : 'none'
                               }
                             />
                           </button>
@@ -477,11 +457,11 @@ export function ChatView({
         <div
           className="relative max-w-[640px] mx-auto rounded-3xl transition-shadow duration-300 group"
           style={{
-            backgroundColor: `${appTheme.ink}0A`,
-            border: `1px solid ${appTheme.ink}14`,
+            backgroundColor: `${withAlpha(appTheme.ink, 0.04)}`,
+            border: `1px solid ${withAlpha(appTheme.ink, 0.08)}`,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.boxShadow = `0 0 0 1px ${appTheme.primary}30, 0 0 12px ${appTheme.primary}18`;
+            e.currentTarget.style.boxShadow = `0 0 0 1px ${withAlpha(appTheme.primary, 0.19)}, 0 0 12px ${withAlpha(appTheme.primary, 0.09)}`;
           }}
           onMouseLeave={(e) => {
             if (document.activeElement !== inputRef.current) {
@@ -523,13 +503,15 @@ export function ChatView({
               }}
               onFocus={(e) => {
                 setIsInputFocused(true);
-                e.currentTarget.parentElement!.parentElement!.style.boxShadow = `0 0 0 1px ${appTheme.primary}40, 0 0 16px ${appTheme.primary}20`;
+                const el = e.currentTarget.parentElement?.parentElement;
+                if (el) el.style.boxShadow = `0 0 0 1px ${withAlpha(appTheme.primary, 0.25)}, 0 0 16px ${withAlpha(appTheme.primary, 0.13)}`;
               }}
               onBlur={(e) => {
                 // 延迟隐藏，让锦囊点击事件先触发
                 setTimeout(() => {
                   setIsInputFocused(false);
-                  e.currentTarget.parentElement!.parentElement!.style.boxShadow = 'none';
+                  const el = e.currentTarget.parentElement?.parentElement;
+                  if (el) el.style.boxShadow = 'none';
                 }, 150);
               }}
             />
@@ -548,7 +530,7 @@ export function ChatView({
                 disabled={!input.trim()}
                 className="flex-shrink-0 m-1.5 h-8 w-8 flex items-center justify-center rounded-full transition-all"
                 style={{
-                  backgroundColor: input.trim() ? appTheme.primary : `${appTheme.ink}1A`,
+                  backgroundColor: input.trim() ? appTheme.primary : `${withAlpha(appTheme.ink, 0.1)}`,
                   color: input.trim() ? appTheme.onPrimary : appTheme.inkMuted48,
                   cursor: input.trim() ? 'pointer' : 'not-allowed',
                 }}

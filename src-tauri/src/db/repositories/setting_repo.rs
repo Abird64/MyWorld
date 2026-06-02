@@ -22,7 +22,7 @@ fn now() -> String {
 
 pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<Setting>, String> {
     let mut stmt = conn
-        .prepare("SELECT key, value, updated_at FROM settings WHERE key = ?1")
+        .prepare("SELECT key, value, updated_at FROM settings WHERE key = ?1 AND deleted_at IS NULL")
         .map_err(|e| e.to_string())?;
 
     let mut rows = stmt.query_map(params![key], setting_from_row).map_err(|e| e.to_string())?;
@@ -46,7 +46,7 @@ pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<(), Stri
 
 pub fn list_settings(conn: &Connection) -> Result<Vec<Setting>, String> {
     let mut stmt = conn
-        .prepare("SELECT key, value, updated_at FROM settings ORDER BY key")
+        .prepare("SELECT key, value, updated_at FROM settings WHERE deleted_at IS NULL ORDER BY key")
         .map_err(|e| e.to_string())?;
 
     let rows = stmt.query_map([], setting_from_row).map_err(|e| e.to_string())?;
@@ -59,7 +59,8 @@ pub fn list_settings(conn: &Connection) -> Result<Vec<Setting>, String> {
 }
 
 pub fn delete_setting(conn: &Connection, key: &str) -> Result<(), String> {
-    conn.execute("DELETE FROM settings WHERE key = ?1", params![key])
+    let time = now();
+    conn.execute("UPDATE settings SET deleted_at = ?1 WHERE key = ?2", params![time, key])
         .map_err(|e| e.to_string())?;
     Ok(())
 }

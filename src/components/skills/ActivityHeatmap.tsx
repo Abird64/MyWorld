@@ -6,8 +6,6 @@ interface ActivityHeatmapProps {
   activity: DayActivity[];
 }
 
-const LEVELS = ['', 'l1', 'l2', 'l3', 'l4'];
-
 function getActivityLevel(xp: number): number {
   if (xp <= 0) return 0;
   if (xp <= 30) return 1;
@@ -19,7 +17,7 @@ function getActivityLevel(xp: number): number {
 export function ActivityHeatmap({ activity }: ActivityHeatmapProps) {
   const appTheme = useAppTheme();
 
-  const { cells, weekLabels } = useMemo(() => {
+  const { cells } = useMemo(() => {
     // Build a map of day -> xp
     const dayMap = new Map<string, number>();
     for (const a of activity) {

@@ -80,7 +80,7 @@ pub fn create_task(
 /// 获取单个任务
 pub fn get_task(conn: &Connection, id: &str) -> Result<Task, String> {
     conn.query_row(
-        &format!("SELECT {} FROM tasks WHERE id = ?1", TASK_COLUMNS),
+        &format!("SELECT {} FROM tasks WHERE id = ?1 AND deleted_at IS NULL", TASK_COLUMNS),
         params![id],
         task_from_row,
     )
@@ -94,7 +94,7 @@ pub fn list_tasks(
     parent_id: Option<Option<&str>>,
 ) -> Result<Vec<Task>, String> {
     let mut sql = format!(
-        "SELECT {} FROM tasks WHERE 1=1",
+        "SELECT {} FROM tasks WHERE deleted_at IS NULL",
         TASK_COLUMNS
     );
     let mut params_vec: Vec<String> = Vec::new();
@@ -222,23 +222,24 @@ pub fn update_task(
 
 /// 删除任务
 pub fn delete_task(conn: &Connection, id: &str, cascade: bool) -> Result<u64, String> {
+    let time = now();
     if cascade {
-        // 先删除所有子任务
+        // 软删除所有子任务
         conn.execute(
-            "DELETE FROM tasks WHERE parent_id = ?1",
-            params![id],
+            "UPDATE tasks SET deleted_at = ?1 WHERE parent_id = ?2 AND deleted_at IS NULL",
+            params![time, id],
         )
         .map_err(|e| format!("Failed to delete subtasks: {}", e))?;
     } else {
         // 将子任务的 parent_id 设为 NULL
         conn.execute(
-            "UPDATE tasks SET parent_id = NULL WHERE parent_id = ?1",
+            "UPDATE tasks SET parent_id = NULL WHERE parent_id = ?1 AND deleted_at IS NULL",
             params![id],
         )
         .map_err(|e| format!("Failed to update subtasks: {}", e))?;
     }
 
-    let affected = conn.execute("DELETE FROM tasks WHERE id = ?1", params![id])
+    let affected = conn.execute("UPDATE tasks SET deleted_at = ?1 WHERE id = ?2", params![time, id])
         .map_err(|e| format!("Failed to delete task: {}", e))?;
 
     Ok(affected as u64)
@@ -262,7 +263,7 @@ pub fn complete_task(conn: &mut Connection, id: &str) -> Result<CompleteResult, 
     // 查询关联的技能
     let skill_xps: Vec<(String, i32)> = {
         let mut stmt = tx
-            .prepare("SELECT skill_id, xp_amount FROM task_skills WHERE task_id = ?1")
+            .prepare("SELECT skill_id, xp_amount FROM task_skills WHERE task_id = ?1 AND deleted_at IS NULL")
             .map_err(|e| format!("Failed to query task_skills: {}", e))?;
 
         let rows: Vec<(String, i32)> = stmt.query_map(params![id], |row| {
@@ -291,15 +292,15 @@ pub fn complete_task(conn: &mut Connection, id: &str) -> Result<CompleteResult, 
         // 记录XP流水
         let event_id = gen_id();
         tx.execute(
-            "INSERT INTO skill_events (id, skill_id, xp_amount, source_type, source_id, note, created_at)
-             VALUES (?1, ?2, ?3, 'task', ?4, '任务完成', ?5)",
+            "INSERT INTO skill_events (id, skill_id, xp_amount, source_type, source_id, note, created_at, updated_at)
+             VALUES (?1, ?2, ?3, 'task', ?4, '任务完成', ?5, ?5)",
             params![event_id, skill_id, xp, id, time],
         )
         .map_err(|e| format!("Failed to create skill event: {}", e))?;
 
         // 获取技能名称
         let skill_name: String = tx
-            .query_row("SELECT name FROM skills WHERE id = ?1", params![skill_id], |row| row.get(0))
+            .query_row("SELECT name FROM skills WHERE id = ?1 AND deleted_at IS NULL", params![skill_id], |row| row.get(0))
             .unwrap_or_else(|_| "未知技能".to_string());
 
         result_skills.push(SkillXp {
@@ -341,7 +342,7 @@ pub fn uncomplete_task(conn: &mut Connection, id: &str) -> Result<(), String> {
     // 查询关联的技能XP（完成时分配的）
     let skill_xps: Vec<(String, i32)> = {
         let mut stmt = tx
-            .prepare("SELECT skill_id, xp_amount FROM task_skills WHERE task_id = ?1")
+            .prepare("SELECT skill_id, xp_amount FROM task_skills WHERE task_id = ?1 AND deleted_at IS NULL")
             .map_err(|e| format!("Failed to query task_skills: {}", e))?;
 
         let rows: Vec<(String, i32)> = stmt.query_map(params![id], |row| {
@@ -366,8 +367,8 @@ pub fn uncomplete_task(conn: &mut Connection, id: &str) -> Result<(), String> {
         // 记录撤回流水（负值）
         let event_id = gen_id();
         tx.execute(
-            "INSERT INTO skill_events (id, skill_id, xp_amount, source_type, source_id, note, created_at)
-             VALUES (?1, ?2, ?3, 'task', ?4, '取消完成', ?5)",
+            "INSERT INTO skill_events (id, skill_id, xp_amount, source_type, source_id, note, created_at, updated_at)
+             VALUES (?1, ?2, ?3, 'task', ?4, '取消完成', ?5, ?5)",
             params![event_id, skill_id, -xp, id, time],
         )
         .map_err(|e| format!("Failed to create skill event: {}", e))?;
@@ -390,7 +391,7 @@ pub fn uncomplete_task(conn: &mut Connection, id: &str) -> Result<(), String> {
 pub fn search_tasks(conn: &Connection, query: &str) -> Result<Vec<Task>, String> {
     let pattern = format!("%{}%", query);
     let sql = format!(
-        "SELECT {} FROM tasks WHERE title LIKE ?1 OR description LIKE ?1 OR notes LIKE ?1 ORDER BY created_at DESC",
+        "SELECT {} FROM tasks WHERE (title LIKE ?1 OR description LIKE ?1 OR notes LIKE ?1) AND deleted_at IS NULL ORDER BY created_at DESC",
         TASK_COLUMNS
     );
     let mut stmt = conn
@@ -446,7 +447,7 @@ pub fn search_tasks_scored(
     }
 
     let mut sql = format!(
-        "SELECT {} FROM tasks WHERE ({})",
+        "SELECT {} FROM tasks WHERE ({}) AND deleted_at IS NULL",
         TASK_COLUMNS,
         conditions.join(" OR ")
     );

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
+import { BarChart3 } from 'lucide-react';
 import type { HabitWithStreak, WeekMatrix } from '@/types/habit';
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
@@ -9,9 +10,10 @@ interface HabitCardProps {
   weekMatrix?: WeekMatrix;
   onToggle: (habitId: string, checked: boolean) => void;
   onEdit: (habit: HabitWithStreak) => void;
+  onViewDetail?: (habit: HabitWithStreak) => void;
 }
 
-export function HabitCard({ habit, weekMatrix, onToggle, onEdit }: HabitCardProps) {
+export function HabitCard({ habit, weekMatrix, onToggle, onEdit, onViewDetail }: HabitCardProps) {
   const appTheme = useAppTheme();
   const [isAnimating, setIsAnimating] = useState(false);
   const accentColor = habit.color || appTheme.primary;
@@ -43,6 +45,19 @@ export function HabitCard({ habit, weekMatrix, onToggle, onEdit }: HabitCardProp
       <div className="flex items-center gap-3 mb-3">
         <span className="text-2xl">{habit.icon || '✨'}</span>
         <span className="text-sm font-medium flex-1" style={{ color: appTheme.ink }}>{habit.name}</span>
+        {onViewDetail && (
+          <div
+            role="button"
+            onClick={(e) => { e.stopPropagation(); onViewDetail(habit); }}
+            className="p-1 rounded-full transition-colors"
+            style={{ color: `${withAlpha(appTheme.ink, 0.35)}` }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = withAlpha(appTheme.ink, 0.06); e.currentTarget.style.color = accentColor; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = `${withAlpha(appTheme.ink, 0.35)}`; }}
+            title="查看热力图"
+          >
+            <BarChart3 size={14} />
+          </div>
+        )}
         <div
           className="w-6 h-6 rounded-full border-2 flex items-center justify-center"
           style={{
@@ -72,18 +87,18 @@ export function HabitCard({ habit, weekMatrix, onToggle, onEdit }: HabitCardProp
               <div
                 className="w-4 h-4 rounded-full"
                 style={{
-                  backgroundColor: isChecked ? accentColor : `${accentColor}22`,
+                  backgroundColor: isChecked ? accentColor : `${withAlpha(accentColor, 0.13)}`,
                   outline: isToday ? `1.5px solid ${accentColor}` : 'none',
                   outlineOffset: 1,
                 }}
               />
-              <span className="text-[10px]" style={{ color: `${appTheme.ink}66` }}>{label}</span>
+              <span className="text-[10px]" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>{label}</span>
             </div>
           );
         })}
       </div>
 
-      <p className="text-xs" style={{ color: `${appTheme.ink}88` }}>
+      <p className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.53)}` }}>
         连续 {habit.streak} 天
       </p>
     </button>

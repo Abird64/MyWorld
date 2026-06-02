@@ -1,4 +1,4 @@
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 
 
 interface DateNavigatorProps {
@@ -11,8 +11,8 @@ interface DateNavigatorProps {
 
 export function DateNavigator({ weekLabel, onPrev, onNext, onToday, onImportIcs }: DateNavigatorProps) {
   const appTheme = useAppTheme();
-  const btnBg = `${appTheme.primary}4D`;
-  const btnHoverBg = `${appTheme.primary}80`;
+  const btnBg = `${withAlpha(appTheme.primary, 0.3)}`;
+  const btnHoverBg = `${withAlpha(appTheme.primary, 0.5)}`;
   const textColor = appTheme.ink;
 
   return (

@@ -5,6 +5,7 @@ pub mod favorite_repo;
 pub mod habit_repo;
 pub mod journal_repo;
 pub mod memory_repo;
+pub mod pomodoro_repo;
 pub mod schedule_repo;
 pub mod setting_repo;
 pub mod skill_repo;

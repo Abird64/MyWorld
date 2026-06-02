@@ -1,6 +1,6 @@
 import { Check, Circle, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatDate, isOverdue } from '@/utils/dateFormat';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import type { Task } from '@/types/task';
 
 interface TaskCardProps {
@@ -32,8 +32,8 @@ export function TaskCard({
 }: TaskCardProps) {
   const appTheme = useAppTheme();
   const completed = task.status === 'completed';
-  const txtMid = appTheme.ink + '80';
-  const bgSubtle = appTheme.ink + '0D';
+  const txtMid = withAlpha(appTheme.ink, 0.5);
+  const bgSubtle = withAlpha(appTheme.ink, 0.05);
 
   const priorityConfig: Record<string, { label: string; color: string }> = {
     high: { label: '紧急', color: appTheme.danger },
@@ -96,11 +96,11 @@ export function TaskCard({
           <div className="flex-1 min-w-0">
             <h3
               className="text-lg font-normal mb-1 truncate"
-              style={{ color: completed ? appTheme.ink + '80' : appTheme.ink, textDecoration: completed ? 'line-through' : 'none' }}
+              style={{ color: completed ? withAlpha(appTheme.ink, 0.5) : appTheme.ink, textDecoration: completed ? 'line-through' : 'none' }}
             >
               {task.title}
             </h3>
-            <p className="text-sm mb-2" style={{ color: appTheme.ink + '99' }}>
+            <p className="text-sm mb-2" style={{ color: withAlpha(appTheme.ink, 0.6) }}>
               {task.scheduled_at ? formatDate(task.scheduled_at) : formatDate(task.created_at)}
             </p>
 
@@ -129,7 +129,7 @@ export function TaskCard({
         <button
           onClick={(e) => { e.stopPropagation(); onToggleSubtasks(task.id); }}
           className="absolute bottom-3 right-4 flex items-center gap-1 text-xs transition-colors"
-          style={{ color: appTheme.ink + '4D' }}
+          style={{ color: withAlpha(appTheme.ink, 0.3) }}
         >
           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           子任务
@@ -152,11 +152,11 @@ export function TaskCard({
               >
                 {sub.status === 'completed'
                   ? <Check size={14} style={{ color: appTheme.primary }} />
-                  : <Circle size={14} style={{ color: appTheme.ink + '33' }} />}
+                  : <Circle size={14} style={{ color: withAlpha(appTheme.ink, 0.2) }} />}
               </button>
               <span
                 className="text-sm truncate"
-                style={{ color: sub.status === 'completed' ? appTheme.ink + '66' : appTheme.ink + 'B3', textDecoration: sub.status === 'completed' ? 'line-through' : 'none' }}
+                style={{ color: sub.status === 'completed' ? withAlpha(appTheme.ink, 0.4) : withAlpha(appTheme.ink, 0.7), textDecoration: sub.status === 'completed' ? 'line-through' : 'none' }}
               >
                 {sub.title}
               </span>
@@ -166,7 +166,7 @@ export function TaskCard({
       )}
       {isExpanded && subtasks.length === 0 && (
         <div className="mt-1 ml-8">
-          <p className="text-xs px-4 py-2" style={{ color: appTheme.ink + '4D' }}>暂无子任务</p>
+          <p className="text-xs px-4 py-2" style={{ color: withAlpha(appTheme.ink, 0.3) }}>暂无子任务</p>
         </div>
       )}
     </div>

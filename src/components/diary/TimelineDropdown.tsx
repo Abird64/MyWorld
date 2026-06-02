@@ -1,5 +1,5 @@
 import { useJournalStore } from '@/stores/journalStore';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -64,11 +64,11 @@ export function TimelineDropdown() {
   };
 
   const txt = appTheme.ink;
-  const txtDim = txt + 'CC';
-  const txtMid = txt + '80';
-  const txtLight = txt + '4D';
-  const txtBody = txt + 'B3';
-  const hoverBg = txt + '1A';
+  const txtDim = withAlpha(txt, 0.8);
+  const txtMid = withAlpha(txt, 0.5);
+  const txtLight = withAlpha(txt, 0.3);
+  const txtBody = withAlpha(txt, 0.7);
+  const hoverBg = withAlpha(txt, 0.1);
 
   return (
     <div className="flex justify-center px-8">
@@ -124,7 +124,7 @@ export function TimelineDropdown() {
                       cell.isCurrent
                         ? { backgroundColor: appTheme.surfaceBlack, color: appTheme.onPrimary }
                         : cell.isToday
-                          ? { backgroundColor: `${appTheme.danger}33`, color: appTheme.danger }
+                          ? { backgroundColor: `${withAlpha(appTheme.danger, 0.2)}`, color: appTheme.danger }
                           : { color: txtBody }
                     }
                     onMouseEnter={!cell.isCurrent && !cell.isToday ? (e) => (e.currentTarget.style.backgroundColor = hoverBg) : undefined}
@@ -132,7 +132,7 @@ export function TimelineDropdown() {
                   >
                     {cell.day}
                     {cell.hasEntry && !cell.isCurrent && (
-                      <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `${appTheme.surfaceBlack}99` }} />
+                      <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `${withAlpha(appTheme.surfaceBlack, 0.6)}` }} />
                     )}
                   </button>
                 ) : null}

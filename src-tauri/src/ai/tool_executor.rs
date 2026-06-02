@@ -1112,8 +1112,9 @@ fn execute_get_journal(conn: &Connection, _app_data_dir: Option<&Path>, argument
             let content = std::fs::read_to_string(&journal.file_path)
                 .unwrap_or_else(|_| "(文件读取失败)".to_string());
 
-            let truncated = if content.len() > 3000 {
-                format!("{}...\n\n(日记较长，已截断前3000字符)", &content[..3000])
+            let truncated = if content.chars().count() > 3000 {
+                let truncated: String = content.chars().take(3000).collect();
+                format!("{}...\n\n(日记较长，已截断前3000字符)", truncated)
             } else {
                 content
             };
@@ -1778,7 +1779,7 @@ fn try_parse_month_day(expr: &str, today: NaiveDate) -> Option<Result<(String, S
                     (today.year(), today.month() + 1)
                 }
             }
-            _ => unreachable!(),
+            _ => return None,
         };
         let d = NaiveDate::from_ymd_opt(year, month, day)?;
         let s = d.format("%Y-%m-%d").to_string();
@@ -1817,7 +1818,7 @@ fn try_parse_month_edge(expr: &str, today: NaiveDate) -> Option<Result<(String, 
     let d = match edge {
         "end" => last_day_of_month(year, month)?,
         "start" => NaiveDate::from_ymd_opt(year, month, 1)?,
-        _ => unreachable!(),
+        _ => return None,
     };
 
     let label = match edge { "end" => "最后一天", "start" => "第一天", _ => "" };

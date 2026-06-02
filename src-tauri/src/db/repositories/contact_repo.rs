@@ -51,7 +51,7 @@ fn contact_from_row(row: &Row) -> rusqlite::Result<Contact> {
 /// 加载某个联系人的所有联系方式
 fn load_methods(conn: &Connection, contact_id: &str) -> Result<Vec<ContactMethod>, String> {
     let mut stmt = conn
-        .prepare("SELECT id, contact_id, method_type, value FROM contact_methods WHERE contact_id = ?1 ORDER BY created_at ASC")
+        .prepare("SELECT id, contact_id, method_type, value FROM contact_methods WHERE contact_id = ?1 AND deleted_at IS NULL ORDER BY created_at ASC")
         .map_err(|e| format!("Failed to load methods: {}", e))?;
     let rows = stmt.query_map(params![contact_id], |row| {
         Ok(ContactMethod {
@@ -78,7 +78,7 @@ fn fill_methods(conn: &Connection, contacts: &mut [Contact]) -> Result<(), Strin
     // 一次性查询所有相关 methods
     let placeholders: Vec<String> = ids.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
     let sql = format!(
-        "SELECT id, contact_id, method_type, value FROM contact_methods WHERE contact_id IN ({}) ORDER BY created_at ASC",
+        "SELECT id, contact_id, method_type, value FROM contact_methods WHERE contact_id IN ({}) AND deleted_at IS NULL ORDER BY created_at ASC",
         placeholders.join(", ")
     );
 
@@ -113,15 +113,18 @@ fn fill_methods(conn: &Connection, contacts: &mut [Contact]) -> Result<(), Strin
 
 /// 替换联系人的所有联系方式（先删后插）
 fn replace_methods(conn: &Connection, contact_id: &str, methods: &[ContactMethodInput]) -> Result<(), String> {
-    conn.execute("DELETE FROM contact_methods WHERE contact_id = ?1", params![contact_id])
+    // 软删除旧的联系方式
+    let time = now();
+    conn.execute("UPDATE contact_methods SET deleted_at = ?1 WHERE contact_id = ?2 AND deleted_at IS NULL", params![time, contact_id])
         .map_err(|e| format!("Failed to clear methods: {}", e))?;
 
     for m in methods {
         let id = gen_id();
+        let time = now();
         conn.execute(
-            "INSERT INTO contact_methods (id, contact_id, method_type, value, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![id, contact_id, m.method_type, m.value, now()],
+            "INSERT INTO contact_methods (id, contact_id, method_type, value, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+            params![id, contact_id, m.method_type, m.value, time],
         )
         .map_err(|e| format!("Failed to insert method: {}", e))?;
     }
@@ -170,8 +173,8 @@ pub fn create_contact(
     for m in contact_methods {
         let mid = gen_id();
         conn.execute(
-            "INSERT INTO contact_methods (id, contact_id, method_type, value, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT INTO contact_methods (id, contact_id, method_type, value, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
             params![mid, id, m.method_type, m.value, time],
         )
         .map_err(|e| format!("Failed to insert method: {}", e))?;
@@ -183,7 +186,7 @@ pub fn create_contact(
 /// 获取单个联系人
 pub fn get_contact(conn: &Connection, id: &str) -> Result<Contact, String> {
     let mut contact = conn.query_row(
-        &format!("SELECT {} FROM contacts WHERE id = ?1", CONTACT_COLUMNS),
+        &format!("SELECT {} FROM contacts WHERE id = ?1 AND deleted_at IS NULL", CONTACT_COLUMNS),
         params![id],
         contact_from_row,
     )
@@ -197,7 +200,7 @@ pub fn list_contacts(
     conn: &Connection,
     group_name: Option<&str>,
 ) -> Result<Vec<Contact>, String> {
-    let mut sql = format!("SELECT {} FROM contacts WHERE 1=1", CONTACT_COLUMNS);
+    let mut sql = format!("SELECT {} FROM contacts WHERE deleted_at IS NULL", CONTACT_COLUMNS);
     let mut params_vec: Vec<String> = Vec::new();
 
     if let Some(g) = group_name {
@@ -312,7 +315,12 @@ pub fn update_contact(
 
 /// 删除联系人
 pub fn delete_contact(conn: &Connection, id: &str) -> Result<u64, String> {
-    let affected = conn.execute("DELETE FROM contacts WHERE id = ?1", params![id])
+    let time = now();
+    // 软删除关联的联系方式
+    conn.execute("UPDATE contact_methods SET deleted_at = ?1 WHERE contact_id = ?2 AND deleted_at IS NULL", params![time, id])
+        .map_err(|e| format!("Failed to soft delete contact methods: {}", e))?;
+
+    let affected = conn.execute("UPDATE contacts SET deleted_at = ?1 WHERE id = ?2", params![time, id])
         .map_err(|e| format!("Failed to delete contact: {}", e))?;
 
     Ok(affected as u64)
@@ -322,7 +330,7 @@ pub fn delete_contact(conn: &Connection, id: &str) -> Result<u64, String> {
 pub fn search_contacts(conn: &Connection, query: &str) -> Result<Vec<Contact>, String> {
     let pattern = format!("%{}%", query);
     let sql = format!(
-        "SELECT {} FROM contacts WHERE name LIKE ?1 OR nickname LIKE ?1 OR notes LIKE ?1 ORDER BY created_at DESC",
+        "SELECT {} FROM contacts WHERE (name LIKE ?1 OR nickname LIKE ?1 OR notes LIKE ?1) AND deleted_at IS NULL ORDER BY created_at DESC",
         CONTACT_COLUMNS
     );
     let mut stmt = conn
@@ -360,7 +368,7 @@ pub fn list_all_birthdays(conn: &Connection) -> Result<Vec<BirthdayInfo>, String
         .prepare(
             "SELECT id, name, birthday_year, birthday_month, birthday_day, birthday_calendar
              FROM contacts
-             WHERE birthday_month IS NOT NULL AND birthday_day IS NOT NULL
+             WHERE birthday_month IS NOT NULL AND birthday_day IS NOT NULL AND deleted_at IS NULL
              ORDER BY birthday_month ASC, birthday_day ASC",
         )
         .map_err(|e| format!("Failed to prepare list_all_birthdays: {}", e))?;

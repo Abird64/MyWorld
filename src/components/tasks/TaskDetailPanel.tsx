@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Check, Circle, Trash2, Plus } from 'lucide-react';
+import { X, Check, Circle, Trash2, Plus, Timer, Sparkles } from 'lucide-react';
 import { SKILL_COLORS, SKILL_ORDER } from '@/styles/theme';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
+import { usePomodoroStore } from '@/stores/pomodoroStore';
+import { MindfulStart } from '@/components/pomodoro/MindfulStart';
 import * as skillService from '@/services/skillService';
 import { formatDateTime } from '@/utils/dateFormat';
 import type { Task } from '@/types/task';
@@ -45,6 +47,8 @@ export function TaskDetailPanel({
   onDeleteSubtask,
 }: TaskDetailPanelProps) {
   const appTheme = useAppTheme();
+  const { startFocus, phase } = usePomodoroStore();
+  const [showMindful, setShowMindful] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [status, setStatus] = useState(task.status);
@@ -128,23 +132,23 @@ export function TaskDetailPanel({
 
   // 动态颜色常量
   const txt = appTheme.ink;
-  const txtDim = txt + 'CC';       // 80%
-  const txtMid = txt + '80';       // 50%
-  const txtLight = txt + '4D';     // 30%
-  const txtHint = txt + '33';      // 20%
-  const txtMeta = txt + '66';      // 40%
-  const txtBody = txt + 'B3';      // 70%
-  const bgSubtle = txt + '0D';     // 5%
-  const bgHover = txt + '1A';      // 10%
-  const bgSubdued = txt + '08';    // 3%
-  const borderColor = txt + '14';  // 8%
+  const txtDim = withAlpha(txt, 0.8);       // 80%
+  const txtMid = withAlpha(txt, 0.5);       // 50%
+  const txtLight = withAlpha(txt, 0.3);     // 30%
+  const txtHint = withAlpha(txt, 0.2);      // 20%
+  const txtMeta = withAlpha(txt, 0.4);      // 40%
+  const txtBody = withAlpha(txt, 0.7);      // 70%
+  const bgSubtle = withAlpha(txt, 0.05);     // 5%
+  const bgHover = withAlpha(txt, 0.1);      // 10%
+  const bgSubdued = withAlpha(txt, 0.03);    // 3%
+  const borderColor = withAlpha(txt, 0.08);  // 8%
 
   return (
     <>
       <style>{`
-        #task-detail-panel .focus-ring-accent:focus { outline: none; box-shadow: 0 0 0 2px ${appTheme.primary}4D; }
+        #task-detail-panel .focus-ring-accent:focus { outline: none; box-shadow: 0 0 0 2px ${withAlpha(appTheme.primary, 0.3)}; }
         #task-detail-panel .btn-accent { background-color: ${appTheme.primary}; }
-        #task-detail-panel .btn-accent:hover { background-color: ${appTheme.primary}DD; }
+        #task-detail-panel .btn-accent:hover { background-color: ${withAlpha(appTheme.primary, 0.87)}; }
         #task-detail-panel input::placeholder,
         #task-detail-panel textarea::placeholder { color: ${txtHint}; }
       `}</style>
@@ -366,7 +370,34 @@ export function TaskDetailPanel({
         </div>
 
         {/* 底部操作 */}
-        <div className="p-6 border-t" style={{ borderColor }}>
+        <div className="p-6 border-t space-y-3" style={{ borderColor }}>
+          {/* 番茄钟 + 正念启动 */}
+          {task.status !== 'completed' && task.status !== 'cancelled' && phase === 'idle' && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowMindful(true)}
+                className="flex-1 py-2.5 rounded-2xl text-sm transition-colors flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: withAlpha('#E8B959', 0.1),
+                  color: '#E8B959',
+                }}
+              >
+                <Sparkles size={15} />
+                正念启动
+              </button>
+              <button
+                onClick={() => startFocus(task.id, task.title)}
+                className="flex-1 py-2.5 rounded-2xl text-sm transition-colors flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: withAlpha('#3A8FB7', 0.1),
+                  color: '#3A8FB7',
+                }}
+              >
+                <Timer size={15} />
+                番茄钟
+              </button>
+            </div>
+          )}
           <div className="flex gap-3">
             {task.status !== 'completed' ? (
               <button onClick={() => onComplete(task.id)}
@@ -392,6 +423,13 @@ export function TaskDetailPanel({
         </div>
       </div>
     </div>
+    <MindfulStart
+      open={showMindful}
+      onClose={() => setShowMindful(false)}
+      taskTitle={task.title}
+      taskDescription={task.description || undefined}
+      taskId={task.id}
+    />
     </>
   );
 }

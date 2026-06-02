@@ -1,5 +1,5 @@
 import type { Schedule } from '@/types/schedule';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { EventBlock } from './EventBlock';
 import {
   HOUR_START,
@@ -87,13 +87,13 @@ export function DayView({ date, schedules, onEventClick, onBack, backLabel = '�
   return (
     <div className="w-full rounded-2xl overflow-hidden flex flex-col" style={{ backgroundColor: appTheme.canvas }}>
       {/* 表头 */}
-      <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${appTheme.primary}33` }}>
+      <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${withAlpha(appTheme.primary, 0.2)}` }}>
         <button
           onClick={onBack}
           className="text-sm transition-colors"
-          style={{ color: `${appTheme.ink}99` }}
+          style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }}
           onMouseEnter={(e) => (e.currentTarget.style.color = appTheme.ink)}
-          onMouseLeave={(e) => (e.currentTarget.style.color = `${appTheme.ink}99`)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = `${withAlpha(appTheme.ink, 0.6)}`)}
         >
           &larr; {backLabel}
         </button>
@@ -101,7 +101,7 @@ export function DayView({ date, schedules, onEventClick, onBack, backLabel = '�
           <span className="text-lg font-light" style={{ color: appTheme.ink }}>
             {date.getMonth() + 1}月{date.getDate()}日
           </span>
-          <span className="text-sm" style={{ color: `${appTheme.ink}80` }}>
+          <span className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>
             {weekDayNames[date.getDay()]}
           </span>
           {isToday && (
@@ -121,13 +121,13 @@ export function DayView({ date, schedules, onEventClick, onBack, backLabel = '�
             <div
               key={hour}
               className="absolute w-full text-right pr-3 text-xs -translate-y-1/2"
-              style={{ top: `${hourToPercent(hour)}%`, color: `${appTheme.ink}66` }}
+              style={{ top: `${hourToPercent(hour)}%`, color: `${withAlpha(appTheme.ink, 0.4)}` }}
             >
               {hour.toString().padStart(2, '0')}:00
             </div>
           ))}
           <div
-            className="absolute left-0 right-0 border-t border-dashed" style={{ borderColor: `${appTheme.primary}4D`, top: `${hourToPercent(7)}%` }}
+            className="absolute left-0 right-0 border-t border-dashed" style={{ borderColor: `${withAlpha(appTheme.primary, 0.3)}`, top: `${hourToPercent(7)}%` }}
           />
         </div>
 
@@ -136,12 +136,12 @@ export function DayView({ date, schedules, onEventClick, onBack, backLabel = '�
           {hours.map((hour) => (
             <div
               key={hour}
-              className="absolute w-full h-[1px] left-0" style={{ top: `${hourToPercent(hour)}%`, backgroundColor: `${appTheme.primary}33` }}
+              className="absolute w-full h-[1px] left-0" style={{ top: `${hourToPercent(hour)}%`, backgroundColor: `${withAlpha(appTheme.primary, 0.2)}` }}
             />
           ))}
 
           {isToday && (
-            <div className="absolute top-0 h-full left-0 right-0" style={{ backgroundColor: `${appTheme.primary}0D` }} />
+            <div className="absolute top-0 h-full left-0 right-0" style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.05)}` }} />
           )}
 
           {/* 普通日程 */}

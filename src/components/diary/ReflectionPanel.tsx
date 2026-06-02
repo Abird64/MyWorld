@@ -2,7 +2,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { X, Sparkles } from 'lucide-react';
 import { SKILL_COLORS } from '@/styles/theme';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import type { CompleteResult } from '@/types/task';
 import type { ExtractedContact } from '@/types/journal';
 import { ContactSyncCard } from './ContactSyncCard';
@@ -41,15 +41,15 @@ export function ReflectionPanel({
   const hasReflection = !!reflection;
 
   const TXT = appTheme.ink;
-  const TXT_DIM = `${appTheme.ink}99`;
-  const TXT_PROSE = `${appTheme.ink}CC`;
-  const SURFACE_BG = `${appTheme.ink}08`;
-  const BTN_BG = `${appTheme.ink}0D`;
-  const BTN_HOVER = `${appTheme.ink}1A`;
-  const BTN_TEXT = `${appTheme.ink}99`;
-  const LABEL_DIM = `${appTheme.ink}66`;
-  const MUTED = `${appTheme.ink}33`;
-  const BORDER = `${appTheme.ink}14`;
+  const TXT_DIM = `${withAlpha(appTheme.ink, 0.6)}`;
+  const TXT_PROSE = `${withAlpha(appTheme.ink, 0.8)}`;
+  const SURFACE_BG = `${withAlpha(appTheme.ink, 0.03)}`;
+  const BTN_BG = `${withAlpha(appTheme.ink, 0.05)}`;
+  const BTN_HOVER = `${withAlpha(appTheme.ink, 0.1)}`;
+  const BTN_TEXT = `${withAlpha(appTheme.ink, 0.6)}`;
+  const LABEL_DIM = `${withAlpha(appTheme.ink, 0.4)}`;
+  const MUTED = `${withAlpha(appTheme.ink, 0.2)}`;
+  const BORDER = `${withAlpha(appTheme.ink, 0.08)}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -71,7 +71,7 @@ export function ReflectionPanel({
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
             style={{ backgroundColor: 'transparent' }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = `${appTheme.ink}0D`)}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = `${withAlpha(appTheme.ink, 0.05)}`)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
             <X size={18} style={{ color: TXT_DIM }} />
@@ -91,7 +91,7 @@ export function ReflectionPanel({
                     <div
                       key={s.skill_id}
                       className="rounded-full px-4 py-2 flex items-center gap-2"
-                      style={{ backgroundColor: `${color}25` }}
+                      style={{ backgroundColor: `${withAlpha(color, 0.15)}` }}
                     >
                       <span className="text-sm" style={{ color }}>
                         {SKILL_COLORS[s.skill_id]?.name ?? s.skill_name}
@@ -114,7 +114,7 @@ export function ReflectionPanel({
             <div className="rounded-2xl p-5 flex items-center gap-4 flex-wrap" style={{ backgroundColor: SURFACE_BG }}>
               <p className="text-sm tracking-wider" style={{ color: LABEL_DIM }}>今日感受</p>
               {mood && (
-                <span className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: `${appTheme.primary}25`, color: appTheme.primary }}>
+                <span className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.15)}`, color: appTheme.primary }}>
                   {mood}
                 </span>
               )}

@@ -74,7 +74,7 @@ pub fn create_conversation(conn: &Connection, title: Option<&str>) -> Result<Con
 
 pub fn list_conversations(conn: &Connection) -> Result<Vec<Conversation>, String> {
     let mut stmt = conn
-        .prepare("SELECT id, title, created_at, updated_at FROM ai_conversations ORDER BY updated_at DESC")
+        .prepare("SELECT id, title, created_at, updated_at FROM ai_conversations WHERE deleted_at IS NULL ORDER BY updated_at DESC")
         .map_err(|e| e.to_string())?;
 
     let rows = stmt.query_map([], conversation_from_row).map_err(|e| e.to_string())?;
@@ -88,7 +88,7 @@ pub fn list_conversations(conn: &Connection) -> Result<Vec<Conversation>, String
 
 pub fn get_conversation(conn: &Connection, id: &str) -> Result<Conversation, String> {
     let mut stmt = conn
-        .prepare("SELECT id, title, created_at, updated_at FROM ai_conversations WHERE id = ?1")
+        .prepare("SELECT id, title, created_at, updated_at FROM ai_conversations WHERE id = ?1 AND deleted_at IS NULL")
         .map_err(|e| e.to_string())?;
 
     let mut rows = stmt.query_map(params![id], conversation_from_row).map_err(|e| e.to_string())?;
@@ -100,10 +100,12 @@ pub fn get_conversation(conn: &Connection, id: &str) -> Result<Conversation, Str
 }
 
 pub fn delete_conversation(conn: &Connection, id: &str) -> Result<(), String> {
-    // 先删消息（虽然有 CASCADE，但显式更安全）
-    conn.execute("DELETE FROM ai_messages WHERE conversation_id = ?1", params![id])
+    let time = now();
+    // 软删除消息
+    conn.execute("UPDATE ai_messages SET deleted_at = ?1 WHERE conversation_id = ?2", params![time, id])
         .map_err(|e| e.to_string())?;
-    conn.execute("DELETE FROM ai_conversations WHERE id = ?1", params![id])
+    // 软删除对话
+    conn.execute("UPDATE ai_conversations SET deleted_at = ?1 WHERE id = ?2", params![time, id])
         .map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -133,8 +135,8 @@ pub fn create_message(
     let ts = now();
 
     conn.execute(
-        "INSERT INTO ai_messages (id, conversation_id, role, content, tool_calls, tool_call_id, reasoning_content, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO ai_messages (id, conversation_id, role, content, tool_calls, tool_call_id, reasoning_content, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)",
         params![id, conversation_id, role, content, tool_calls, tool_call_id, reasoning_content, ts],
     )
     .map_err(|e| e.to_string())?;
@@ -161,7 +163,7 @@ pub fn create_message(
 pub fn get_message(conn: &Connection, id: &str) -> Result<Message, String> {
     conn.query_row(
         "SELECT id, conversation_id, role, content, tool_calls, tool_call_id, reasoning_content, created_at
-         FROM ai_messages WHERE id = ?1",
+         FROM ai_messages WHERE id = ?1 AND deleted_at IS NULL",
         params![id],
         message_from_row,
     )
@@ -172,7 +174,7 @@ pub fn list_messages(conn: &Connection, conversation_id: &str) -> Result<Vec<Mes
     let mut stmt = conn
         .prepare(
             "SELECT id, conversation_id, role, content, tool_calls, tool_call_id, reasoning_content, created_at
-             FROM ai_messages WHERE conversation_id = ?1 ORDER BY created_at ASC",
+             FROM ai_messages WHERE conversation_id = ?1 AND deleted_at IS NULL ORDER BY created_at ASC",
         )
         .map_err(|e| e.to_string())?;
 

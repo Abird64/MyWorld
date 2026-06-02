@@ -1,4 +1,4 @@
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 
 interface BatchOperationsBarProps {
   selectedCount: number;
@@ -22,13 +22,13 @@ export function BatchOperationsBar({
   const appTheme = useAppTheme();
   const allSelected = selectedCount > 0 && selectedCount === totalCount;
   const txt = appTheme.ink;
-  const txtLight = txt + '4D';
-  const txtMid = txt + '80';
-  const txtBody = txt + 'B3';
-  const txtHint = txt + '33';
-  const bgSubtle = txt + '0D';
-  const bgHover = txt + '1A';
-  const borderColor = txt + '1A';
+  const txtLight = withAlpha(txt, 0.3);
+  const txtMid = withAlpha(txt, 0.5);
+  const txtBody = withAlpha(txt, 0.7);
+  const txtHint = withAlpha(txt, 0.2);
+  const bgSubtle = withAlpha(txt, 0.05);
+  const bgHover = withAlpha(txt, 0.1);
+  const borderColor = withAlpha(txt, 0.1);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 border-t" style={{ backgroundColor: appTheme.canvas, borderColor }}>
@@ -61,7 +61,7 @@ export function BatchOperationsBar({
             disabled={selectedCount === 0}
             className="px-5 py-2.5 rounded-full text-sm transition-all"
             style={selectedCount > 0
-              ? { backgroundColor: `${appTheme.danger}20`, color: appTheme.danger }
+              ? { backgroundColor: `${withAlpha(appTheme.danger, 0.13)}`, color: appTheme.danger }
               : { backgroundColor: bgSubtle, color: txtHint }}
           >
             批量删除

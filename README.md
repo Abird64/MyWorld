@@ -1,100 +1,295 @@
 # 提灯 (Lantern)
 
-> 拾级而上，提灯而行 — Lantern, step by step.
+> 远游山川，星河在天。
 
-一个本地优先的 AI 驱动人生管理系统。把 Obsidian 的数据开放、RPG 的成长反馈、AI Agent 的智能调度，编织成一个提灯引路的桌面伙伴。
+提灯是一个本地优先、AI 驱动的人生管理系统。它把任务、日记、日历、习惯、人脉、成长融为一体，用 AI 帮你记录和管理生活，用 RPG 式的成长反馈让你看见自己的每一步。
 
-## 功能
+所有数据存储在本地，你的故事只属于你自己。
 
-| 模块 | 说明 |
-|------|------|
-| **提灯** (Lantern) | AI 对话助手，24 个工具覆盖全模块，确认卡片、对话收藏 |
-| **任务** (Tasks) | 任务管理，优先级/标签/子任务/搜索排序/推荐算法 |
-| **日历** (Schedule) | 周/日/月/近期四视图，自建日历表勾选过滤，.ics 导入导出 |
-| **日记** (Diary) | Markdown 存储，时间线浏览，AI 日省旁白，XP 结算 |
-| **相识** (Relations) | 人脉管理，分组筛选，多联系方式，AI 人物提取 |
-| **修为** (Skills) | 六维属性雷达图，RPG 成长反馈，完成任务获得经验值 |
-| **小本本** (Memories) | AI 跨对话记忆，10 种分类，提灯主动记录用户习惯/偏好/性格 |
+---
+
+## 一句话介绍
+
+提灯是你桌边的一盏小灯。你走过夜路，它帮你照亮脚下。你记录的故事、完成的任务、养成的习惯，都会化作光点，让你看见自己走过的路。
+
+---
+
+## 核心功能
+
+### 提灯 — AI 对话
+
+你的 AI 伙伴。不是冰冷的效率工具，而是一个了解你、记得你的同伴。
+
+- 自然语言对话，AI 能帮你创建任务、写日记、管理日程、查询人脉
+- 32 个 AI 工具覆盖所有模块，写操作弹出确认卡片，读操作自动执行
+- 对话收藏：收藏喜欢的对话片段，随时回味
+- 自动标题：首轮对话后自动生成标题
+- 记忆系统：提灯会记住你提到的偏好、习惯、重要事件
+- 支持 DeepSeek、OpenAI、Ollama 等所有兼容 OpenAI API 的服务
+
+### 看板 — 一眼全局
+
+仪表盘页面，卡片展示各模块核心数据：
+
+- 今日待办任务数 + 逾期提醒
+- 今日日记状态（字数 / AI 总结状态）
+- 今日日程 + 最近倒数日
+- 今日习惯打卡进度 + 最长连续天数
+- 30 天内生日提醒
+- 今日获得经验值 + 属性等级
+
+### 日历 — 四种视图
+
+统一视图显示三类数据：任务（自动同步）、课程（.ics 导入）、独立事件（手动创建）。
+
+- **周视图**：时间轴 + 事件色块 + 当前时间红线 + 拖拽调整
+- **日视图**：单天详细时间轴 + 拖拽调整
+- **月视图**：7×6 网格 + 事件预览
+- **近期视图**：从当前时刻起算，未来 30 天按日分组
+- 重复事件支持（DAILY / WEEKLY / MONTHLY + RRULE）
+- .ics 文件导入导出
+- 自建日历表，按日历筛选过滤
+- 倒数日：标记重要日期，卡片显示剩余天数
+
+### 任务 — 管好每件事
+
+完整任务管理，不催你，但帮你理清。
+
+- 创建任务：标题、描述、优先级、截止时间、标签、子任务
+- 任务详情面板：滑出式侧栏，所有字段可编辑，自动保存
+- 搜索 + 排序（创建时间 / 截止时间 / 优先级）
+- 批量操作：多选完成 / 删除
+- 任务推荐：基于紧迫度、价值、成本的加权评分
+- XP 经验系统：完成任务获得经验值，分配到六维属性
+
+### 日记 — 你的故事
+
+用 Markdown 记录每一天，AI 帮你反思。
+
+- 每天一个 `.md` 文件，可直接用 Obsidian 打开
+- 1.5 秒自动保存，不用操心
+- 时间线浏览：月历视图标记有日记的日期
+- AI 日省：AI 帮你写当日旁白，从日记、任务、日程多维度总结
+- XP 结算：写完日记自动获得经验值
+- 字数统计
+
+### 习惯 — 每日打卡
+
+建立好习惯，每天一小步。
+
+- 创建习惯：名称、图标、颜色、频率（每天 / 每周N次 / 自选日期）
+- 一键打卡，再点取消
+- 连续天数统计
+- 本周打卡矩阵（小圆点展示）
+- 热力图详情（类似 GitHub 贡献图）
+- 关联技能，打卡获得经验值
+
+### 成长 — 六维属性
+
+RPG 风格的成长反馈系统。
+
+| 属性 | 名称 | 颜色 |
+|------|------|------|
+| focus | 专注力 | #3A8FB7 天水碧 |
+| vitality | 生命力 | #4B7F52 苍艾绿 |
+| empathy | 共情力 | #C83C3C 朱砂红 |
+| creativity | 创造力 | #E8B959 缃叶黄 |
+| insight | 洞察力 | #B87353 檀木棕 |
+| expression | 表现力 | #8A6DA7 紫菂色 |
+
+- 雷达图展示六维属性分布
+- 属性卡片：等级 + XP 进度条 + 总计经验值
+- 活跃记录热力图
+- 经验来源分析
+- 完成任务 / 写日记 → 自动获得 XP → 属性升级
+
+### 联系人 — 你的人脉
+
+管理身边的人，记住重要的日子。
+
+- 联系人卡片：姓名、昵称、分组、生日、多种联系方式
+- 分组筛选：家人 / 朋友 / 同学 / 同事 / 老师
+- 搜索：按姓名 / 昵称 / 描述
+- 生日提醒：自动计算距今天数，即将到来的年龄
+- AI 提取：从日记中自动识别提到的人物
+
+### 笔记 — 提灯的记忆
+
+AI 跨对话记忆系统。提灯会记住你在对话中提到的重要事情。
+
+- 10 种分类：身份 / 兴趣 / 口味 / 习惯 / 性格 / 关系 / 状态 / 目标 / 事件 / 其他
+- 按类型筛选浏览
+- 来源追溯：每条记忆可查看原始对话
+- 用户可手动删除
+
+### 设置
+
+- AI 配置：API 地址 / Key / 模型选择
+- WebDAV 同步：坚果云多端同步
+- 数据管理：清除各类数据
+- 推荐权重：紧迫度 / 价值 / 成本滑块调节
+
+---
+
+## 设计哲学
+
+### 夜的隐喻
+
+默认深色背景 = 人生有暗处，但你手里有光。不需要驱散所有黑暗，照亮脚下这一步就够了。
+
+### 低压力自然主义
+
+拒绝高饱和红色、刺眼提醒、紧迫感。用低饱和、柔和的色调传递平静。你打开提灯不是"要完成任务"，而是"看看我的小森林"。
+
+### 故事思维
+
+所有功能的底层逻辑是"记录故事"，不是"管理数据"。任务是一颗种子，日记是一段旅途，记忆是飞舞的萤火。
+
+### 数据开放
+
+- 日记用 `.md` 文件存储，可直接用 Obsidian 打开
+- 数据库用 SQLite 单文件，可用任何工具读取
+- 不锁定用户数据，随时可以导出
+
+---
+
+## 品牌
+
+- **中文名**：提灯
+- **英文名**：Lantern
+- **tagline**：远游山川，星河在天。
+- **世界观**：人生是一段夜路。你提着灯，灯不大。周围有萤火，远处有星空。你走过的地方，都亮了。
+
+---
 
 ## 技术栈
 
-* **桌面框架**: [Tauri 2](https://v2.tauri.app/) (Rust)
-* **前端**: React 19 + TypeScript + Vite
-* **样式**: Tailwind CSS 4
-* **状态管理**: Zustand
-* **数据库**: SQLite (rusqlite, bundled)
-* **AI**: 兼容 OpenAI/DeepSeek API 格式
+| 层 | 技术 |
+|----|------|
+| 桌面框架 | Tauri 2 (Rust) |
+| 前端 | React 19 + TypeScript + Vite |
+| 样式 | Tailwind CSS 4 |
+| 状态管理 | Zustand |
+| 数据库 | SQLite (rusqlite) |
+| AI | OpenAI 兼容 API (DeepSeek / OpenAI / Ollama) |
+| 同步 | WebDAV (坚果云) |
+
+---
 
 ## 安装
 
 从 [Releases](../../releases) 下载安装包：
 
-| 文件 | 大小 | 说明 |
-|------|------|------|
-| `Lantern_x.x.x_standard.exe` | ~200 MB | 含 WebView2 安装引导（没有 Edge 的电脑用） |
-| `Lantern_x.x.x_lite.exe` | ~7 MB | 不含 WebView2（已安装 Edge/WebView2 的电脑用） |
-
-## 快速开始
+| 文件 | 说明 |
+|------|------|
+| `Lantern_x.x.x_standard.exe` | 含 WebView2 安装引导（没有 Edge 的电脑用） |
+| `Lantern_x.x.x_lite.exe` | 不含 WebView2（已安装 Edge/WebView2 的电脑用） |
 
 ### 前置要求
 
-* [Node.js](https://nodejs.org/) 22+
-* [Rust](https://www.rust-lang.org/) 1.77+
-* Windows: Microsoft Visual Studio C++ Build Tools
+- Windows 10+（需 WebView2，Edge 浏览器自带）
+- AI 功能需要 API Key（推荐 DeepSeek，也支持 OpenAI / Ollama）
 
-### 开发
+### 开发环境
 
 ```bash
+# 前置
+Node.js 22+, Rust 1.77+, Visual Studio C++ Build Tools
+
+# 安装
+cd shijie
 npm install
-npm run tauri dev        # 开发模式（HMR + 热重载）
-npx tsc --noEmit         # TypeScript 类型检查
-cargo check              # Rust 编译检查（在 src-tauri/ 下）
+npm run tauri dev        # 开发模式
+
+# 类型检查
+npx tsc --noEmit         # TypeScript
+cd src-tauri && cargo check  # Rust
+
+# 构建
+npm run tauri build          # 标准版
+node scripts/build-all.mjs   # 标准版 + Lite 版
 ```
 
-### 构建安装包
-
-```bash
-npm run tauri build                # 标准版（含 WebView2）
-node scripts/build-all.mjs lite    # Lite 版
-node scripts/build-all.mjs         # 两种都构建
-```
+---
 
 ## 配置 AI
 
-1. 启动应用后，进入**设置**页面
-2. 填入 API 地址（默认 DeepSeek: `https://api.deepseek.com/v1`）
+1. 启动应用，进入 **我的 → 设置**
+2. 填入 API 地址（默认 DeepSeek: `https://api.deepseek.com`）
 3. 填入 API Key（从对应平台获取）
-4. 回到**提灯**页面开始对话
+4. 回到 **提灯** 页面开始对话
 
-支持所有兼容 OpenAI API 格式的服务（DeepSeek、OpenAI、Ollama 等）。
+支持所有兼容 OpenAI API 格式的服务：
+- **DeepSeek**（推荐，性价比高）
+- **OpenAI**（GPT-4o 等）
+- **Ollama**（本地模型，免费但需要显卡）
 
-## 架构
+---
+
+## 数据同步
+
+提灯支持通过坚果云 WebDAV 在多台设备间同步数据。
+
+1. 在坚果云设置中生成"第三方应用密码"
+2. 进入 **设置 → 同步**，填入坚果云账号和应用密码
+3. 点击"测试连接"确认可用
+4. 应用启动时自动同步，也可手动触发
+
+同步内容：
+- SQLite 数据库（任务、日程、联系人等所有结构化数据）
+- 日记 `.md` 文件
+
+---
+
+## 数据存储位置
+
+| 数据 | 路径 |
+|------|------|
+| 数据库 | `%APPDATA%/com.lantern.app/lantern.db` |
+| 日记文件 | `%APPDATA%/com.lantern.app/data/journals/` |
+| AI 对话 | SQLite `ai_conversations` + `ai_messages` 表 |
+| 设置 | SQLite `settings` 表 |
+
+---
+
+## 架构概览
 
 ```
 src-tauri/src/
-  ai/          AI 客户端、提示词、工具定义、执行器
-  commands/    Tauri IPC 命令（每个模块一个文件）
-  db/          SQLite 连接、迁移、Repository 层
+  ai/                 AI 子系统（客户端、提示词、32 个工具、执行器）
+  commands/           80 个 Tauri IPC 命令
+  db/                 SQLite 连接、迁移、18 张表、Repository 层
+  sync/               WebDAV 同步引擎
 
 src/
-  components/  UI 组件
-  pages/       页面（8 个模块）
-  services/    Tauri API 桥接
-  stores/      Zustand 状态管理
-  types/       类型定义
+  components/         54 个 UI 组件（10 个子目录）
+  pages/              11 个页面
+  stores/             15 个 Zustand store
+  services/           前端 → Tauri command 桥接
+  styles/             主题系统（夜萤暗色 / 清晨亮色）
+  types/              TypeScript 类型定义
 ```
 
-* Rust 后端暴露约 45 个 Tauri command，前端通过 `@tauri-apps/api` 调用
-* 数据存储：日记用 `.md` 文件（文件系统为真相源），其他数据用 SQLite（加速索引）
-* AI 工具层：24 个工具，写操作需用户确认，读操作自动执行
+---
 
-## 数据可迁移性
+## 导航结构
 
-* 日记：`%APPDATA%/com.lantern.app/diaries/` 下的 `.md` 文件，可直接用 Obsidian 打开
-* 数据库：`%APPDATA%/com.lantern.app/lantern.db`，可用任何 SQLite 工具读取
-* 导出：支持 ICS 日历导出，按日历表筛选
+```
+底部 Tab 栏
+├── 提灯      AI 对话（默认页）
+├── 看板      数据仪表盘
+├── 日历      日程管理
+└── 我的      入口页
+    ├── 任务      任务管理
+    ├── 日记      日记编辑
+    ├── 习惯      习惯打卡
+    ├── 成长      六维属性
+    ├── 联系人    人脉管理
+    └── 设置      AI / 同步 / 数据
+```
+
+---
 
 ## 开源协议
 
 MIT License
-

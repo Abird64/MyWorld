@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, X, Search, ArrowUpDown, ListChecks } from 'lucide-react';
 import { CapsuleTabs, NavBar } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useSkillStore } from '@/stores/skillStore';
 import * as skillService from '@/services/skillService';
@@ -82,10 +82,10 @@ function filterTasks(tasks: Task[], tabId: string, searchQuery: string): Task[] 
 export function TasksPage() {
   const appTheme = useAppTheme();
   const txt = appTheme.ink;
-  const txtLight = txt + '4D';
-  const txtMid = txt + '80';
-  const txtMeta = txt + '66';
-  const bgSubtle = txt + '0D';
+  const txtLight = withAlpha(txt, 0.3);
+  const txtMid = withAlpha(txt, 0.5);
+  const txtMeta = withAlpha(txt, 0.4);
+  const bgSubtle = withAlpha(txt, 0.05);
   // 列表状态
   const [activeCategory, setActiveCategory] = useState('wanxiang');
   const [searchQuery, setSearchQuery] = useState('');
@@ -285,7 +285,7 @@ export function TasksPage() {
   };
 
   return (
-    <PageContainer className="relative">
+    <PageContainer className="relative" style={{ '--ink-25': withAlpha(appTheme.ink, 0.25), '--ink-30': withAlpha(appTheme.ink, 0.3), '--primary': appTheme.primary, '--primary-30': withAlpha(appTheme.primary, 0.3), '--primary-87': withAlpha(appTheme.primary, 0.87) } as React.CSSProperties}>
       <NavBar title="任务" />
 
       {/* 固定控制区 */}
@@ -300,7 +300,7 @@ export function TasksPage() {
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索任务..."
               className="w-full backdrop-blur-sm rounded-full pl-11 pr-4 py-3 text-base focus:outline-none task-search-input transition-all"
-              style={{ backgroundColor: appTheme.canvas + '99', color: txt }} />
+              style={{ backgroundColor: withAlpha(appTheme.canvas, 0.6), color: txt }} />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
                 style={{ color: txtLight }}
@@ -313,7 +313,7 @@ export function TasksPage() {
           <div className="relative">
             <button onClick={() => setShowSortMenu(!showSortMenu)}
               className="w-11 h-11 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors"
-              style={{ backgroundColor: appTheme.canvas + '99', color: txtMeta }}
+              style={{ backgroundColor: withAlpha(appTheme.canvas, 0.6), color: txtMeta }}
               onMouseEnter={(e) => (e.currentTarget.style.color = txtMid)}
               onMouseLeave={(e) => (e.currentTarget.style.color = txtMeta)}>
               <ArrowUpDown size={18} />
@@ -345,7 +345,7 @@ export function TasksPage() {
             className="w-11 h-11 rounded-full flex items-center justify-center transition-colors"
             style={multiSelectMode
               ? { backgroundColor: appTheme.primary, color: appTheme.onPrimary }
-              : { backgroundColor: appTheme.canvas + '99', color: txtMeta }}
+              : { backgroundColor: withAlpha(appTheme.canvas, 0.6), color: txtMeta }}
             onMouseEnter={!multiSelectMode ? (e) => (e.currentTarget.style.color = txtMid) : undefined}
             onMouseLeave={!multiSelectMode ? (e) => (e.currentTarget.style.color = txtMeta) : undefined}>
             <ListChecks size={18} />
@@ -436,22 +436,6 @@ export function TasksPage() {
         </div>
       )}
 
-      {/* 全局样式 */}
-      <style>{`
-        @keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
-        .animate-slide-in { animation: slide-in 0.25s ease-out; }
-        .date-input, .time-input { -webkit-appearance: none; appearance: none; background: transparent; border: none; outline: none; font-family: inherit; font-size: inherit; color: inherit; cursor: pointer; }
-        .date-input::-webkit-calendar-picker-indicator, .time-input::-webkit-calendar-picker-indicator { opacity: 0.4; cursor: pointer; filter: grayscale(1); }
-        .date-input::-webkit-calendar-picker-indicator:hover, .time-input::-webkit-calendar-picker-indicator:hover { opacity: 0.7; }
-        .date-input::-webkit-datetime-edit, .time-input::-webkit-datetime-edit { color: inherit; }
-        .date-input::-webkit-datetime-edit-fields-wrapper, .time-input::-webkit-datetime-edit-fields-wrapper { padding: 0; }
-        .date-input::-webkit-datetime-edit-text, .time-input::-webkit-datetime-edit-text { color: ${appTheme.ink}40; padding: 0 1px; }
-        .date-input::-webkit-datetime-edit-month-field, .date-input::-webkit-datetime-edit-day-field, .date-input::-webkit-datetime-edit-year-field, .time-input::-webkit-datetime-edit-hour-field, .time-input::-webkit-datetime-edit-minute-field { color: inherit; }
-        .task-search-input:focus { box-shadow: 0 0 0 2px ${appTheme.primary}4D; }
-        .task-search-input::placeholder { color: ${appTheme.ink}4D; }
-        .task-fab { background-color: ${appTheme.primary}; }
-        .task-fab:hover { background-color: ${appTheme.primary}DD; }
-      `}</style>
     </PageContainer>
   );
 }

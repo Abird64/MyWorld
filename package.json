@@ -1,7 +1,7 @@
 {
   "name": "shijie",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.4.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri",
+    "tauri:android:dev": "node scripts/run-android.mjs",
     "tauri:build": "tauri build",
     "tauri:build:lite": "node scripts/build-lite.mjs",
     "tauri:build:all": "node scripts/build-all.mjs"

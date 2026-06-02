@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, X, Trash2, Phone, MessageCircle, AtSign, Globe, Search } from 'lucide-react';
 import { NavBar, CapsuleTabs } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
 import { BirthdayBar } from '@/components/relations/BirthdayBar';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useContactStore } from '@/stores/contactStore';
 import type { Contact, ContactMethodInput } from '@/types/contact';
 
@@ -76,7 +76,7 @@ function TagInput({
             <span
               key={i}
               className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm"
-              style={{ backgroundColor: `${accentColor}25`, color: accentColor }}
+              style={{ backgroundColor: `${withAlpha(accentColor, 0.15)}`, color: accentColor }}
             >
               {tag}
               <button
@@ -107,7 +107,7 @@ function TagInput({
         placeholder={placeholder}
         className="w-full text-base rounded-2xl px-4 py-3 focus:outline-none"
         style={{
-          backgroundColor: `${accentColor}10`,
+          backgroundColor: `${withAlpha(accentColor, 0.06)}`,
           color: appTheme.ink,
         }}
       />
@@ -139,7 +139,7 @@ function MethodRow({
         ))}
       </select>
       <div className="flex-1 relative">
-        <Icon size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: `${textColor}60` }} />
+        <Icon size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: `${withAlpha(textColor, 0.38)}` }} />
         <input
           type="text"
           value={method.value}
@@ -154,7 +154,7 @@ function MethodRow({
         className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 hover:opacity-80 transition-opacity"
         title="移除"
       >
-        <X size={14} style={{ color: `${textColor}60` }} />
+        <X size={14} style={{ color: `${withAlpha(textColor, 0.38)}` }} />
       </button>
     </div>
   );
@@ -176,6 +176,17 @@ export function RelationsPage() {
   const [newBirthdayYear, setNewBirthdayYear] = useState('');
   const [newBirthdayMonth, setNewBirthdayMonth] = useState('');
   const [newBirthdayDay, setNewBirthdayDay] = useState('');
+
+  // 根据年月计算当月天数
+  const daysInMonth = (() => {
+    if (!newBirthdayMonth) return 31;
+    const m = parseInt(newBirthdayMonth);
+    if (m === 2) {
+      const y = newBirthdayYear ? parseInt(newBirthdayYear) : 2024; // 默认非闰年
+      return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28;
+    }
+    return [4, 6, 9, 11].includes(m) ? 30 : 31;
+  })();
   const [newContactMethods, setNewContactMethods] = useState<ContactMethodInput[]>([]);
   const [newNotes, setNewNotes] = useState('');
   const createInputRef = useRef<HTMLInputElement>(null);
@@ -334,8 +345,8 @@ export function RelationsPage() {
   }
 
   return (
-    <PageContainer className="relative">
-      <NavBar title="相识" />
+    <PageContainer className="relative" style={{ '--select-color': appTheme.ink, '--select-bg': appTheme.canvas } as React.CSSProperties}>
+      <NavBar title="联系人" />
 
       {/* 固定控制区：搜索 + 生日 + 分类 */}
       <div className="flex-shrink-0 flex flex-col items-center px-4 sm:px-8 pt-4 pb-4 relative z-10">
@@ -350,7 +361,7 @@ export function RelationsPage() {
               placeholder="搜索联系人"
               className="w-full text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none"
               style={{
-                backgroundColor: `${appTheme.ink}0A`,
+                backgroundColor: `${withAlpha(appTheme.ink, 0.04)}`,
                 color: appTheme.ink,
               }}
             />
@@ -371,11 +382,11 @@ export function RelationsPage() {
       <div className="flex-1 overflow-y-auto flex flex-col items-center px-4 sm:px-8 pb-8 relative z-10">
         <div className="max-w-[1000px] mx-auto w-full">
           {isLoading && contacts.length === 0 ? (
-            <div className="text-center py-20" style={{ color: `${appTheme.ink}66` }}>
+            <div className="text-center py-20" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>
               加载中...
             </div>
           ) : filteredContacts.length === 0 ? (
-            <div className="text-center py-20" style={{ color: `${appTheme.ink}66` }}>
+            <div className="text-center py-20" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>
               暂无联系人
             </div>
           ) : (
@@ -401,7 +412,7 @@ export function RelationsPage() {
                         {contact.name}
                       </span>
                       {contact.nickname && (
-                        <span className=" text-sm truncate" style={{ color: `${appTheme.ink}55` }}>
+                        <span className=" text-sm truncate" style={{ color: `${withAlpha(appTheme.ink, 0.33)}` }}>
                           ({splitTags(contact.nickname)[0]}{splitTags(contact.nickname).length > 1 ? '...' : ''})
                         </span>
                       )}
@@ -410,7 +421,7 @@ export function RelationsPage() {
                       <span
                         className=" text-sm mt-1 px-2 py-0.5 rounded-full w-fit"
                         style={{
-                          backgroundColor: `${getGroupColor(contact.group_name)}30`,
+                          backgroundColor: `${withAlpha(getGroupColor(contact.group_name), 0.19)}`,
                           color: getGroupColor(contact.group_name),
                         }}
                       >
@@ -425,7 +436,7 @@ export function RelationsPage() {
                             <span
                               key={m.id}
                               className="inline-flex items-center gap-1 text-xs"
-                              style={{ color: `${appTheme.ink}80` }}
+                              style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}
                             >
                               <Icon size={11} />
                               <span className="">{getMethodLabel(m.method_type)}</span>
@@ -435,7 +446,7 @@ export function RelationsPage() {
                       </div>
                     )}
                     {contact.notes && (
-                      <span className=" text-sm mt-1 truncate" style={{ color: `${appTheme.ink}99` }}>
+                      <span className=" text-sm mt-1 truncate" style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }}>
                         {contact.notes}
                       </span>
                     )}
@@ -477,13 +488,13 @@ export function RelationsPage() {
               className="w-full text-xl bg-transparent border-b pb-3 mb-5 focus:outline-none"
               style={{
                 color: appTheme.ink,
-                borderColor: newName ? appTheme.primary : `${appTheme.ink}20`,
+                borderColor: newName ? appTheme.primary : `${withAlpha(appTheme.ink, 0.13)}`,
               }}
             />
 
             {/* 别称/昵称（多值） */}
             <div className="mb-4">
-              <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}80` }}>别称 / 昵称</label>
+              <label className="block text-sm mb-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>别称 / 昵称</label>
               <TagInput
                 tags={newNicknames}
                 onTagsChange={setNewNicknames}
@@ -496,7 +507,7 @@ export function RelationsPage() {
 
             {/* 分组 */}
             <div className="mb-4">
-              <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}80` }}>分组</label>
+              <label className="block text-sm mb-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>分组</label>
               <div className="flex gap-2 flex-wrap">
                 {Object.entries(groupIdToLabel).map(([id, label]) => (
                   <button
@@ -504,8 +515,8 @@ export function RelationsPage() {
                     onClick={() => setNewGroupName(newGroupName === label ? '' : label)}
                     className="px-3 py-1.5 rounded-full text-sm transition-all"
                     style={{
-                      backgroundColor: newGroupName === label ? groupColors[id] : `${appTheme.ink}10`,
-                      color: newGroupName === label ? appTheme.onPrimary : `${appTheme.ink}99`,
+                      backgroundColor: newGroupName === label ? groupColors[id] : `${withAlpha(appTheme.ink, 0.06)}`,
+                      color: newGroupName === label ? appTheme.onPrimary : `${withAlpha(appTheme.ink, 0.6)}`,
                     }}
                   >
                     {label}
@@ -516,16 +527,16 @@ export function RelationsPage() {
 
             {/* 生日 */}
             <div className="mb-4">
-              <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}80` }}>生日</label>
+              <label className="block text-sm mb-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>生日</label>
               <div className="flex items-center gap-2 flex-wrap">
                 {/* 日历类型切换 */}
-                <div className="flex rounded-lg overflow-hidden" style={{ backgroundColor: `${appTheme.ink}08` }}>
+                <div className="flex rounded-lg overflow-hidden" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.03)}` }}>
                   <button
                     onClick={() => setNewBirthdayCalendar('solar')}
                     className="px-3 py-1.5 text-xs transition-colors"
                     style={{
                       backgroundColor: newBirthdayCalendar === 'solar' ? appTheme.primary : 'transparent',
-                      color: newBirthdayCalendar === 'solar' ? appTheme.onPrimary : `${appTheme.ink}60`,
+                      color: newBirthdayCalendar === 'solar' ? appTheme.onPrimary : `${withAlpha(appTheme.ink, 0.38)}`,
                     }}
                   >阳历</button>
                   <button
@@ -533,7 +544,7 @@ export function RelationsPage() {
                     className="px-3 py-1.5 text-xs transition-colors"
                     style={{
                       backgroundColor: newBirthdayCalendar === 'lunar' ? appTheme.primary : 'transparent',
-                      color: newBirthdayCalendar === 'lunar' ? appTheme.onPrimary : `${appTheme.ink}60`,
+                      color: newBirthdayCalendar === 'lunar' ? appTheme.onPrimary : `${withAlpha(appTheme.ink, 0.38)}`,
                     }}
                   >农历</button>
                 </div>
@@ -545,41 +556,49 @@ export function RelationsPage() {
                   placeholder="年份"
                   min="1900" max="2100"
                   className="w-20 text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                  style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}08` }}
+                  style={{ color: appTheme.ink, backgroundColor: `${withAlpha(appTheme.ink, 0.03)}` }}
                 />
-                <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>年</span>
+                <span className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.25)}` }}>年</span>
                 {/* 月份 */}
                 <select
                   value={newBirthdayMonth}
-                  onChange={(e) => setNewBirthdayMonth(e.target.value)}
+                  onChange={(e) => {
+                    setNewBirthdayMonth(e.target.value);
+                    // 月份变更时校正日期
+                    if (newBirthdayDay && e.target.value) {
+                      const m = parseInt(e.target.value);
+                      const maxD = m === 2 ? 29 : [4, 6, 9, 11].includes(m) ? 30 : 31;
+                      if (parseInt(newBirthdayDay) > maxD) setNewBirthdayDay(String(maxD));
+                    }
+                  }}
                   className="custom-select text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                  style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}0D` }}
+                  style={{ color: appTheme.ink, backgroundColor: `${withAlpha(appTheme.ink, 0.05)}` }}
                 >
                   <option value="">月</option>
                   {Array.from({ length: 12 }, (_, i) => (
                     <option key={i + 1} value={i + 1}>{i + 1}</option>
                   ))}
                 </select>
-                <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>月</span>
+                <span className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.25)}` }}>月</span>
                 {/* 日期 */}
                 <select
                   value={newBirthdayDay}
                   onChange={(e) => setNewBirthdayDay(e.target.value)}
                   className="custom-select text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                  style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}0D` }}
+                  style={{ color: appTheme.ink, backgroundColor: `${withAlpha(appTheme.ink, 0.05)}` }}
                 >
                   <option value="">日</option>
-                  {Array.from({ length: 31 }, (_, i) => (
+                  {Array.from({ length: daysInMonth }, (_, i) => (
                     <option key={i + 1} value={i + 1}>{i + 1}</option>
                   ))}
                 </select>
-                <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>日</span>
+                <span className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.25)}` }}>日</span>
               </div>
             </div>
 
             {/* 联系方式 */}
             <div className="mb-4">
-              <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}80` }}>联系方式</label>
+              <label className="block text-sm mb-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>联系方式</label>
               <div className="space-y-2">
                 {newContactMethods.map((m, i) => (
                   <MethodRow
@@ -592,7 +611,7 @@ export function RelationsPage() {
                     }}
                     onRemove={() => setNewContactMethods(newContactMethods.filter((_, j) => j !== i))}
                     textColor={appTheme.ink}
-                    bgColor={`${appTheme.ink}08`}
+                    bgColor={`${withAlpha(appTheme.ink, 0.03)}`}
                   />
                 ))}
               </div>
@@ -614,7 +633,7 @@ export function RelationsPage() {
                 rows={2}
                 className="w-full text-base rounded-2xl px-4 py-3 focus:outline-none resize-none"
                 style={{
-                  backgroundColor: `${appTheme.ink}08`,
+                  backgroundColor: `${withAlpha(appTheme.ink, 0.03)}`,
                   color: appTheme.ink,
                 }}
               />
@@ -625,7 +644,7 @@ export function RelationsPage() {
               <button
                 onClick={() => { setShowCreate(false); resetCreateForm(); }}
                 className="flex-1 py-3 rounded-full transition-colors"
-                style={{ color: `${appTheme.ink}80`, backgroundColor: `${appTheme.ink}10` }}
+                style={{ color: `${withAlpha(appTheme.ink, 0.5)}`, backgroundColor: `${withAlpha(appTheme.ink, 0.06)}` }}
               >
                 取消
               </button>
@@ -656,14 +675,14 @@ export function RelationsPage() {
             style={{ backgroundColor: appTheme.canvas }}
           >
             {/* 头部 */}
-            <div className="flex items-center justify-between p-6" style={{ borderBottom: `1px solid ${appTheme.ink}15` }}>
+            <div className="flex items-center justify-between p-6" style={{ borderBottom: `1px solid ${withAlpha(appTheme.ink, 0.08)}` }}>
               <h2 className="text-xl " style={{ color: appTheme.ink }}>联系人详情</h2>
               <button
                 onClick={closeDetail}
                 className="w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80 transition-colors"
-                style={{ backgroundColor: `${appTheme.ink}15` }}
+                style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.08)}` }}
               >
-                <X size={16} style={{ color: `${appTheme.ink}99` }} />
+                <X size={16} style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }} />
               </button>
             </div>
 
@@ -680,19 +699,19 @@ export function RelationsPage() {
 
               {/* 姓名 */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>姓名</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.38)}` }}>姓名</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   className="w-full text-lg rounded-2xl px-4 py-3 focus:outline-none"
-                  style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}08` }}
+                  style={{ color: appTheme.ink, backgroundColor: `${withAlpha(appTheme.ink, 0.03)}` }}
                 />
               </div>
 
               {/* 别称/昵称（多值） */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>别称 / 昵称</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.38)}` }}>别称 / 昵称</label>
                 <TagInput
                   tags={editNicknames}
                   onTagsChange={setEditNicknames}
@@ -705,7 +724,7 @@ export function RelationsPage() {
 
               {/* 分组 */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>分组</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.38)}` }}>分组</label>
                 <div className="flex gap-2 flex-wrap">
                   {Object.entries(groupIdToLabel).map(([id, label]) => (
                     <button
@@ -713,8 +732,8 @@ export function RelationsPage() {
                       onClick={() => setEditGroupName(editGroupName === label ? '' : label)}
                       className="px-4 py-1.5 rounded-full text-sm transition-all"
                       style={{
-                        backgroundColor: editGroupName === label ? groupColors[id] : `${appTheme.ink}10`,
-                        color: editGroupName === label ? appTheme.onPrimary : `${appTheme.ink}99`,
+                        backgroundColor: editGroupName === label ? groupColors[id] : `${withAlpha(appTheme.ink, 0.06)}`,
+                        color: editGroupName === label ? appTheme.onPrimary : `${withAlpha(appTheme.ink, 0.6)}`,
                       }}
                     >
                       {label}
@@ -725,16 +744,16 @@ export function RelationsPage() {
 
               {/* 生日 */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>生日</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.38)}` }}>生日</label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* 日历类型切换 */}
-                  <div className="flex rounded-lg overflow-hidden" style={{ backgroundColor: `${appTheme.ink}08` }}>
+                  <div className="flex rounded-lg overflow-hidden" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.03)}` }}>
                     <button
                       onClick={() => setEditBirthdayCalendar('solar')}
                       className="px-3 py-1.5 text-xs transition-colors"
                       style={{
                         backgroundColor: editBirthdayCalendar === 'solar' ? appTheme.primary : 'transparent',
-                        color: editBirthdayCalendar === 'solar' ? appTheme.onPrimary : `${appTheme.ink}60`,
+                        color: editBirthdayCalendar === 'solar' ? appTheme.onPrimary : `${withAlpha(appTheme.ink, 0.38)}`,
                       }}
                     >阳历</button>
                     <button
@@ -742,7 +761,7 @@ export function RelationsPage() {
                       className="px-3 py-1.5 text-xs transition-colors"
                       style={{
                         backgroundColor: editBirthdayCalendar === 'lunar' ? appTheme.primary : 'transparent',
-                        color: editBirthdayCalendar === 'lunar' ? appTheme.onPrimary : `${appTheme.ink}60`,
+                        color: editBirthdayCalendar === 'lunar' ? appTheme.onPrimary : `${withAlpha(appTheme.ink, 0.38)}`,
                       }}
                     >农历</button>
                   </div>
@@ -754,41 +773,41 @@ export function RelationsPage() {
                     placeholder="年份"
                     min="1900" max="2100"
                     className="w-20 text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                    style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}08` }}
+                    style={{ color: appTheme.ink, backgroundColor: `${withAlpha(appTheme.ink, 0.03)}` }}
                   />
-                  <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>年</span>
+                  <span className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.25)}` }}>年</span>
                   {/* 月份 */}
                   <select
                     value={editBirthdayMonth}
                     onChange={(e) => setEditBirthdayMonth(e.target.value)}
                     className="custom-select text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                    style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}0D` }}
+                    style={{ color: appTheme.ink, backgroundColor: `${withAlpha(appTheme.ink, 0.05)}` }}
                   >
                     <option value="">月</option>
                     {Array.from({ length: 12 }, (_, i) => (
                       <option key={i + 1} value={i + 1}>{i + 1}</option>
                     ))}
                   </select>
-                  <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>月</span>
+                  <span className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.25)}` }}>月</span>
                   {/* 日期 */}
                   <select
                     value={editBirthdayDay}
                     onChange={(e) => setEditBirthdayDay(e.target.value)}
                     className="custom-select text-sm rounded-lg px-2 py-1.5 focus:outline-none"
-                    style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}0D` }}
+                    style={{ color: appTheme.ink, backgroundColor: `${withAlpha(appTheme.ink, 0.05)}` }}
                   >
                     <option value="">日</option>
                     {Array.from({ length: 31 }, (_, i) => (
                       <option key={i + 1} value={i + 1}>{i + 1}</option>
                     ))}
                   </select>
-                  <span className="text-sm" style={{ color: `${appTheme.ink}40` }}>日</span>
+                  <span className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.25)}` }}>日</span>
                 </div>
               </div>
 
               {/* 联系方式 */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>联系方式</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.38)}` }}>联系方式</label>
                 <div className="space-y-2">
                   {editContactMethods.map((m, i) => (
                     <MethodRow
@@ -801,7 +820,7 @@ export function RelationsPage() {
                       }}
                       onRemove={() => setEditContactMethods(editContactMethods.filter((_, j) => j !== i))}
                       textColor={appTheme.ink}
-                      bgColor={`${appTheme.ink}08`}
+                      bgColor={`${withAlpha(appTheme.ink, 0.03)}`}
                     />
                   ))}
                 </div>
@@ -816,24 +835,24 @@ export function RelationsPage() {
 
               {/* 备注 */}
               <div>
-                <label className="block text-sm mb-1.5" style={{ color: `${appTheme.ink}60` }}>备注</label>
+                <label className="block text-sm mb-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.38)}` }}>备注</label>
                 <textarea
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
                   placeholder="备注..."
                   rows={3}
                   className="w-full text-base rounded-2xl px-4 py-3 focus:outline-none resize-none"
-                  style={{ color: appTheme.ink, backgroundColor: `${appTheme.ink}08` }}
+                  style={{ color: appTheme.ink, backgroundColor: `${withAlpha(appTheme.ink, 0.03)}` }}
                 />
               </div>
             </div>
 
             {/* 底部按钮 */}
-            <div className="p-6 flex gap-3" style={{ borderTop: `1px solid ${appTheme.ink}15` }}>
+            <div className="p-6 flex gap-3" style={{ borderTop: `1px solid ${withAlpha(appTheme.ink, 0.08)}` }}>
               <button
                 onClick={handleDelete}
                 className="px-5 py-3 rounded-full flex items-center gap-2 transition-colors"
-                style={{ color: appTheme.danger, backgroundColor: `${appTheme.danger}20` }}
+                style={{ color: appTheme.danger, backgroundColor: `${withAlpha(appTheme.danger, 0.13)}` }}
               >
                 <Trash2 size={16} />
                 删除
@@ -857,42 +876,6 @@ export function RelationsPage() {
         </div>
       )}
 
-      {/* 滑入动画 + 日期输入样式 */}
-      <style>{`
-        @keyframes slide-in {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-        .animate-slide-in {
-          animation: slide-in 0.25s ease-out;
-        }
-        .date-input {
-          -webkit-appearance: none;
-          appearance: none;
-          background: transparent;
-          border: none;
-          outline: none;
-          font-family: inherit;
-          font-size: inherit;
-          color: inherit;
-          cursor: pointer;
-        }
-        .date-input::-webkit-calendar-picker-indicator {
-          opacity: 0.4;
-          cursor: pointer;
-          filter: grayscale(1);
-        }
-        .date-input::-webkit-calendar-picker-indicator:hover {
-          opacity: 0.7;
-        }
-        select.custom-select {
-          cursor: pointer;
-        }
-        select.custom-select option {
-          color: ${appTheme.ink};
-          background: ${appTheme.canvas};
-        }
-      `}</style>
     </PageContainer>
   );
 }

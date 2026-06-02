@@ -108,8 +108,14 @@ pub fn run() {
             commands::habit_commands::get_all_streaks,
             commands::habit_commands::get_week_matrix,
             commands::sync_commands::sync_test_connection,
+            commands::sync_commands::sync_set_enabled,
             commands::sync_commands::sync_now,
             commands::sync_commands::sync_get_status,
+            commands::pomodoro_commands::start_pomodoro,
+            commands::pomodoro_commands::complete_pomodoro,
+            commands::pomodoro_commands::cancel_pomodoro,
+            commands::pomodoro_commands::get_active_pomodoro,
+            commands::pomodoro_commands::get_pomodoro_stats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

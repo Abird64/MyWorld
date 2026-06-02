@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { X, Plus, Trash2 } from 'lucide-react';
 
 const PRESET_COLORS = [
@@ -79,7 +79,7 @@ export function CalendarManagerModal({ onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-light tracking-wider" style={{ color: appTheme.ink }}>管理日历</h3>
-          <button onClick={onClose} style={{ color: `${appTheme.ink}66` }}>
+          <button onClick={onClose} style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>
             <X size={20} strokeWidth={1.5} />
           </button>
         </div>
@@ -93,7 +93,7 @@ export function CalendarManagerModal({ onClose }: Props) {
         {/* Calendar list */}
         <div className="space-y-2 mb-4 max-h-[260px] overflow-y-auto">
           {calendars.map((cal) => (
-            <div key={cal.id} className={`px-3 py-2 rounded-xl ${editingId === cal.id ? '' : 'flex items-center gap-2'}`} style={{ backgroundColor: `${appTheme.primary}1A` }}>
+            <div key={cal.id} className={`px-3 py-2 rounded-xl ${editingId === cal.id ? '' : 'flex items-center gap-2'}`} style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.1)}` }}>
               {editingId === cal.id ? (
                 <div className="space-y-2">
                   <input
@@ -125,7 +125,7 @@ export function CalendarManagerModal({ onClose }: Props) {
                   <button
                     onClick={() => handleStartEdit(cal.id, cal.name, cal.color)}
                     className="text-xs px-2 py-1 rounded-full transition-opacity hover:opacity-80"
-                    style={{ color: `${appTheme.ink}80` }}
+                    style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}
                   >
                     编辑
                   </button>
@@ -142,15 +142,15 @@ export function CalendarManagerModal({ onClose }: Props) {
           ))}
           {calendars.length === 0 && (
             <div className="text-center py-6">
-              <p className="text-sm mb-2" style={{ color: `${appTheme.ink}80` }}>还没有日历</p>
-              <p className="text-xs" style={{ color: `${appTheme.ink}4D` }}>在下方创建你的第一个日历</p>
+              <p className="text-sm mb-2" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>还没有日历</p>
+              <p className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.3)}` }}>在下方创建你的第一个日历</p>
             </div>
           )}
         </div>
 
         {/* Create new - 新建日历区域 */}
-        <div className="rounded-xl p-3 space-y-2" style={{ backgroundColor: `${appTheme.primary}1A`, border: `1px dashed ${appTheme.primary}66` }}>
-          <p className="text-xs font-medium" style={{ color: `${appTheme.ink}99` }}>新建日历</p>
+        <div className="rounded-xl p-3 space-y-2" style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.1)}`, border: `1px dashed ${withAlpha(appTheme.primary, 0.4)}` }}>
+          <p className="text-xs font-medium" style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }}>新建日历</p>
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -181,7 +181,7 @@ export function CalendarManagerModal({ onClose }: Props) {
           </div>
         </div>
 
-        <div className="mt-3 text-center text-xs" style={{ color: `${appTheme.ink}4D` }}>
+        <div className="mt-3 text-center text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.3)}` }}>
           编辑模式下可选用更多颜色
         </div>
       </div>
@@ -191,14 +191,14 @@ export function CalendarManagerModal({ onClose }: Props) {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
           <div className="rounded-2xl p-5 w-[300px]" style={{ backgroundColor: appTheme.canvas }}>
             <h3 className="text-lg font-medium mb-3" style={{ color: appTheme.ink }}>确认删除</h3>
-            <p className="text-sm mb-4" style={{ color: `${appTheme.ink}B2` }}>
+            <p className="text-sm mb-4" style={{ color: `${withAlpha(appTheme.ink, 0.7)}` }}>
               确定要删除日历「{deleteTarget.name}」吗？关联的日程将变为"未分类"。
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteTarget(null)}
                 className="px-4 py-2 rounded-full text-sm transition-colors"
-                style={{ color: `${appTheme.ink}99` }}
+                style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }}
               >
                 取消
               </button>

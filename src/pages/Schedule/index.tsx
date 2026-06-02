@@ -19,7 +19,7 @@ import * as scheduleService from '@/services/scheduleService';
 import { startNotificationChecker, stopNotificationChecker, setNotificationEnabled } from '@/services/notificationService';
 import { useSettingStore } from '@/stores/settingStore';
 import { addExdate } from '@/services/scheduleService';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { Plus } from 'lucide-react';
 import type { Schedule, CreateScheduleInput, UpdateScheduleInput } from '@/types/schedule';
 import type { ParsedIcsEvent } from '@/utils/icsParser';
@@ -259,17 +259,13 @@ export function SchedulePage() {
 
   return (
     <PageContainer className="relative">
-      <style>{`
-        .schedule-scroll::-webkit-scrollbar { display: none; }
-        .schedule-scroll { scrollbar-width: none; -ms-overflow-style: none; }
-      `}</style>
       <NavBar title="日历" />
 
       <div className="flex-shrink-0 flex flex-col items-center px-4 sm:px-8 pt-6 pb-4 relative z-10">
         <div className="w-full max-w-[1000px] space-y-4">
           {/* 视图切换 — 固定在顶部 */}
           <div className="flex items-center">
-            <div className="flex items-center gap-1 rounded-full p-1 flex-shrink-0" style={{ backgroundColor: `${appTheme.ink}0D` }}>
+            <div className="flex items-center gap-1 rounded-full p-1 flex-shrink-0" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.05)}` }}>
               {(['day', 'week', 'month', 'agenda', 'countdown'] as const).map((mode) => (
                 <button
                   key={mode}

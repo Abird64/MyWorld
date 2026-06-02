@@ -5,7 +5,7 @@ import { HabitCard } from '@/components/habits/HabitCard';
 import { CreateHabitModal } from '@/components/habits/CreateHabitModal';
 import { HabitHeatmap } from '@/components/habits/HabitHeatmap';
 import { useHabitStore } from '@/stores/habitStore';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { Plus } from 'lucide-react';
 import type { HabitWithStreak, CreateHabitInput, UpdateHabitInput } from '@/types/habit';
 
@@ -57,7 +57,7 @@ export function HabitsPage() {
         <div className="w-full max-w-[1000px] space-y-6">
           {/* 今日概览 */}
           {totalHabits > 0 && (
-            <div className="rounded-[18px] p-4 flex items-center gap-4" style={{ backgroundColor: `${appTheme.primary}12`, border: `0.5px solid ${appTheme.hairline}` }}>
+            <div className="rounded-[18px] p-4 flex items-center gap-4" style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.07)}`, border: `0.5px solid ${appTheme.hairline}` }}>
               <div
                 className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold"
                 style={{ backgroundColor: appTheme.primary, color: appTheme.ink }}
@@ -66,7 +66,7 @@ export function HabitsPage() {
               </div>
               <div>
                 <p className="text-sm font-medium" style={{ color: appTheme.ink }}>今日进度</p>
-                <p className="text-xs" style={{ color: `${appTheme.ink}66` }}>
+                <p className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>
                   {todayChecked === totalHabits ? '全部完成！继续加油' : `还有 ${totalHabits - todayChecked} 个习惯待打卡`}
                 </p>
               </div>
@@ -83,12 +83,13 @@ export function HabitsPage() {
                   weekMatrix={weekMatrix.find((w) => w.habit_id === habit.id)}
                   onToggle={handleToggle}
                   onEdit={(h) => { setEditing(h); setShowForm(true); }}
+                  onViewDetail={(h) => setViewingDetail(h)}
                 />
               ))}
             </div>
           ) : (
             <div className="rounded-[18px] p-12 text-center space-y-4" style={{ backgroundColor: appTheme.canvas, border: `0.5px solid ${appTheme.hairline}` }}>
-              <p className="text-lg" style={{ color: `${appTheme.ink}66` }}>还没有习惯</p>
+              <p className="text-lg" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>还没有习惯</p>
               <button
                 onClick={() => { setEditing(null); setShowForm(true); }}
                 className="px-5 py-2.5 rounded-full text-sm font-medium inline-flex items-center gap-2"

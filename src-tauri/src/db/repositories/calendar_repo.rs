@@ -34,7 +34,7 @@ fn calendar_from_row(row: &rusqlite::Row) -> rusqlite::Result<Calendar> {
 
 pub fn list_calendars(conn: &Connection) -> Result<Vec<Calendar>, String> {
     let mut stmt = conn
-        .prepare("SELECT id, name, color, is_default, sort_order, created_at, updated_at FROM calendars ORDER BY sort_order ASC, name ASC")
+        .prepare("SELECT id, name, color, is_default, sort_order, created_at, updated_at FROM calendars WHERE deleted_at IS NULL ORDER BY sort_order ASC, name ASC")
         .map_err(|e| format!("Failed to query calendars: {}", e))?;
     let rows = stmt.query_map([], calendar_from_row)
         .map_err(|e| format!("Failed to query calendars: {}", e))?;
@@ -53,7 +53,7 @@ pub fn create_calendar(
 
     conn.execute(
         "INSERT INTO calendars (id, name, color, is_default, sort_order, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM calendars), ?5, ?5)",
+         VALUES (?1, ?2, ?3, ?4, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM calendars WHERE deleted_at IS NULL), ?5, ?5)",
         params![id, name, color, is_default, time],
     )
     .map_err(|e| format!("Failed to create calendar: {}", e))?;
@@ -63,7 +63,7 @@ pub fn create_calendar(
 
 pub fn get_calendar(conn: &Connection, id: &str) -> Result<Calendar, String> {
     conn.query_row(
-        "SELECT id, name, color, is_default, sort_order, created_at, updated_at FROM calendars WHERE id = ?1",
+        "SELECT id, name, color, is_default, sort_order, created_at, updated_at FROM calendars WHERE id = ?1 AND deleted_at IS NULL",
         params![id],
         calendar_from_row,
     )
@@ -72,7 +72,7 @@ pub fn get_calendar(conn: &Connection, id: &str) -> Result<Calendar, String> {
 
 pub fn get_default_calendar(conn: &Connection) -> Result<Calendar, String> {
     conn.query_row(
-        "SELECT id, name, color, is_default, sort_order, created_at, updated_at FROM calendars WHERE is_default = 1 LIMIT 1",
+        "SELECT id, name, color, is_default, sort_order, created_at, updated_at FROM calendars WHERE is_default = 1 AND deleted_at IS NULL LIMIT 1",
         [],
         calendar_from_row,
     )
@@ -127,8 +127,9 @@ pub fn delete_calendar(conn: &Connection, id: &str) -> Result<u64, String> {
     )
     .map_err(|e| format!("Failed to detach schedules: {}", e))?;
 
+    let time = now();
     let affected = conn
-        .execute("DELETE FROM calendars WHERE id = ?1", params![id])
+        .execute("UPDATE calendars SET deleted_at = ?1 WHERE id = ?2", params![time, id])
         .map_err(|e| format!("Failed to delete calendar: {}", e))?;
 
     Ok(affected as u64)

@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 
 interface PromptPouchProps {
   prompts: PromptTemplate[];
@@ -23,14 +23,14 @@ export function PromptPouch({ prompts, onSelect }: PromptPouchProps) {
     <>
       <style>{`
         .pouch-btn {
-          color: ${appTheme.ink}99;
-          background-color: ${appTheme.ink}08;
-          border-color: ${appTheme.ink}0D;
+          color: ${withAlpha(appTheme.ink, 0.6)};
+          background-color: ${withAlpha(appTheme.ink, 0.03)};
+          border-color: ${withAlpha(appTheme.ink, 0.05)};
         }
         .pouch-btn:hover {
           color: ${appTheme.primary};
-          background-color: ${appTheme.primary}12;
-          border-color: ${appTheme.primary}33;
+          background-color: ${withAlpha(appTheme.primary, 0.07)};
+          border-color: ${withAlpha(appTheme.primary, 0.2)};
         }
       `}</style>
       <div

@@ -91,7 +91,7 @@ pub fn create_schedule(
 /// 获取单个日程
 pub fn get_schedule(conn: &Connection, id: &str) -> Result<Schedule, String> {
     conn.query_row(
-        &format!("SELECT {} FROM schedules WHERE id = ?1", SCHEDULE_COLUMNS),
+        &format!("SELECT {} FROM schedules WHERE id = ?1 AND deleted_at IS NULL", SCHEDULE_COLUMNS),
         params![id],
         schedule_from_row,
     )
@@ -217,7 +217,8 @@ pub fn add_exdate(conn: &Connection, id: &str, date_str: &str) -> Result<Schedul
 
 /// 删除日程
 pub fn delete_schedule(conn: &Connection, id: &str) -> Result<u64, String> {
-    let affected = conn.execute("DELETE FROM schedules WHERE id = ?1", params![id])
+    let time = now();
+    let affected = conn.execute("UPDATE schedules SET deleted_at = ?1 WHERE id = ?2", params![time, id])
         .map_err(|e| format!("Failed to delete schedule: {}", e))?;
     Ok(affected as u64)
 }
@@ -226,7 +227,7 @@ pub fn delete_schedule(conn: &Connection, id: &str) -> Result<u64, String> {
 pub fn list_countdowns(conn: &Connection) -> Result<Vec<Schedule>, String> {
     let mut stmt = conn
         .prepare(&format!(
-            "SELECT {} FROM schedules WHERE event_type = 'countdown' ORDER BY start_at ASC",
+            "SELECT {} FROM schedules WHERE event_type = 'countdown' AND deleted_at IS NULL ORDER BY start_at ASC",
             SCHEDULE_COLUMNS
         ))
         .map_err(|e| format!("Failed to prepare list_countdowns: {}", e))?;
@@ -269,7 +270,7 @@ pub fn list_schedules_in_range(
     //    - 有重复事件（rrule 不为空）：start_at 在 range_end 之前（可能向后展开进范围）
     let mut stmt = conn
         .prepare(&format!(
-            "SELECT {} FROM schedules WHERE source_type != 'task_sync' AND start_at < ?1 ORDER BY start_at ASC",
+            "SELECT {} FROM schedules WHERE source_type != 'task_sync' AND start_at < ?1 AND deleted_at IS NULL ORDER BY start_at ASC",
             SCHEDULE_COLUMNS
         ))
         .map_err(|e| format!("Failed to prepare query: {}", e))?;
@@ -309,7 +310,7 @@ pub fn list_schedules_in_range(
         .prepare(
             "SELECT id, title, description, scheduled_at, deadline FROM tasks
              WHERE scheduled_at IS NOT NULL AND scheduled_at >= ?1 AND scheduled_at < ?2
-               AND status != 'completed'
+               AND status != 'completed' AND deleted_at IS NULL
              ORDER BY scheduled_at ASC",
         )
         .map_err(|e| format!("Failed to prepare task query: {}", e))?;

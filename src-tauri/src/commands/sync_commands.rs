@@ -1,18 +1,61 @@
 use tauri::State;
 
 use crate::db::connection::{AppDataState, DbState};
+use crate::db::repositories::setting_repo;
+use crate::sync::r2_client::R2Client;
+use crate::sync::remote_storage::RemoteStorage;
 use crate::sync::sync_engine::{run_full_sync, SyncResult, SyncState};
 use crate::sync::webdav_client::WebDavClient;
 
-/// 测试 WebDAV 连接
+/// 测试连接（支持 WebDAV 和 R2）
 #[tauri::command]
 pub async fn sync_test_connection(
+    storage_type: String,
     url: String,
     username: String,
     password: String,
+    r2_account_id: String,
+    r2_access_key: String,
+    r2_secret_key: String,
+    r2_bucket: String,
 ) -> Result<String, String> {
-    let client = WebDavClient::new(&url, &username, &password);
-    client.test_connection().await
+    match storage_type.as_str() {
+        "r2" => {
+            let client = R2Client::new(&r2_account_id, &r2_access_key, &r2_secret_key, &r2_bucket)?;
+            client.test_connection().await
+        }
+        _ => {
+            let client = WebDavClient::new(&url, &username, &password)?;
+            client.test_connection().await
+        }
+    }
+}
+
+/// 启用/禁用同步
+/// 启用时确保设备有唯一 site_id（若已有则重新生成，避免与其他设备冲突）
+#[tauri::command]
+pub fn sync_set_enabled(
+    db_state: State<'_, DbState>,
+    enabled: bool,
+) -> Result<(), String> {
+    let conn = db_state.conn.lock().map_err(|e| e.to_string())?;
+
+    if enabled {
+        // 生成新的唯一 site_id（不论是否已有，都重新生成，确保与其他设备不同）
+        let id = nanoid::nanoid!(12);
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('sync.site_id', ?1, ?2)",
+            rusqlite::params![id, now],
+        ).map_err(|e| format!("设置 site_id 失败: {}", e))?;
+        log::info!("[SYNC] 启用同步，生成 site_id: {}", id);
+
+        // 重置 last_sync_time，确保首次同步全量导出
+        setting_repo::set_setting(&conn, "sync.last_sync_time", "1970-01-01T00:00:00+00:00")?;
+    }
+
+    setting_repo::set_setting(&conn, "sync.enabled", if enabled { "true" } else { "false" })?;
+    Ok(())
 }
 
 /// 立即同步
@@ -22,6 +65,14 @@ pub async fn sync_now(
     app_data: State<'_, AppDataState>,
     sync_state: State<'_, SyncState>,
 ) -> Result<SyncResult, String> {
+    // 检测并重置卡死的同步状态
+    sync_state.check_and_reset_if_stale();
+
+    // 检查是否在限流冷却期内
+    if sync_state.is_rate_limited() {
+        return Err("上次同步被坚果云限流，请等待几分钟后再试".to_string());
+    }
+
     // 检查是否已有同步在进行
     {
         let in_progress = sync_state
@@ -34,18 +85,24 @@ pub async fn sync_now(
     }
 
     // 标记同步开始
-    {
-        let mut guard = sync_state.in_progress.lock().map_err(|e| e.to_string())?;
-        *guard = true;
-    }
+    sync_state.mark_started();
 
-    let result = run_full_sync(&db_state, &app_data).await;
+    // 5 分钟超时保护，防止 WebDAV 操作卡死
+    let result = match tokio::time::timeout(
+        std::time::Duration::from_secs(300),
+        run_full_sync(&db_state, &app_data),
+    ).await {
+        Ok(r) => r,
+        Err(_) => SyncResult::error("同步超时，请检查网络连接".to_string()),
+    };
+
+    // 如果被限流，设置冷却期
+    if result.has_rate_limit_error() {
+        sync_state.set_rate_limited();
+    }
 
     // 标记同步结束
-    {
-        let mut guard = sync_state.in_progress.lock().map_err(|e| e.to_string())?;
-        *guard = false;
-    }
+    sync_state.mark_finished();
 
     Ok(result)
 }
@@ -75,25 +132,39 @@ pub async fn sync_get_status(
             .flatten()
             .map(|s| s.value);
 
-    let configured =
-        crate::db::repositories::setting_repo::get_setting(&conn, "sync.url")
-            .ok()
-            .flatten()
-            .is_some()
-            && crate::db::repositories::setting_repo::get_setting(&conn, "sync.username")
-                .ok()
-                .flatten()
-                .is_some()
-            && crate::db::repositories::setting_repo::get_setting(&conn, "sync.password")
-                .ok()
-                .flatten()
-                .is_some();
+    let storage_type = crate::db::repositories::setting_repo::get_setting(&conn, "sync.storage_type")
+        .ok()
+        .flatten()
+        .map(|s| s.value)
+        .unwrap_or_else(|| "webdav".to_string());
+
+    let configured = match storage_type.as_str() {
+        "r2" => {
+            crate::db::repositories::setting_repo::get_setting(&conn, "sync.r2.account_id")
+                .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.r2.access_key")
+                    .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.r2.secret_key")
+                    .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.r2.bucket")
+                    .ok().flatten().is_some()
+        }
+        _ => {
+            crate::db::repositories::setting_repo::get_setting(&conn, "sync.url")
+                .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.username")
+                    .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.password")
+                    .ok().flatten().is_some()
+        }
+    };
 
     Ok(SyncStatus {
         enabled,
         configured,
         in_progress: *in_progress,
         last_sync_time,
+        storage_type,
     })
 }
 
@@ -103,4 +174,5 @@ pub struct SyncStatus {
     pub configured: bool,
     pub in_progress: bool,
     pub last_sync_time: Option<String>,
+    pub storage_type: String,
 }

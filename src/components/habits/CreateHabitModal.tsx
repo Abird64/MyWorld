@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { X, Trash2 } from 'lucide-react';
 import type { HabitWithStreak, CreateHabitInput, UpdateHabitInput } from '@/types/habit';
 
@@ -44,7 +44,7 @@ export function CreateHabitModal({ editing, onSubmit, onCancel, onDelete }: Crea
           <h3 className="text-lg font-medium" style={{ color: appTheme.ink }}>
             {editing ? '编辑习惯' : '新建习惯'}
           </h3>
-          <button onClick={onCancel} className="p-1 rounded-full" style={{ color: `${appTheme.ink}88` }}>
+          <button onClick={onCancel} className="p-1 rounded-full" style={{ color: `${withAlpha(appTheme.ink, 0.53)}` }}>
             <X size={20} />
           </button>
         </div>
@@ -57,7 +57,7 @@ export function CreateHabitModal({ editing, onSubmit, onCancel, onDelete }: Crea
               onClick={() => setIcon(ic)}
               className="w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all"
               style={{
-                backgroundColor: icon === ic ? `${color}33` : `${appTheme.primary}10`,
+                backgroundColor: icon === ic ? `${withAlpha(color, 0.2)}` : `${withAlpha(appTheme.primary, 0.06)}`,
                 outline: icon === ic ? `2px solid ${color}` : 'none',
               }}
             >
@@ -74,9 +74,9 @@ export function CreateHabitModal({ editing, onSubmit, onCancel, onDelete }: Crea
           onChange={(e) => setName(e.target.value)}
           className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
           style={{
-            backgroundColor: `${appTheme.primary}15`,
+            backgroundColor: `${withAlpha(appTheme.primary, 0.08)}`,
             color: appTheme.ink,
-            border: `1px solid ${appTheme.primary}33`,
+            border: `1px solid ${withAlpha(appTheme.primary, 0.2)}`,
           }}
           autoFocus
         />
@@ -90,10 +90,10 @@ export function CreateHabitModal({ editing, onSubmit, onCancel, onDelete }: Crea
           ].map((opt) => (
             <button
               key={opt.id}
-              onClick={() => setFrequencyType(opt.id)}
+              onClick={() => setFrequencyType(opt.id as 'daily' | 'weekly' | 'custom')}
               className="flex-1 px-3 py-2 rounded-xl text-sm transition-all"
               style={{
-                backgroundColor: frequencyType === opt.id ? color : `${appTheme.primary}15`,
+                backgroundColor: frequencyType === opt.id ? color : `${withAlpha(appTheme.primary, 0.08)}`,
                 color: frequencyType === opt.id ? appTheme.onPrimary : appTheme.ink,
               }}
             >

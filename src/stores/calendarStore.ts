@@ -28,7 +28,8 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       const calendars = await calendarService.listCalendars();
       const visibleSet = new Set(calendars.map((c) => c.id));
       set({ calendars, visibleCalendarIds: visibleSet, isLoading: false });
-    } catch {
+    } catch (e) {
+      console.error('Failed to fetch calendars:', e);
       set({ isLoading: false });
     }
   },

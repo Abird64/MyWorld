@@ -34,6 +34,8 @@ export interface AppTheme {
 export interface AppThemeHelpers {
   /** 返回基于 ink 色的半透明 rgba 字符串，适配深浅色模式 */
   rgba: (opacity: number) => string;
+  /** 给任意颜色附加透明度（支持 hex 和 rgba） */
+  withAlpha: (color: string, alpha: number) => string;
 }
 
 /** 浅色主题（清晨） */
@@ -92,12 +94,41 @@ export const appTheme: AppTheme = appThemeDark;
 /** 浅色主题辅助函数 */
 export const appThemeLightHelpers: AppThemeHelpers = {
   rgba: (o: number) => `rgba(0,0,0,${o})`,
+  withAlpha: (color: string, alpha: number) => withAlpha(color, alpha),
 };
 
 /** 深色主题辅助函数 */
 export const appThemeDarkHelpers: AppThemeHelpers = {
   rgba: (o: number) => `rgba(255,255,255,${o})`,
+  withAlpha: (color: string, alpha: number) => withAlpha(color, alpha),
 };
+
+// ========== 颜色工具函数 ==========
+
+/**
+ * 给颜色附加透明度（支持 hex 和 rgba 格式）
+ * - #1d1d1f + 0.6 → #1d1d1f99
+ * - rgba(255,255,255,0.88) + 0.6 → rgba(255,255,255,0.6)
+ */
+export function withAlpha(color: string, alpha: number): string {
+  // 处理 rgba 格式
+  const rgbaMatch = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (rgbaMatch) {
+    return `rgba(${rgbaMatch[1]},${rgbaMatch[2]},${rgbaMatch[3]},${alpha})`;
+  }
+  // 处理 hex 格式（#rgb, #rrggbb, #rrggbbaa）
+  const hex = color.replace('#', '');
+  let r: string, g: string, b: string;
+  if (hex.length === 3) {
+    r = hex[0] + hex[0]; g = hex[1] + hex[1]; b = hex[2] + hex[2];
+  } else if (hex.length >= 6) {
+    r = hex.slice(0, 2); g = hex.slice(2, 4); b = hex.slice(4, 6);
+  } else {
+    return color; // 无法解析，原样返回
+  }
+  const a = Math.round(alpha * 255).toString(16).padStart(2, '0');
+  return `#${r}${g}${b}${a}`;
+}
 
 // ========== 兼容旧接口 ==========
 // 保留旧 PageTheme 以支持渐进迁移，由 usePageTheme 提供映射值
@@ -126,7 +157,7 @@ export const themes: Record<string, PageTheme> = {
     bg: appTheme.canvas,
     nav: appTheme.surfaceBlack,
     accent: appTheme.primary,
-    accentLight: appTheme.primary + '33',
+    accentLight: withAlpha(appTheme.primary, 0.2),
     text: appTheme.ink,
     card: appTheme.canvas,
     cardText: appTheme.ink,
@@ -136,14 +167,14 @@ export const themes: Record<string, PageTheme> = {
     success: appTheme.success,
   },
   // 保留 key 以防旧代码引用，值都映射到新主题
-  tasks: { id: 'tasks', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  diary: { id: 'diary', name: '提灯', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  schedule: { id: 'schedule', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  relations: { id: 'relations', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  settings: { id: 'settings', name: '设置', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  skills: { id: 'skills', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  memories: { id: 'memories', name: '提灯', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
-  habits: { id: 'habits', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: appTheme.primary + '33', text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  tasks: { id: 'tasks', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: withAlpha(appTheme.primary, 0.2), text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  diary: { id: 'diary', name: '提灯', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: withAlpha(appTheme.primary, 0.2), text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  schedule: { id: 'schedule', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: withAlpha(appTheme.primary, 0.2), text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  relations: { id: 'relations', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: withAlpha(appTheme.primary, 0.2), text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  settings: { id: 'settings', name: '设置', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: withAlpha(appTheme.primary, 0.2), text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  skills: { id: 'skills', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: withAlpha(appTheme.primary, 0.2), text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  memories: { id: 'memories', name: '提灯', bg: appTheme.canvasParchment, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: withAlpha(appTheme.primary, 0.2), text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
+  habits: { id: 'habits', name: '提灯', bg: appTheme.canvas, nav: appTheme.surfaceBlack, accent: appTheme.primary, accentLight: withAlpha(appTheme.primary, 0.2), text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink, isDark: true, danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success },
 };
 
 export const selectableThemes: PageTheme[] = [themes.lantern];
@@ -185,6 +216,11 @@ export const xpColors = {
   vitality: SKILL_COLORS.vitality.hex,
 };
 
+/** 常用语义色（从 SKILL_COLORS 提取，便于直接引用） */
+export const FOCUS_COLOR = SKILL_COLORS.focus.hex;      // #3A8FB7 专注蓝
+export const CREATIVITY_COLOR = SKILL_COLORS.creativity.hex; // #E8B959 创造金
+export const TASKS_COLOR = '#5856d6';                    // 任务紫（UI 语义色）
+
 // ========== 设计 Token ==========
 
 /** Apple 风格间距系统 (8px 基准) */
@@ -218,17 +254,17 @@ export const typography = {
     body: 'SF Pro Text, system-ui, -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif',
   },
   sizes: {
-    xs: '10px',
-    sm: '12px',
-    caption: '14px',
-    body: '17px',
-    md: '18px',
-    tagline: '21px',
-    lg: '24px',
-    lead: '28px',
-    xl: '34px',
-    '2xl': '40px',
-    hero: '56px',
+    xs: '0.625rem',    // 10px
+    sm: '0.75rem',     // 12px
+    caption: '0.875rem', // 14px
+    body: '1.0625rem', // 17px
+    md: '1.125rem',    // 18px
+    tagline: '1.3125rem', // 21px
+    lg: '1.5rem',      // 24px
+    lead: '1.75rem',   // 28px
+    xl: '2.125rem',    // 34px
+    '2xl': '2.5rem',   // 40px
+    hero: '3.5rem',    // 56px
   },
   weights: {
     light: '300',

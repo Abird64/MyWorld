@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { Settings } from 'lucide-react';
 
 interface CalendarListProps {
@@ -43,9 +43,9 @@ export function CalendarList({ onRefresh, onManage }: CalendarListProps) {
         onClick={handleToggleAll}
         className="px-3 py-1.5 rounded-full text-sm font-light tracking-wider transition-all whitespace-nowrap flex-shrink-0"
         style={{
-          backgroundColor: allVisible ? `${appTheme.primary}1A` : `${appTheme.ink}0D`,
+          backgroundColor: allVisible ? `${withAlpha(appTheme.primary, 0.1)}` : `${withAlpha(appTheme.ink, 0.05)}`,
           color: allVisible ? appTheme.primary : appTheme.inkMuted48,
-          border: `1px solid ${allVisible ? `${appTheme.primary}33` : `${appTheme.ink}14`}`,
+          border: `1px solid ${allVisible ? `${withAlpha(appTheme.primary, 0.2)}` : `${withAlpha(appTheme.ink, 0.08)}`}`,
         }}
       >
         全部
@@ -63,14 +63,14 @@ export function CalendarList({ onRefresh, onManage }: CalendarListProps) {
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-light tracking-wider transition-all whitespace-nowrap flex-shrink-0"
             style={{
-              backgroundColor: isVisible ? `${cal.color}1A` : `${appTheme.ink}0D`,
+              backgroundColor: isVisible ? `${withAlpha(cal.color, 0.1)}` : `${withAlpha(appTheme.ink, 0.05)}`,
               color: isVisible ? cal.color : appTheme.inkMuted48,
-              border: `1px solid ${isVisible ? `${cal.color}33` : `${appTheme.ink}14`}`,
+              border: `1px solid ${isVisible ? withAlpha(cal.color, 0.2) : withAlpha(appTheme.ink, 0.03)}`,
             }}
           >
             <span
               className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: isVisible ? cal.color : `${appTheme.ink}33` }}
+              style={{ backgroundColor: isVisible ? cal.color : `${withAlpha(appTheme.ink, 0.2)}` }}
             />
             {cal.name}
           </button>
@@ -81,7 +81,7 @@ export function CalendarList({ onRefresh, onManage }: CalendarListProps) {
       <button
         onClick={onManage}
         className="px-2 py-1.5 rounded-full text-sm transition-all hover:opacity-80"
-        style={{ color: `${appTheme.ink}99` }}
+        style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }}
         title="管理日历"
       >
         <Settings size={14} strokeWidth={1.5} />

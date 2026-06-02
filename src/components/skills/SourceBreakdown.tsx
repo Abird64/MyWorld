@@ -1,4 +1,4 @@
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import type { XpSource } from '@/types/skill';
 
 interface SourceBreakdownProps {
@@ -45,7 +45,7 @@ export function SourceBreakdown({ sources }: SourceBreakdownProps) {
                   +{src.total_xp.toLocaleString()} XP
                 </span>
               </div>
-              <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${appTheme.ink}14` }}>
+              <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.08)}` }}>
                 <div
                   className="h-full rounded-full transition-all duration-700 ease-out"
                   style={{ width: `${pct}%`, backgroundColor: meta.color }}

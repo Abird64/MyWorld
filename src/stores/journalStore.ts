@@ -258,10 +258,15 @@ export const useJournalStore = create<JournalState>((set, get) => {
 
     confirmAllContacts: async () => {
       const { contacts } = get();
+      const today = new Date().toISOString().slice(0, 10);
       for (const c of contacts) {
         if (c.existing_contact_id) {
+          // 获取现有备注，追加而非覆盖
+          const existing = await contactService.getContact(c.existing_contact_id);
+          const prevNotes = existing.notes?.trim();
+          const newEntry = `[${today}] ${c.event_summary}`;
           await contactService.updateContact(c.existing_contact_id, {
-            notes: `[${new Date().toISOString().slice(0, 10)}] ${c.event_summary}`,
+            notes: prevNotes ? `${prevNotes}\n${newEntry}` : newEntry,
           });
         } else {
           await contactService.createContact({

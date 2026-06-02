@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import type { Schedule } from '@/types/schedule';
 
@@ -37,7 +37,7 @@ export function AgendaView({ schedules, onEventClick }: AgendaViewProps) {
   if (sortedDates.length === 0) {
     return (
       <div className="w-full rounded-2xl p-8 text-center" style={{ backgroundColor: appTheme.canvas }}>
-        <p className="text-lg" style={{ color: `${appTheme.ink}66` }}>暂无日程</p>
+        <p className="text-lg" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>暂无日程</p>
       </div>
     );
   }
@@ -55,13 +55,13 @@ export function AgendaView({ schedules, onEventClick }: AgendaViewProps) {
           <div key={dateKey}>
             {/* 日期标题 */}
             <div className="flex items-center gap-3 px-5 py-3" style={{
-              backgroundColor: isToday ? `${appTheme.primary}1A` : undefined,
-              borderBottom: isToday ? undefined : `1px solid ${appTheme.primary}1A`,
+              backgroundColor: isToday ? `${withAlpha(appTheme.primary, 0.1)}` : undefined,
+              borderBottom: isToday ? undefined : `1px solid ${withAlpha(appTheme.primary, 0.1)}`,
             }}>
-              <span className="text-sm font-medium" style={{ color: isToday ? appTheme.primary : `${appTheme.ink}99` }}>
+              <span className="text-sm font-medium" style={{ color: isToday ? appTheme.primary : `${withAlpha(appTheme.ink, 0.6)}` }}>
                 {month}月{day}日
               </span>
-              <span className="text-xs" style={{ color: isToday ? `${appTheme.primary}B3` : `${appTheme.ink}66` }}>
+              <span className="text-xs" style={{ color: isToday ? `${withAlpha(appTheme.primary, 0.7)}` : `${withAlpha(appTheme.ink, 0.4)}` }}>
                 {weekDay}
               </span>
               {isToday && (
@@ -72,7 +72,7 @@ export function AgendaView({ schedules, onEventClick }: AgendaViewProps) {
             </div>
 
             {/* 事件列表 */}
-            <div className="divide-y" style={{ borderColor: `${appTheme.primary}0D` }}>
+            <div className="divide-y" style={{ borderColor: `${withAlpha(appTheme.primary, 0.05)}` }}>
               {events.map((event) => {
                 const startDate = new Date(event.start_at);
                 const bgColor = event.color || appTheme.primary;
@@ -83,7 +83,7 @@ export function AgendaView({ schedules, onEventClick }: AgendaViewProps) {
                     key={event.id}
                     className="flex items-center gap-4 px-5 py-3 cursor-pointer transition-colors"
                     style={{
-                      backgroundColor: hoveredEventId === event.id ? `${appTheme.primary}0D` : undefined,
+                      backgroundColor: hoveredEventId === event.id ? `${withAlpha(appTheme.primary, 0.05)}` : undefined,
                     }}
                     onMouseEnter={() => setHoveredEventId(event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
@@ -91,7 +91,7 @@ export function AgendaView({ schedules, onEventClick }: AgendaViewProps) {
                   >
                     {/* 时间 */}
                     <div className="w-16 text-right flex-shrink-0">
-                      <span className="text-sm" style={{ color: `${appTheme.ink}B2` }}>
+                      <span className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.7)}` }}>
                         {pad(startDate.getHours())}:{pad(startDate.getMinutes())}
                       </span>
                     </div>
@@ -108,25 +108,25 @@ export function AgendaView({ schedules, onEventClick }: AgendaViewProps) {
                     {/* 内容 */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm break-all" style={{ color: isTaskSync ? `${appTheme.ink}99` : appTheme.ink }}>
+                        <span className="text-sm break-all" style={{ color: isTaskSync ? `${withAlpha(appTheme.ink, 0.6)}` : appTheme.ink }}>
                           {event.title}
                         </span>
                         {event.calendar_id && (() => {
                           const cal = getCalendarById(event.calendar_id);
                           return cal ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full flex-shrink-0" style={{ color: `${appTheme.ink}80`, backgroundColor: `${appTheme.primary}1A` }}>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full flex-shrink-0" style={{ color: `${withAlpha(appTheme.ink, 0.5)}`, backgroundColor: `${withAlpha(appTheme.primary, 0.1)}` }}>
                               {cal.name}
                             </span>
                           ) : null;
                         })()}
                       </div>
                       {event.end_at && (
-                        <span className="text-xs" style={{ color: `${appTheme.ink}66` }}>
+                        <span className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>
                           {formatTimeRange(event.start_at, event.end_at)}
                         </span>
                       )}
                       {event.location && (
-                        <span className="text-xs ml-2" style={{ color: `${appTheme.ink}66` }}>
+                        <span className="text-xs ml-2" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>
                           {event.location}
                         </span>
                       )}

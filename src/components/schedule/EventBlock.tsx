@@ -1,5 +1,5 @@
 import type { Schedule } from '@/types/schedule';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 
 
 interface EventBlockProps {
@@ -27,7 +27,7 @@ export function EventBlock({ event, top, height, left, width, onClick, taskSyncE
         left: `${left}%`,
         width: `${width}%`,
         backgroundColor: isTaskSync ? 'transparent' : bgColor,
-        border: isTaskSync ? `2px dashed ${bgColor}` : `1px solid ${appTheme.ink}14`,
+        border: isTaskSync ? `2px dashed ${bgColor}` : `1px solid ${withAlpha(appTheme.ink, 0.08)}`,
         opacity: isTaskSync ? 0.7 : 1,
         zIndex: 10,
       }}

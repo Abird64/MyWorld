@@ -36,6 +36,11 @@ export const TOOL_LABELS: Record<string, { group: string; label: string; color: 
   create_habit:      { group: '创建', label: '创建习惯', color: '#58A968' },
   check_habit:       { group: '执行', label: '习惯打卡', color: '#7CB342' },
   uncheck_habit:     { group: '执行', label: '取消打卡', color: '#E65C5C' },
+  // 日期/日历/引导
+  resolve_date:      { group: '查询', label: '解析日期', color: '#6B9BD2' },
+  search_journals:   { group: '查询', label: '搜索日记', color: '#6B9BD2' },
+  list_calendars:    { group: '查询', label: '查看日历', color: '#6B9BD2' },
+  get_guide:         { group: '查询', label: '获取指南', color: '#6B9BD2' },
 };
 
 /** 状态中文映射 */

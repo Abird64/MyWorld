@@ -98,7 +98,7 @@ pub fn create_habit(
 /// 获取单个习惯
 pub fn get_habit(conn: &Connection, id: &str) -> Result<Habit, String> {
     conn.query_row(
-        &format!("SELECT {} FROM habits WHERE id = ?1", HABIT_COLUMNS),
+        &format!("SELECT {} FROM habits WHERE id = ?1 AND deleted_at IS NULL", HABIT_COLUMNS),
         params![id],
         habit_from_row,
     )
@@ -176,11 +176,12 @@ pub fn update_habit(
     get_habit(conn, id)
 }
 
-/// 删除习惯（级联删除记录）
+/// 删除习惯（级联软删除记录）
 pub fn delete_habit(conn: &Connection, id: &str) -> Result<u64, String> {
-    conn.execute("DELETE FROM habit_records WHERE habit_id = ?1", params![id])
+    let time = now();
+    conn.execute("UPDATE habit_records SET deleted_at = ?1 WHERE habit_id = ?2 AND deleted_at IS NULL", params![time, id])
         .map_err(|e| format!("Failed to delete habit records: {}", e))?;
-    let affected = conn.execute("DELETE FROM habits WHERE id = ?1", params![id])
+    let affected = conn.execute("UPDATE habits SET deleted_at = ?1 WHERE id = ?2", params![time, id])
         .map_err(|e| format!("Failed to delete habit: {}", e))?;
     Ok(affected as u64)
 }
@@ -189,7 +190,7 @@ pub fn delete_habit(conn: &Connection, id: &str) -> Result<u64, String> {
 pub fn list_habits(conn: &Connection) -> Result<Vec<Habit>, String> {
     let mut stmt = conn
         .prepare(&format!(
-            "SELECT {} FROM habits WHERE is_active = 1 ORDER BY sort_order ASC, created_at ASC",
+            "SELECT {} FROM habits WHERE is_active = 1 AND deleted_at IS NULL ORDER BY sort_order ASC, created_at ASC",
             HABIT_COLUMNS
         ))
         .map_err(|e| format!("Failed to prepare list_habits: {}", e))?;
@@ -212,7 +213,7 @@ pub fn check_habit(conn: &Connection, habit_id: &str, date: Option<&str>, note: 
     let time = now();
 
     conn.execute(
-        "INSERT INTO habit_records (id, habit_id, checked_at, note, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        "INSERT INTO habit_records (id, habit_id, checked_at, note, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
         params![id, habit_id, checked_at, note, time],
     )
     .map_err(|e| format!("Failed to check habit (may already be checked today): {}", e))?;
@@ -228,9 +229,10 @@ pub fn check_habit(conn: &Connection, habit_id: &str, date: Option<&str>, note: 
 /// 取消打卡
 pub fn uncheck_habit(conn: &Connection, habit_id: &str, date: Option<&str>) -> Result<u64, String> {
     let checked_at = date.map(|d| d.to_string()).unwrap_or_else(today);
+    let time = now();
     let affected = conn.execute(
-        "DELETE FROM habit_records WHERE habit_id = ?1 AND checked_at = ?2",
-        params![habit_id, checked_at],
+        "UPDATE habit_records SET deleted_at = ?1 WHERE habit_id = ?2 AND checked_at = ?3 AND deleted_at IS NULL",
+        params![time, habit_id, checked_at],
     )
     .map_err(|e| format!("Failed to uncheck habit: {}", e))?;
     Ok(affected as u64)
@@ -239,10 +241,10 @@ pub fn uncheck_habit(conn: &Connection, habit_id: &str, date: Option<&str>) -> R
 /// 获取某习惯的打卡记录
 pub fn get_records(conn: &Connection, habit_id: &str, start_date: Option<&str>, end_date: Option<&str>) -> Result<Vec<HabitRecord>, String> {
     let sql = match (start_date, end_date) {
-        (Some(_), Some(_)) => "SELECT id, habit_id, checked_at, note, created_at FROM habit_records WHERE habit_id = ?1 AND checked_at >= ?2 AND checked_at <= ?3 ORDER BY checked_at ASC",
-        (Some(_), None) => "SELECT id, habit_id, checked_at, note, created_at FROM habit_records WHERE habit_id = ?1 AND checked_at >= ?2 ORDER BY checked_at ASC",
-        (None, Some(_)) => "SELECT id, habit_id, checked_at, note, created_at FROM habit_records WHERE habit_id = ?1 AND checked_at <= ?2 ORDER BY checked_at ASC",
-        (None, None) => "SELECT id, habit_id, checked_at, note, created_at FROM habit_records WHERE habit_id = ?1 ORDER BY checked_at ASC",
+        (Some(_), Some(_)) => "SELECT id, habit_id, checked_at, note, created_at FROM habit_records WHERE habit_id = ?1 AND checked_at >= ?2 AND checked_at <= ?3 AND deleted_at IS NULL ORDER BY checked_at ASC",
+        (Some(_), None) => "SELECT id, habit_id, checked_at, note, created_at FROM habit_records WHERE habit_id = ?1 AND checked_at >= ?2 AND deleted_at IS NULL ORDER BY checked_at ASC",
+        (None, Some(_)) => "SELECT id, habit_id, checked_at, note, created_at FROM habit_records WHERE habit_id = ?1 AND checked_at <= ?2 AND deleted_at IS NULL ORDER BY checked_at ASC",
+        (None, None) => "SELECT id, habit_id, checked_at, note, created_at FROM habit_records WHERE habit_id = ?1 AND deleted_at IS NULL ORDER BY checked_at ASC",
     };
 
     let mut stmt = conn.prepare(sql).map_err(|e| format!("Failed to prepare get_records: {}", e))?;
@@ -268,7 +270,7 @@ pub fn get_streak(conn: &Connection, habit_id: &str) -> Result<i32, String> {
 
     // 获取所有打卡日期，降序
     let mut stmt = conn
-        .prepare("SELECT checked_at FROM habit_records WHERE habit_id = ?1 ORDER BY checked_at DESC")
+        .prepare("SELECT checked_at FROM habit_records WHERE habit_id = ?1 AND deleted_at IS NULL ORDER BY checked_at DESC")
         .map_err(|e| format!("Failed to prepare get_streak: {}", e))?;
 
     let dates: Vec<String> = stmt
@@ -330,7 +332,7 @@ pub fn get_all_streaks(conn: &Connection) -> Result<Vec<HabitWithStreak>, String
         // 检查今天是否打卡
         let checked_today: bool = conn
             .query_row(
-                "SELECT COUNT(*) FROM habit_records WHERE habit_id = ?1 AND checked_at = ?2",
+                "SELECT COUNT(*) FROM habit_records WHERE habit_id = ?1 AND checked_at = ?2 AND deleted_at IS NULL",
                 params![habit.id, today_str],
                 |row| row.get::<_, i32>(0),
             )

@@ -183,7 +183,7 @@ pub fn get_journal_by_date(
 ) -> Result<Option<Journal>, String> {
     let mut stmt = conn
         .prepare(&format!(
-            "SELECT {} FROM journals WHERE journal_date = ?1 AND entry_type = 'user'",
+            "SELECT {} FROM journals WHERE journal_date = ?1 AND entry_type = 'user' AND deleted_at IS NULL",
             JOURNAL_COLUMNS
         ))
         .map_err(|e| format!("Failed to prepare query: {}", e))?;
@@ -250,7 +250,7 @@ pub fn update_journal_metadata(
 
     // 返回更新后的 journal
     conn.query_row(
-        &format!("SELECT {} FROM journals WHERE id = ?1", JOURNAL_COLUMNS),
+        &format!("SELECT {} FROM journals WHERE id = ?1 AND deleted_at IS NULL", JOURNAL_COLUMNS),
         params![id],
         journal_from_row,
     )
@@ -267,7 +267,7 @@ pub fn get_timeline_entries(
 
     let mut stmt = conn
         .prepare(
-            "SELECT DISTINCT journal_date FROM journals WHERE journal_date LIKE ?1 AND entry_type = 'user' ORDER BY journal_date",
+            "SELECT DISTINCT journal_date FROM journals WHERE journal_date LIKE ?1 AND entry_type = 'user' AND deleted_at IS NULL ORDER BY journal_date",
         )
         .map_err(|e| format!("Failed to prepare timeline query: {}", e))?;
 
@@ -288,8 +288,9 @@ pub fn delete_journal(
     id: &str,
     date: &str,
 ) -> Result<(), String> {
-    // 删除 DB 记录
-    conn.execute("DELETE FROM journals WHERE id = ?1", params![id])
+    // 软删除 DB 记录
+    let time = now();
+    conn.execute("UPDATE journals SET deleted_at = ?1 WHERE id = ?2", params![time, id])
         .map_err(|e| format!("Failed to delete journal: {}", e))?;
 
     // 删除文件
@@ -316,7 +317,7 @@ pub fn save_ai_diary_meta(
     // 检查是否已有 AI 日记
     let mut stmt = conn
         .prepare(&format!(
-            "SELECT {} FROM journals WHERE journal_date = ?1 AND entry_type = 'ai'",
+            "SELECT {} FROM journals WHERE journal_date = ?1 AND entry_type = 'ai' AND deleted_at IS NULL",
             JOURNAL_COLUMNS
         ))
         .map_err(|e| format!("Failed to prepare query: {}", e))?;
@@ -344,7 +345,7 @@ pub fn save_ai_diary_meta(
     .map_err(|e| format!("Failed to create ai journal: {}", e))?;
 
     conn.query_row(
-        &format!("SELECT {} FROM journals WHERE id = ?1", JOURNAL_COLUMNS),
+        &format!("SELECT {} FROM journals WHERE id = ?1 AND deleted_at IS NULL", JOURNAL_COLUMNS),
         params![id],
         journal_from_row,
     )
@@ -378,7 +379,7 @@ pub fn complete_diary_with_xp(
     // 检查是否已经结算过（虚拟任务已完成）
     {
         let mut stmt = conn
-            .prepare("SELECT id FROM tasks WHERE title = ?1 AND status = 'completed'")
+            .prepare("SELECT id FROM tasks WHERE title = ?1 AND status = 'completed' AND deleted_at IS NULL")
             .map_err(|e| format!("Failed to check diary task: {}", e))?;
 
         let mut rows = stmt
@@ -404,9 +405,10 @@ pub fn complete_diary_with_xp(
     // 写入 AI 分配的 XP
     for (skill_id, xp_amount) in allocations {
         let link_id = gen_id();
+        let time = now();
         conn.execute(
-            "INSERT INTO task_skills (id, task_id, skill_id, xp_amount) VALUES (?1, ?2, ?3, ?4)",
-            params![link_id, task_id, skill_id, xp_amount],
+            "INSERT INTO task_skills (id, task_id, skill_id, xp_amount, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+            params![link_id, task_id, skill_id, xp_amount, time],
         )
         .map_err(|e| format!("Failed to link diary task skill: {}", e))?;
     }
@@ -436,7 +438,7 @@ pub fn search_journals(
     // 1. 先从 DB 搜索 title/summary 命中的
     let mut stmt = conn
         .prepare(&format!(
-            "SELECT {} FROM journals WHERE (title LIKE ?1 OR summary LIKE ?1) AND entry_type = 'user' ORDER BY journal_date DESC",
+            "SELECT {} FROM journals WHERE (title LIKE ?1 OR summary LIKE ?1) AND entry_type = 'user' AND deleted_at IS NULL ORDER BY journal_date DESC",
             JOURNAL_COLUMNS
         ))
         .map_err(|e| format!("Failed to prepare journal search: {}", e))?;
@@ -471,7 +473,7 @@ pub fn search_journals(
     if results.len() < limit {
         let mut stmt2 = conn
             .prepare(&format!(
-                "SELECT {} FROM journals WHERE entry_type = 'user' ORDER BY journal_date DESC LIMIT 100",
+                "SELECT {} FROM journals WHERE entry_type = 'user' AND deleted_at IS NULL ORDER BY journal_date DESC LIMIT 100",
                 JOURNAL_COLUMNS
             ))
             .map_err(|e| format!("Failed to prepare journal scan: {}", e))?;
@@ -535,7 +537,7 @@ fn extract_snippet(text: &str, query: &str) -> String {
 /// 获取日记总天数
 pub fn get_journal_count(conn: &Connection) -> Result<i32, String> {
     conn.query_row(
-        "SELECT COUNT(*) FROM journals",
+        "SELECT COUNT(*) FROM journals WHERE deleted_at IS NULL",
         [],
         |row| row.get(0),
     )

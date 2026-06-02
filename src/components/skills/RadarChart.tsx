@@ -1,5 +1,5 @@
 import { SKILL_COLORS, SKILL_ORDER } from '@/styles/theme';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import type { Skill } from '@/types/skill';
 
 interface RadarChartProps {
@@ -9,7 +9,7 @@ interface RadarChartProps {
 
 export function RadarChart({ skills, size = 200 }: RadarChartProps) {
   const appTheme = useAppTheme();
-  const gridStroke = `${appTheme.ink}1F`;
+  const gridStroke = `${withAlpha(appTheme.ink, 0.12)}`;
   const cx = size / 2;
   const cy = size / 2;
   const radius = size * 0.35;

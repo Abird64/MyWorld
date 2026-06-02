@@ -3,30 +3,13 @@ import { NavBar } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
 import { useMemoryStore } from '@/stores/memoryStore';
 import { useAppTheme } from '@/stores/themeStore';
+import { useUIStore } from '@/stores/uiStore';
 import { MEMORY_TYPE_LABELS, MEMORY_TYPE_ICONS } from '@/types/memory';
 import type { Memory } from '@/types/memory';
+import { formatRelativeTime } from '@/utils/dateFormat';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
 const ALL_TYPES = ['identity', 'interest', 'taste', 'habit', 'personality', 'relationship', 'status', 'goal', 'event', 'other'] as const;
-
-function formatRelativeTime(isoString: string): string {
-  const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return '今天';
-  if (diffDays === 1) return '昨天';
-  if (diffDays === 2) return '前天';
-  if (diffDays < 7) return `${diffDays}天前`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}个月前`;
-
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return `${year}年${month}月${day}日`;
-}
 
 function groupByType(memories: Memory[]): Map<string, Memory[]> {
   const map = new Map<string, Memory[]>();
@@ -42,12 +25,15 @@ export function MemoriesPage() {
   const appTheme = useAppTheme();
   const { memories, loading, selectedType, fetchMemories, deleteMemory, setSelectedType } =
     useMemoryStore();
+  const activeSubPage = useUIStore((s) => s.activeSubPage);
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMemories();
-  }, []);
+    if (activeSubPage === 'memories') {
+      fetchMemories();
+    }
+  }, [activeSubPage]);
 
   const handleDelete = async (id: string) => {
     await deleteMemory(id);
@@ -79,7 +65,7 @@ export function MemoriesPage() {
 
   return (
     <PageContainer className="flex flex-col" bgColor={appTheme.canvasParchment}>
-      <NavBar title="小本本" />
+      <NavBar title="笔记" />
 
       {/* 类型筛选栏 */}
       <div className="px-6 py-3 flex gap-2 overflow-x-auto">
@@ -114,7 +100,7 @@ export function MemoriesPage() {
           <div className="flex flex-col items-center justify-center h-60 gap-4" style={{ color: appTheme.ink }}>
             <span className="text-4xl">📒</span>
             <p className="text-center opacity-60">
-              提灯还没有在小本本里写任何东西。
+              提灯还没有写任何笔记。
               <br />
               当你在对话中提到值得记住的事，提灯会帮你记下来。
             </p>

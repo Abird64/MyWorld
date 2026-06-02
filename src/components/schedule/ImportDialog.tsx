@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import * as calendarService from '@/services/calendarService';
 import type { Calendar } from '@/types/schedule';
 import { X } from 'lucide-react';
@@ -39,25 +39,25 @@ export function ImportDialog({ eventCount, onConfirm, onCancel }: ImportDialogPr
       <div className="rounded-2xl p-6 w-[380px]" style={{ backgroundColor: appTheme.canvas }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-light tracking-wider" style={{ color: appTheme.ink }}>导入日程</h3>
-          <button onClick={onCancel} style={{ color: `${appTheme.ink}66` }}>
+          <button onClick={onCancel} style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>
             <X size={20} strokeWidth={1.5} />
           </button>
         </div>
 
-        <p className="text-sm mb-4" style={{ color: `${appTheme.ink}99` }}>
+        <p className="text-sm mb-4" style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }}>
           将导入 <span style={{ color: appTheme.primary, fontWeight: 500 }}>{eventCount}</span> 条新日程，请选择导入到哪个日历：
         </p>
 
         {loading ? (
-          <div className="text-center py-4 text-sm" style={{ color: `${appTheme.ink}66` }}>加载中...</div>
+          <div className="text-center py-4 text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>加载中...</div>
         ) : (
           <select
             value={selectedId ?? ''}
             onChange={(e) => setSelectedId(e.target.value || null)}
             className="w-full px-3 py-2 rounded-xl text-sm mb-4 border outline-none"
             style={{
-              backgroundColor: `${appTheme.primary}1A`,
-              borderColor: `${appTheme.primary}66`,
+              backgroundColor: `${withAlpha(appTheme.primary, 0.1)}`,
+              borderColor: `${withAlpha(appTheme.primary, 0.4)}`,
               color: appTheme.ink,
             }}
           >
@@ -74,7 +74,7 @@ export function ImportDialog({ eventCount, onConfirm, onCancel }: ImportDialogPr
           <button
             onClick={onCancel}
             className="px-4 py-1.5 rounded-full text-sm transition-opacity hover:opacity-80"
-            style={{ backgroundColor: `${appTheme.primary}33`, color: appTheme.ink }}
+            style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.2)}`, color: appTheme.ink }}
           >
             取消
           </button>

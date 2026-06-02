@@ -185,7 +185,10 @@ pub async fn chat_completion(
         stream: use_stream,
     };
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {}", e))?;
     let resp = client
         .post(&url)
         .header("Authorization", format!("Bearer {}", config.api_key))

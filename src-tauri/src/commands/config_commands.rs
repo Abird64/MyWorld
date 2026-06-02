@@ -92,6 +92,11 @@ pub fn clear_data(
                     .map_err(|e| e.to_string())?;
                 cleared.push("收藏夹");
             }
+            "pomodoro" => {
+                conn.execute("DELETE FROM pomodoro_sessions", [])
+                    .map_err(|e| e.to_string())?;
+                cleared.push("番茄钟");
+            }
             "settings" => {
                 conn.execute("DELETE FROM settings", [])
                     .map_err(|e| e.to_string())?;

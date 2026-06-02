@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, NavBar } from '@/components/ui';
 import { useSettingStore } from '@/stores/settingStore';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { useAppTheme, useThemeMode } from '@/stores/themeStore';
+import { useAppTheme, useThemeMode, useThemeHelpers, withAlpha } from '@/stores/themeStore';
 import { PageContainer } from '@/components/layout';
 import { BUILTIN_PROMPTS } from '@/utils/builtinPrompts';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
-import { Plus, Pencil, Trash2, X, Check, Lock, Download, AlertTriangle, Cloud, Loader2, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, Lock, Download, AlertTriangle, Cloud, Loader2, RefreshCw, Wifi, WifiOff, ChevronDown } from 'lucide-react';
 import * as scheduleService from '@/services/scheduleService';
 import { useSyncStore } from '@/stores/syncStore';
 import { invoke } from '@tauri-apps/api/core';
+import * as syncService from '@/services/syncService';
 
 const AI_PROVIDERS = [
   { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1' },
@@ -34,28 +35,35 @@ interface SettingsStyles {
 
 export function SettingsPage() {
   const appTheme = useAppTheme();
+  const { rgba } = useThemeHelpers();
   const s: SettingsStyles = {
     card: appTheme.canvas,
     cardBorder: appTheme.hairline,
     text: appTheme.ink,
-    textSub: `${appTheme.ink}99`,
+    textSub: rgba(0.6),
     accent: appTheme.primary,
-    accentDim: `${appTheme.primary}33`,
+    accentDim: rgba(0.2),
     danger: appTheme.danger,
-    dangerDim: `${appTheme.danger}20`,
-    inputBg: `${appTheme.ink}0A`,
-    inputBorder: `${appTheme.ink}33`,
-    overlay: (opacity: number) => `${appTheme.ink}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`,
+    dangerDim: rgba(0.12),
+    inputBg: rgba(0.04),
+    inputBorder: rgba(0.2),
+    overlay: (opacity: number) => rgba(opacity),
   };
   const { mode, setMode } = useThemeMode();
   const settings = useSettingStore();
   const { calendars, fetchCalendars } = useCalendarStore();
   const syncStore = useSyncStore();
+  const [appVersion, setAppVersion] = useState('…');
 
   // 同步表单
+  const [syncStorageType, setSyncStorageType] = useState<'webdav' | 'r2'>('webdav');
   const [syncFormUrl, setSyncFormUrl] = useState('');
   const [syncFormUser, setSyncFormUser] = useState('');
   const [syncFormPass, setSyncFormPass] = useState('');
+  const [r2AccountId, setR2AccountId] = useState('');
+  const [r2AccessKey, setR2AccessKey] = useState('');
+  const [r2SecretKey, setR2SecretKey] = useState('');
+  const [r2Bucket, setR2Bucket] = useState('');
   const [syncTestResult, setSyncTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [syncTesting, setSyncTesting] = useState(false);
 
@@ -77,18 +85,39 @@ export function SettingsPage() {
   const [addForm, setAddForm] = useState({ title: '', prompt: '' });
 
   const handleTestConnection = async () => {
-    if (!syncFormUrl || !syncFormUser || !syncFormPass) {
-      setSyncTestResult({ ok: false, msg: '请填写完整的 WebDAV 配置' });
-      return;
+    if (syncStorageType === 'r2') {
+      if (!r2AccountId || !r2AccessKey || !r2SecretKey || !r2Bucket) {
+        setSyncTestResult({ ok: false, msg: '请填写完整的 R2 配置' });
+        return;
+      }
+    } else {
+      if (!syncFormUrl || !syncFormUser || !syncFormPass) {
+        setSyncTestResult({ ok: false, msg: '请填写完整的 WebDAV 配置' });
+        return;
+      }
     }
     setSyncTesting(true);
     setSyncTestResult(null);
     try {
       // 先保存配置
+      await settings.set('sync.storage_type', syncStorageType);
       await settings.set('sync.url', syncFormUrl);
       await settings.set('sync.username', syncFormUser);
       await settings.set('sync.password', syncFormPass);
-      const msg = await syncStore.testConnection(syncFormUrl, syncFormUser, syncFormPass);
+      await settings.set('sync.r2.account_id', r2AccountId);
+      await settings.set('sync.r2.access_key', r2AccessKey);
+      await settings.set('sync.r2.secret_key', r2SecretKey);
+      await settings.set('sync.r2.bucket', r2Bucket);
+      const msg = await syncStore.testConnection({
+        storageType: syncStorageType,
+        url: syncFormUrl,
+        username: syncFormUser,
+        password: syncFormPass,
+        r2AccountId,
+        r2AccessKey,
+        r2SecretKey,
+        r2Bucket,
+      });
       setSyncTestResult({ ok: true, msg });
     } catch (e) {
       setSyncTestResult({ ok: false, msg: String(e) });
@@ -99,17 +128,27 @@ export function SettingsPage() {
 
   const handleSyncNow = async () => {
     // 保存当前配置
+    await settings.set('sync.storage_type', syncStorageType);
     await settings.set('sync.url', syncFormUrl);
     await settings.set('sync.username', syncFormUser);
     await settings.set('sync.password', syncFormPass);
-    await settings.set('sync.enabled', 'true');
+    await settings.set('sync.r2.account_id', r2AccountId);
+    await settings.set('sync.r2.access_key', r2AccessKey);
+    await settings.set('sync.r2.secret_key', r2SecretKey);
+    await settings.set('sync.r2.bucket', r2Bucket);
+    await syncService.setSyncEnabled(true);
     await syncStore.syncNow();
   };
 
   const handleSaveSyncConfig = async () => {
+    await settings.set('sync.storage_type', syncStorageType);
     await settings.set('sync.url', syncFormUrl);
     await settings.set('sync.username', syncFormUser);
     await settings.set('sync.password', syncFormPass);
+    await settings.set('sync.r2.account_id', r2AccountId);
+    await settings.set('sync.r2.access_key', r2AccessKey);
+    await settings.set('sync.r2.secret_key', r2SecretKey);
+    await settings.set('sync.r2.bucket', r2Bucket);
     setSyncTestResult({ ok: true, msg: '配置已保存' });
     setTimeout(() => setSyncTestResult(null), 2000);
   };
@@ -160,6 +199,7 @@ export function SettingsPage() {
     { id: 'skills', label: '技能', description: '所有属性和经验记录' },
     { id: 'ai_conversations', label: 'AI对话', description: '所有提灯对话历史' },
     { id: 'ai_favorites', label: '收藏夹', description: '所有收藏的AI对话内容' },
+    { id: 'pomodoro', label: '番茄钟', description: '所有番茄钟专注记录' },
     { id: 'settings', label: '设置', description: '所有自定义设置和配置' },
   ];
 
@@ -167,6 +207,7 @@ export function SettingsPage() {
     settings.loadAll();
     fetchCalendars();
     syncStore.loadStatus();
+    import('@tauri-apps/api/app').then(({ getVersion }) => getVersion()).then(setAppVersion).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -176,9 +217,14 @@ export function SettingsPage() {
   // 同步表单从 settings 初始化
   useEffect(() => {
     if (settings.loaded) {
+      setSyncStorageType((settings.get('sync.storage_type', 'webdav') as 'webdav' | 'r2'));
       setSyncFormUrl(settings.get('sync.url', 'https://dav.jianguoyun.com/dav/'));
       setSyncFormUser(settings.get('sync.username', ''));
       setSyncFormPass(settings.get('sync.password', ''));
+      setR2AccountId(settings.get('sync.r2.account_id', ''));
+      setR2AccessKey(settings.get('sync.r2.access_key', ''));
+      setR2SecretKey(settings.get('sync.r2.secret_key', ''));
+      setR2Bucket(settings.get('sync.r2.bucket', ''));
     }
   }, [settings.loaded]);
 
@@ -249,7 +295,7 @@ export function SettingsPage() {
           <Section title="外观" styles={s}>
             <div className="flex items-center justify-between">
               <span className="text-base" style={{ color: s.textSub }}>主题模式</span>
-              <div className="flex rounded-full p-0.5" style={{ backgroundColor: `${appTheme.ink}0D` }}>
+              <div className="flex rounded-full p-0.5" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.05)}` }}>
                 {([
                   { id: 'light' as const, label: '浅色' },
                   { id: 'dark' as const, label: '深色' },
@@ -260,7 +306,7 @@ export function SettingsPage() {
                     className="px-4 py-1.5 rounded-full text-sm transition-all"
                     style={{
                       backgroundColor: mode === opt.id ? appTheme.canvas : 'transparent',
-                      color: mode === opt.id ? appTheme.ink : `${appTheme.ink}80`,
+                      color: mode === opt.id ? appTheme.ink : `${withAlpha(appTheme.ink, 0.5)}`,
                       boxShadow: mode === opt.id ? `0 0 0 0.5px ${appTheme.hairline}` : 'none',
                     }}
                   >
@@ -283,6 +329,37 @@ export function SettingsPage() {
               label="关系维护提醒"
               checked={get('notification.contact_reminder') === 'true'}
               onChange={(v) => set('notification.contact_reminder', String(v))}
+              styles={s}
+            />
+          </Section>
+
+          {/* ===== 番茄钟设置 ===== */}
+          <Section title="番茄钟" styles={s}>
+            <InputRow
+              label="专注时长（分钟）"
+              value={get('pomodoro_focus_minutes', '25')}
+              type="number"
+              onChange={(v) => set('pomodoro_focus_minutes', v)}
+              styles={s}
+            />
+            <InputRow
+              label="短休息时长（分钟）"
+              value={get('pomodoro_break_minutes', '5')}
+              type="number"
+              onChange={(v) => set('pomodoro_break_minutes', v)}
+              styles={s}
+            />
+            <InputRow
+              label="长休息时长（分钟）"
+              value={get('pomodoro_long_break_minutes', '15')}
+              type="number"
+              onChange={(v) => set('pomodoro_long_break_minutes', v)}
+              styles={s}
+            />
+            <ToggleRow
+              label="专注结束后自动开始休息"
+              checked={get('pomodoro_auto_start_break') === 'true'}
+              onChange={(v) => set('pomodoro_auto_start_break', String(v))}
               styles={s}
             />
           </Section>
@@ -498,7 +575,7 @@ export function SettingsPage() {
                 <button
                   onClick={() => setIsAdding(true)}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors"
-                  style={{ backgroundColor: s.inputBg, color: s.accent, border: `1px dashed ${s.accent}40` }}
+                  style={{ backgroundColor: s.inputBg, color: s.accent, border: `1px dashed ${withAlpha(s.accent, 0.25)}` }}
                 >
                   <Plus size={14} /> 添加锦囊
                 </button>
@@ -511,7 +588,7 @@ export function SettingsPage() {
             <div className="flex items-center gap-2 mb-2">
               <Cloud size={16} style={{ color: s.accent }} />
               <span className="text-sm" style={{ color: s.textSub }}>
-                通过 WebDAV（如坚果云）在多台设备间同步数据
+                在多台设备间同步数据
               </span>
             </div>
 
@@ -519,33 +596,84 @@ export function SettingsPage() {
             <ToggleRow
               label="启用自动同步"
               checked={settings.get('sync.enabled') === 'true'}
-              onChange={(v) => settings.set('sync.enabled', String(v))}
+              onChange={(v) => { settings.set('sync.enabled', String(v)); syncService.setSyncEnabled(v); }}
+              styles={s}
+            />
+
+            {/* 存储类型选择 */}
+            <SelectRow
+              label="存储类型"
+              value={syncStorageType}
+              options={[
+                { value: 'webdav', label: '坚果云 WebDAV' },
+                { value: 'r2', label: 'Cloudflare R2' },
+              ]}
+              onChange={(v) => setSyncStorageType(v as 'webdav' | 'r2')}
               styles={s}
             />
 
             {/* WebDAV 配置 */}
-            <InputRow
-              label="WebDAV 服务器"
-              value={syncFormUrl}
-              placeholder="https://dav.jianguoyun.com/dav/"
-              onChange={setSyncFormUrl}
-              styles={s}
-            />
-            <InputRow
-              label="用户名"
-              value={syncFormUser}
-              placeholder="your@email.com"
-              onChange={setSyncFormUser}
-              styles={s}
-            />
-            <InputRow
-              label="应用密码"
-              value={syncFormPass}
-              type="password"
-              placeholder="坚果云应用密码"
-              onChange={setSyncFormPass}
-              styles={s}
-            />
+            {syncStorageType === 'webdav' && (
+              <>
+                <InputRow
+                  label="WebDAV 服务器"
+                  value={syncFormUrl}
+                  placeholder="https://dav.jianguoyun.com/dav/"
+                  onChange={setSyncFormUrl}
+                  styles={s}
+                />
+                <InputRow
+                  label="用户名"
+                  value={syncFormUser}
+                  placeholder="your@email.com"
+                  onChange={setSyncFormUser}
+                  styles={s}
+                />
+                <InputRow
+                  label="应用密码"
+                  value={syncFormPass}
+                  type="password"
+                  placeholder="坚果云应用密码"
+                  onChange={setSyncFormPass}
+                  styles={s}
+                />
+              </>
+            )}
+
+            {/* R2 配置 */}
+            {syncStorageType === 'r2' && (
+              <>
+                <InputRow
+                  label="Account ID"
+                  value={r2AccountId}
+                  placeholder="Cloudflare Account ID"
+                  onChange={setR2AccountId}
+                  styles={s}
+                />
+                <InputRow
+                  label="Access Key"
+                  value={r2AccessKey}
+                  placeholder="R2 API Access Key ID"
+                  onChange={setR2AccessKey}
+                  styles={s}
+                />
+                <InputRow
+                  label="Secret Key"
+                  value={r2SecretKey}
+                  type="password"
+                  placeholder="R2 API Secret Access Key"
+                  onChange={setR2SecretKey}
+                  styles={s}
+                />
+                <InputRow
+                  label="Bucket"
+                  value={r2Bucket}
+                  placeholder="my-lantern-bucket"
+                  onChange={setR2Bucket}
+                  styles={s}
+                />
+              </>
+            )}
 
             {/* 同步间隔 */}
             <InputRow
@@ -582,7 +710,7 @@ export function SettingsPage() {
               <div
                 className="px-3 py-2 rounded-lg text-sm"
                 style={{
-                  backgroundColor: syncTestResult.ok ? `${s.accent}15` : s.dangerDim,
+                  backgroundColor: syncTestResult.ok ? `${withAlpha(s.accent, 0.08)}` : s.dangerDim,
                   color: syncTestResult.ok ? s.accent : s.danger,
                 }}
               >
@@ -623,7 +751,7 @@ export function SettingsPage() {
               <div
                 className="px-3 py-2 rounded-lg text-xs space-y-1"
                 style={{
-                  backgroundColor: syncStore.lastResult.success ? `${s.accent}15` : s.dangerDim,
+                  backgroundColor: syncStore.lastResult.success ? `${withAlpha(s.accent, 0.08)}` : s.dangerDim,
                   color: syncStore.lastResult.success ? s.accent : s.danger,
                 }}
               >
@@ -668,7 +796,7 @@ export function SettingsPage() {
 
           {/* 版本信息 */}
           <div className="text-center pt-6 pb-4">
-            <span className="text-sm" style={{ color: s.textSub }}>提灯 v0.1</span>
+            <span className="text-sm" style={{ color: s.textSub }}>提灯 v{appVersion}</span>
           </div>
         </div>
       </div>
@@ -724,30 +852,6 @@ export function SettingsPage() {
                 >
                   导出 ICS 文件
                 </button>
-              </div>
-
-              {/* 导出任务（预留） */}
-              <div
-                className="rounded-xl p-4 opacity-50"
-                style={{ backgroundColor: s.overlay(0.04), border: `1px solid ${s.cardBorder}` }}
-              >
-                <div className="flex items-center gap-2">
-                  <Download size={16} style={{ color: s.textSub }} />
-                  <span className="text-sm font-medium" style={{ color: s.text }}>导出任务</span>
-                  <span className="text-xs ml-auto" style={{ color: s.textSub }}>即将推出</span>
-                </div>
-              </div>
-
-              {/* 导出人脉（预留） */}
-              <div
-                className="rounded-xl p-4 opacity-50"
-                style={{ backgroundColor: s.overlay(0.04), border: `1px solid ${s.cardBorder}` }}
-              >
-                <div className="flex items-center gap-2">
-                  <Download size={16} style={{ color: s.textSub }} />
-                  <span className="text-sm font-medium" style={{ color: s.text }}>导出人脉</span>
-                  <span className="text-xs ml-auto" style={{ color: s.textSub }}>即将推出</span>
-                </div>
               </div>
             </div>
 
@@ -948,6 +1052,65 @@ function InputRow({ label, value, onChange, styles, type = 'text', placeholder =
         className="w-full px-3 py-2 rounded-lg text-sm outline-none"
         style={{ backgroundColor: styles.inputBg, border: `1px solid ${styles.inputBorder}`, color: styles.text }}
       />
+    </div>
+  );
+}
+
+function SelectRow({ label, value, options, onChange, styles }: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+  styles: SettingsStyles;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find(o => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <label className="text-sm mb-1.5 block" style={{ color: styles.textSub }}>{label}</label>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full px-3 py-2 rounded-lg text-sm text-left flex items-center justify-between"
+        style={{ backgroundColor: styles.inputBg, border: `1px solid ${styles.inputBorder}`, color: styles.text }}
+      >
+        <span>{selected?.label ?? value}</span>
+        <ChevronDown size={14} style={{ color: styles.textSub, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+      {open && (
+        <div
+          className="absolute z-50 w-full mt-1 rounded-lg overflow-hidden shadow-lg"
+          style={{ backgroundColor: styles.card, border: `1px solid ${styles.inputBorder}` }}
+        >
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className="w-full px-3 py-2 text-sm text-left transition-colors"
+              style={{
+                color: opt.value === value ? styles.accent : styles.text,
+                backgroundColor: opt.value === value ? styles.accentDim : 'transparent',
+              }}
+              onMouseEnter={e => { if (opt.value !== value) (e.currentTarget.style.backgroundColor = styles.overlay(0.06)); }}
+              onMouseLeave={e => { if (opt.value !== value) (e.currentTarget.style.backgroundColor = 'transparent'); }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

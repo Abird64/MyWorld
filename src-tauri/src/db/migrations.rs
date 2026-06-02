@@ -377,6 +377,37 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
         rusqlite::params![nanoid::nanoid!()],
     );
 
+    // 增量迁移：番茄钟会话表
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS pomodoro_sessions (
+            id              TEXT PRIMARY KEY,
+            task_id         TEXT,
+            session_type    TEXT NOT NULL DEFAULT 'focus',
+            target_minutes  INTEGER NOT NULL,
+            actual_seconds  INTEGER NOT NULL DEFAULT 0,
+            status          TEXT NOT NULL DEFAULT 'running',
+            started_at      TEXT NOT NULL,
+            completed_at    TEXT,
+            created_at      TEXT NOT NULL,
+            updated_at      TEXT NOT NULL,
+            deleted_at      TEXT,
+            FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL
+        )",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pomodoro_sessions_task ON pomodoro_sessions(task_id)",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pomodoro_sessions_status ON pomodoro_sessions(status)",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pomodoro_sessions_sync ON pomodoro_sessions(updated_at)",
+        [],
+    );
+
     // 增量迁移：AI 小本本记忆表
     let _ = conn.execute(
         "CREATE TABLE IF NOT EXISTS ai_memories (
@@ -467,6 +498,71 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
         let _ = conn.execute("UPDATE habits SET skill_id = ?1 WHERE skill_id = ?2", rusqlite::params![new_id, old_id]);
     }
 
+    // === 清理旧 CRDT 触发器和表（如果存在） ===
+    cleanup_old_change_tracking(conn);
+
+    // === 增量迁移：添加 deleted_at 列（软删除）===
+    let sync_tables = [
+        "tasks", "skills", "task_skills", "skill_events", "journals",
+        "schedules", "contacts", "diary_contacts", "task_contacts",
+        "settings", "ai_conversations", "ai_messages", "calendars",
+        "contact_methods", "ai_favorites", "ai_memories", "habits", "habit_records",
+        "pomodoro_sessions",
+    ];
+    for table in &sync_tables {
+        let _ = conn.execute(
+            &format!("ALTER TABLE {} ADD COLUMN deleted_at TEXT", table),
+            [],
+        );
+    }
+
+    // === 增量迁移：给缺 updated_at 的表添加列 ===
+    let now = "datetime('now')";
+    for table in &["task_skills", "skill_events", "diary_contacts", "task_contacts",
+                     "ai_messages", "contact_methods", "ai_favorites", "habit_records"] {
+        let _ = conn.execute(
+            &format!("ALTER TABLE {} ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''", table),
+            [],
+        );
+        // 回填已有数据的 updated_at = created_at（如果有的话），否则用当前时间
+        let _ = conn.execute(
+            &format!("UPDATE {table} SET updated_at = COALESCE(created_at, {now}) WHERE updated_at = ''"),
+            [],
+        );
+    }
+
+    // 为 deleted_at 和 updated_at 创建索引
+    for table in &sync_tables {
+        let _ = conn.execute(
+            &format!("CREATE INDEX IF NOT EXISTS idx_{table}_sync ON {table}(updated_at)"),
+            [],
+        );
+    }
+
     log::info!("Database migrations completed");
     Ok(())
+}
+
+/// 清理旧的 CRDT 触发器和表
+fn cleanup_old_change_tracking(conn: &Connection) {
+    // 删除所有 _crsql_* 触发器
+    let tables = [
+        "tasks", "skills", "task_skills", "skill_events", "journals",
+        "schedules", "contacts", "diary_contacts", "task_contacts",
+        "settings", "ai_conversations", "ai_messages", "calendars",
+        "contact_methods", "ai_favorites", "ai_memories", "habits", "habit_records",
+        "pomodoro_sessions",
+    ];
+    for table in &tables {
+        let _ = conn.execute_batch(&format!(
+            "DROP TRIGGER IF EXISTS _crsql_{table}_insert;
+             DROP TRIGGER IF EXISTS _crsql_{table}_update;
+             DROP TRIGGER IF EXISTS _crsql_{table}_delete;"
+        ));
+    }
+    // 删除旧表
+    let _ = conn.execute("DROP TABLE IF EXISTS crsql_changes", []);
+    let _ = conn.execute("DROP TABLE IF EXISTS crsql_db_version", []);
+    // 清理旧的同步配置
+    let _ = conn.execute("DELETE FROM settings WHERE key IN ('sync.export_version', 'sync.last_known_versions')", []);
 }

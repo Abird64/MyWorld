@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ListTodo, BookOpen, Repeat, Sparkles, Settings, ChevronRight } from 'lucide-react';
+import { ListTodo, BookOpen, Repeat, Sparkles, Users, BookMarked, Settings, ChevronRight } from 'lucide-react';
 import { useUIStore, type SubPage } from '@/stores/uiStore';
-import { useAppTheme } from '@/stores/themeStore';
+import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useSkillStore } from '@/stores/skillStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useHabitStore } from '@/stores/habitStore';
 import { getJournalCount } from '@/services/journalService';
 import { NavBar } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
+import { LEVEL_TITLES } from '@/utils/dateFormat';
+import { TASKS_COLOR } from '@/styles/theme';
 import { Card } from '@/components/ui/Card';
 
 interface MenuItem {
@@ -23,10 +25,12 @@ const menuGroups: { title: string; items: MenuItem[] }[] = [
   {
     title: '核心功能',
     items: [
-      { id: 'tasks', label: '尘事', desc: '任务与待办', icon: ListTodo, iconBg: '#f0f0ff', iconColor: '#5856d6' },
+      { id: 'tasks', label: '任务', desc: '任务与待办', icon: ListTodo, iconBg: '#f0f0ff', iconColor: TASKS_COLOR },
       { id: 'diary', label: '日记', desc: '记录生活，AI 帮你反思', icon: BookOpen, iconBg: '#fff0f3', iconColor: '#ff2d55' },
       { id: 'habits', label: '习惯', desc: '建立好习惯，每日打卡', icon: Repeat, iconBg: '#e8f8e8', iconColor: '#34c759' },
       { id: 'skills', label: '成长', desc: '六维属性与成长数据', icon: Sparkles, iconBg: '#fff8e8', iconColor: '#ff9500' },
+      { id: 'relations', label: '联系人', desc: '人脉管理与生日提醒', icon: Users, iconBg: '#f0f0ff', iconColor: TASKS_COLOR },
+      { id: 'memories', label: '笔记', desc: '提灯的跨对话记忆', icon: BookMarked, iconBg: '#fff0f3', iconColor: '#ff2d55' },
     ],
   },
   {
@@ -37,12 +41,6 @@ const menuGroups: { title: string; items: MenuItem[] }[] = [
   },
 ];
 
-const LEVEL_TITLES: Record<number, string> = {
-  1: '入门', 2: '初窥', 3: '略懂',
-  4: '通晓', 5: '精熟', 6: '专深',
-  7: '卓越', 8: '宗师', 9: '入圣',
-  10: '化境',
-};
 
 export function MinePage() {
   const appTheme = useAppTheme();
@@ -106,7 +104,7 @@ export function MinePage() {
                   <span>Lv.{avgLevel}</span>
                   <span>{currentLevelXp} / {nextLevelXp * skills.length || totalXp}</span>
                 </div>
-                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${appTheme.ink}14` }}>
+                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.08)}` }}>
                   <div
                     className="h-full rounded-full transition-all duration-700 ease-out"
                     style={{
@@ -176,7 +174,7 @@ export function MinePage() {
                       <div
                         className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{
-                          backgroundColor: isSettings ? `${appTheme.ink}0D` : item.iconBg,
+                          backgroundColor: isSettings ? `${withAlpha(appTheme.ink, 0.05)}` : item.iconBg,
                         }}
                       >
                         <Icon

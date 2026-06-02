@@ -1,6 +1,10 @@
 use rusqlite::{params, Connection, Row};
 use serde::{Deserialize, Serialize};
 
+fn now() -> String {
+    chrono::Local::now().to_rfc3339()
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AiFavorite {
     pub id: String,
@@ -32,10 +36,10 @@ pub fn add_favorite(
     message_id: Option<&str>,
 ) -> Result<AiFavorite, String> {
     let id: String = nanoid::nanoid!();
-    let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.6f").to_string();
+    let now = now();
 
     conn.execute(
-        "INSERT INTO ai_favorites (id, content, role, conversation_title, message_id, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT INTO ai_favorites (id, content, role, conversation_title, message_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
         params![id, content, role, conversation_title, message_id, now],
     )
     .map_err(|e| format!("Failed to add favorite: {}", e))?;
@@ -52,7 +56,7 @@ pub fn add_favorite(
 
 pub fn list_favorites(conn: &Connection) -> Result<Vec<AiFavorite>, String> {
     let mut stmt = conn
-        .prepare(&format!("SELECT {} FROM ai_favorites ORDER BY created_at DESC", COLUMNS))
+        .prepare(&format!("SELECT {} FROM ai_favorites WHERE deleted_at IS NULL ORDER BY created_at DESC", COLUMNS))
         .map_err(|e| format!("Failed to list favorites: {}", e))?;
 
     let rows = stmt
@@ -67,8 +71,9 @@ pub fn list_favorites(conn: &Connection) -> Result<Vec<AiFavorite>, String> {
 }
 
 pub fn delete_favorite(conn: &Connection, id: &str) -> Result<(), String> {
+    let time = now();
     let affected = conn
-        .execute("DELETE FROM ai_favorites WHERE id = ?1", params![id])
+        .execute("UPDATE ai_favorites SET deleted_at = ?1 WHERE id = ?2", params![time, id])
         .map_err(|e| format!("Failed to delete favorite: {}", e))?;
 
     if affected == 0 {
@@ -78,16 +83,18 @@ pub fn delete_favorite(conn: &Connection, id: &str) -> Result<(), String> {
 }
 
 pub fn delete_favorite_by_message_id(conn: &Connection, message_id: &str) -> Result<(), String> {
+    let time = now();
     conn.execute(
-        "DELETE FROM ai_favorites WHERE message_id = ?1",
-        params![message_id],
+        "UPDATE ai_favorites SET deleted_at = ?1 WHERE message_id = ?2",
+        params![time, message_id],
     )
     .map_err(|e| format!("Failed to delete favorite by message_id: {}", e))?;
     Ok(())
 }
 
 pub fn delete_all_favorites(conn: &Connection) -> Result<(), String> {
-    conn.execute("DELETE FROM ai_favorites", [])
+    let time = now();
+    conn.execute("UPDATE ai_favorites SET deleted_at = ?1 WHERE deleted_at IS NULL", params![time])
         .map_err(|e| format!("Failed to delete all favorites: {}", e))?;
     Ok(())
 }

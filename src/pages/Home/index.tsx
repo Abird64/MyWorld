@@ -1,36 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, MessageSquare, Star, Bookmark, BookOpen, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, Bookmark, BookOpen, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { PageContainer } from '@/components/layout';
 import { NavBar } from '@/components/ui';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { ChatView } from '@/components/ai/ChatView';
 import { useAiStore } from '@/stores/aiStore';
 import { useFavoriteStore } from '@/stores/favoriteStore';
 import { useMemoryStore } from '@/stores/memoryStore';
-import { useAppTheme, useThemeHelpers, useThemeStore } from '@/stores/themeStore';
+import { useAppTheme, useThemeHelpers, useThemeStore, withAlpha } from '@/stores/themeStore';
+import { useUIStore } from '@/stores/uiStore';
 import type { PageTheme } from '@/styles/theme';
 import { MEMORY_TYPE_LABELS, MEMORY_TYPE_ICONS } from '@/types/memory';
 import type { Memory } from '@/types/memory';
+import { formatRelativeTime } from '@/utils/dateFormat';
 
 const ALL_TYPES = ['identity', 'interest', 'taste', 'habit', 'personality', 'relationship', 'status', 'goal', 'event', 'other'] as const;
-
-function formatRelativeTime(isoString: string): string {
-  const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return '今天';
-  if (diffDays === 1) return '昨天';
-  if (diffDays === 2) return '前天';
-  if (diffDays < 7) return `${diffDays}天前`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}个月前`;
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return `${year}年${month}月${day}日`;
-}
 
 function groupByType(memories: Memory[]): Map<string, Memory[]> {
   const map = new Map<string, Memory[]>();
@@ -53,11 +39,12 @@ export function HomePage() {
   const h = useThemeHelpers();
   const s = h.rgba;
 
+  const activeTab = useUIStore((s) => s.activeTab);
   const themeMode = useThemeStore((s) => s.mode);
   const t: PageTheme = {
     id: 'lantern', name: '提灯',
     bg: appTheme.canvas, nav: appTheme.surfaceBlack,
-    accent: appTheme.primary, accentLight: `${appTheme.primary}33`,
+    accent: appTheme.primary, accentLight: `${withAlpha(appTheme.primary, 0.2)}`,
     text: appTheme.ink, card: appTheme.canvas, cardText: appTheme.ink,
     isDark: themeMode === 'dark', danger: appTheme.danger, warning: appTheme.warning, success: appTheme.success,
   };
@@ -76,9 +63,7 @@ export function HomePage() {
   const {
     favorites,
     fetchFavorites,
-    toggleFavorite,
     deleteFavorite,
-    isFavorited,
   } = useFavoriteStore();
 
   const {
@@ -95,6 +80,7 @@ export function HomePage() {
   const [showConversations, setShowConversations] = useState(false);
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const handleDeleteMemory = async (id: string) => {
     await deleteMemory(id);
@@ -111,9 +97,11 @@ export function HomePage() {
   };
 
   useEffect(() => {
-    fetchConversations();
-    fetchFavorites();
-  }, []);
+    if (activeTab === 'chat') {
+      fetchConversations();
+      fetchFavorites();
+    }
+  }, [activeTab]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -180,7 +168,7 @@ export function HomePage() {
           onClick={() => switchView('favorites')}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all btn-press"
           style={{
-            backgroundColor: viewMode === 'favorites' ? appTheme.primary + '14' : 'transparent',
+            backgroundColor: viewMode === 'favorites' ? withAlpha(appTheme.primary, 0.08) : 'transparent',
             color: viewMode === 'favorites' ? appTheme.primary : appTheme.inkMuted48,
           }}
         >
@@ -190,17 +178,17 @@ export function HomePage() {
           onClick={() => switchView('memories')}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all btn-press"
           style={{
-            backgroundColor: viewMode === 'memories' ? appTheme.primary + '14' : 'transparent',
+            backgroundColor: viewMode === 'memories' ? withAlpha(appTheme.primary, 0.08) : 'transparent',
             color: viewMode === 'memories' ? appTheme.primary : appTheme.inkMuted48,
           }}
         >
-          <BookOpen size={14} /> 小本本
+          <BookOpen size={14} /> 笔记
         </button>
         <button
           onClick={handleNewConversation}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all btn-press"
           style={{
-            backgroundColor: viewMode === 'chat' ? appTheme.primary + '14' : 'transparent',
+            backgroundColor: viewMode === 'chat' ? withAlpha(appTheme.primary, 0.08) : 'transparent',
             color: viewMode === 'chat' ? appTheme.primary : appTheme.inkMuted48,
           }}
         >
@@ -211,11 +199,20 @@ export function HomePage() {
       {/* 主内容区 */}
       <div className="relative z-10 flex-1 flex overflow-hidden">
 
-        {/* 对话列表面板（点击历史按钮展开） */}
+        {/* 移动端遮罩层 */}
+        {isMobile && showConversations && (
+          <div
+            className="absolute inset-0 z-20"
+            style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
+            onClick={() => setShowConversations(false)}
+          />
+        )}
+
+        {/* 对话列表面板 */}
         {showConversations && (
           <div
-            className="w-[240px] flex-shrink-0 border-r overflow-y-auto px-2 py-2 space-y-1"
-            style={{ borderColor: appTheme.divider, backgroundColor: appTheme.canvasParchment }}
+            className={`${isMobile ? 'absolute left-0 top-0 bottom-0 z-30 shadow-xl' : 'w-[240px] flex-shrink-0 border-r'} overflow-y-auto px-2 py-2 space-y-1`}
+            style={{ width: isMobile ? 260 : 240, borderColor: appTheme.divider, backgroundColor: appTheme.canvasParchment }}
           >
             {conversations.map((conv) => (
               <div
@@ -223,7 +220,7 @@ export function HomePage() {
                 onClick={() => { selectConversation(conv.id); setShowConversations(false); }}
                 className="group flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors"
                 style={{
-                  backgroundColor: currentConversation === conv.id ? appTheme.primary + '14' : 'transparent',
+                  backgroundColor: currentConversation === conv.id ? withAlpha(appTheme.primary, 0.08) : 'transparent',
                   color: currentConversation === conv.id ? appTheme.ink : appTheme.inkMuted48,
                 }}
                 onMouseEnter={(e) => {
@@ -274,7 +271,7 @@ export function HomePage() {
                     ) : (
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: selectedFav.role === 'user' ? `${appTheme.primary}25` : s(0.08), color: selectedFav.role === 'user' ? appTheme.primary : appTheme.inkMuted48 }}>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: selectedFav.role === 'user' ? `${withAlpha(appTheme.primary, 0.15)}` : s(0.08), color: selectedFav.role === 'user' ? appTheme.primary : appTheme.inkMuted48 }}>
                             {selectedFav.role === 'user' ? '你' : '提灯'}
                           </span>
                           <span className="text-[10px]" style={{ color: appTheme.inkMuted48 }}>
@@ -330,7 +327,7 @@ export function HomePage() {
                           </button>
                         </div>
                         <div className="flex items-center gap-1 mt-1.5">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: fav.role === 'user' ? `${appTheme.primary}25` : s(0.06), color: fav.role === 'user' ? appTheme.primary : appTheme.inkMuted48 }}>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: fav.role === 'user' ? `${withAlpha(appTheme.primary, 0.15)}` : s(0.06), color: fav.role === 'user' ? appTheme.primary : appTheme.inkMuted48 }}>
                             {fav.role === 'user' ? '你' : fav.role === 'conversation' ? '对话' : '提灯'}
                           </span>
                           <span className="text-[10px]" style={{ color: appTheme.inkMuted48 }}>
@@ -345,7 +342,7 @@ export function HomePage() {
             </div>
           )}
 
-          {/* ====== 小本本 ====== */}
+          {/* ====== 笔记 ====== */}
           {viewMode === 'memories' && (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* 类型筛选栏 */}
@@ -380,7 +377,7 @@ export function HomePage() {
                   <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: appTheme.inkMuted48 }}>
                     <span className="text-3xl">📒</span>
                     <p className="text-sm text-center">
-                      提灯还没有在小本本里写任何东西。<br />
+                      提灯还没有写任何笔记。<br />
                       当你在对话中提到值得记住的事，提灯会帮你记下来。
                     </p>
                   </div>

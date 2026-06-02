@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as syncService from '@/services/syncService';
-import type { SyncResult, SyncStatus } from '@/services/syncService';
+import type { SyncResult, SyncStatus, TestConnectionParams } from '@/services/syncService';
+import { refreshAllStores } from '@/utils/refreshAfterSync';
 
 interface SyncState {
   /** 同步状态 */
@@ -15,7 +16,7 @@ interface SyncState {
   /** 加载同步状态 */
   loadStatus: () => Promise<void>;
   /** 测试连接 */
-  testConnection: (url: string, username: string, password: string) => Promise<string>;
+  testConnection: (params: TestConnectionParams) => Promise<string>;
   /** 立即同步 */
   syncNow: () => Promise<SyncResult>;
   /** 清除错误 */
@@ -37,10 +38,10 @@ export const useSyncStore = create<SyncState>((set, _get) => ({
     }
   },
 
-  testConnection: async (url: string, username: string, password: string) => {
+  testConnection: async (params: TestConnectionParams) => {
     set({ error: null });
     try {
-      const result = await syncService.testConnection(url, username, password);
+      const result = await syncService.testConnection(params);
       return result;
     } catch (e) {
       const msg = String(e);
@@ -56,6 +57,10 @@ export const useSyncStore = create<SyncState>((set, _get) => ({
       set({ isSyncing: false, lastResult: result });
       const status = await syncService.getSyncStatus();
       set({ status });
+      // 同步成功后刷新所有数据 store，让 UI 显示最新数据
+      if (result.success) {
+        refreshAllStores().catch(() => {});
+      }
       return result;
     } catch (e) {
       const msg = String(e);

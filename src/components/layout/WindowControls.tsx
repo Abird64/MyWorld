@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useThemeStore } from '@/stores/themeStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 export function WindowControls() {
+  const isMobile = useIsMobile();
   const [hovered, setHovered] = useState<number | null>(null);
   const mode = useThemeStore((s) => s.mode);
   const isDark = mode === 'dark';
+
+  if (isMobile) return null;
 
   const appWindow = getCurrentWindow();
 
