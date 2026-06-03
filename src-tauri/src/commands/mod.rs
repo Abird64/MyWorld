@@ -11,3 +11,4 @@ pub mod schedule_commands;
 pub mod skill_commands;
 pub mod sync_commands;
 pub mod task_commands;
+pub mod wish_commands;

@@ -34,3 +34,8 @@ async-trait = "0.1"
 sha2 = "0.10"
 hmac = "0.12"
 hex = "0.4"
+hyper = { version = "1.9.0", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio", "server", "http1", "http2"] }
+http-body-util = "0.1"
+mdns-sd = "0.13"
+rand = "0.8"

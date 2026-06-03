@@ -30,8 +30,8 @@ export function PomodoroBar({ onClick }: PomodoroBarProps) {
     <div
       className="flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-all"
       style={{
-        backgroundColor: withAlpha(color, 0.08),
-        borderBottom: `1px solid ${withAlpha(color, 0.15)}`,
+        backgroundColor: appTheme.surfaceDark,
+        borderBottom: `1px solid ${withAlpha(color, 0.2)}`,
       }}
       onClick={onClick}
     >

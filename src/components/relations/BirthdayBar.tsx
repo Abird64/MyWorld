@@ -2,10 +2,6 @@ import { useState, useEffect } from 'react';
 import { useAppTheme } from '@/stores/themeStore';
 import { listUpcomingBirthdays, type BirthdayInfo } from '@/services/contactService';
 
-function formatDate(month: number, day: number): string {
-  return `${month}月${day}日`;
-}
-
 /** 根据名字生成柔和色 */
 function nameColor(name: string): string {
   const colors = ['#ff6b6b', '#51cf66', '#339af0', '#cc5de8', '#ff922b', '#20c997', '#f06595', '#845ef7', '#228be6', '#fab005'];

@@ -6,11 +6,12 @@ import { useAppTheme, useThemeMode, useThemeHelpers, withAlpha } from '@/stores/
 import { PageContainer } from '@/components/layout';
 import { BUILTIN_PROMPTS } from '@/utils/builtinPrompts';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
-import { Plus, Pencil, Trash2, X, Check, Lock, Download, AlertTriangle, Cloud, Loader2, RefreshCw, Wifi, WifiOff, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, Lock, Download, AlertTriangle, Cloud, Loader2, RefreshCw, Wifi, WifiOff, ChevronDown, Monitor, Search } from 'lucide-react';
 import * as scheduleService from '@/services/scheduleService';
 import { useSyncStore } from '@/stores/syncStore';
 import { invoke } from '@tauri-apps/api/core';
 import * as syncService from '@/services/syncService';
+import { SyncProgress } from '@/components/sync';
 
 const AI_PROVIDERS = [
   { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1' },
@@ -56,7 +57,7 @@ export function SettingsPage() {
   const [appVersion, setAppVersion] = useState('…');
 
   // 同步表单
-  const [syncStorageType, setSyncStorageType] = useState<'webdav' | 'r2'>('webdav');
+  const [syncStorageType, setSyncStorageType] = useState<'webdav' | 'r2' | 'lan'>('webdav');
   const [syncFormUrl, setSyncFormUrl] = useState('');
   const [syncFormUser, setSyncFormUser] = useState('');
   const [syncFormPass, setSyncFormPass] = useState('');
@@ -66,6 +67,16 @@ export function SettingsPage() {
   const [r2Bucket, setR2Bucket] = useState('');
   const [syncTestResult, setSyncTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [syncTesting, setSyncTesting] = useState(false);
+
+  // LAN 同步状态
+  const [lanServerRunning, setLanServerRunning] = useState(false);
+  const [lanServerInfo, setLanServerInfo] = useState<{ port: number; ip: string } | null>(null);
+  const [lanPeers, setLanPeers] = useState<syncService.LanPeer[]>([]);
+  const [lanSelectedPeer, setLanSelectedPeer] = useState<syncService.LanPeer | null>(null);
+  const [lanManualIp, setLanManualIp] = useState('');
+  const [lanManualPort, setLanManualPort] = useState('9821');
+  const [lanConnecting, setLanConnecting] = useState(false);
+  const [lanTestResult, setLanTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   // 导出对话框
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -85,6 +96,23 @@ export function SettingsPage() {
   const [addForm, setAddForm] = useState({ title: '', prompt: '' });
 
   const handleTestConnection = async () => {
+    if (syncStorageType === 'lan') {
+      if (!lanSelectedPeer) {
+        setSyncTestResult({ ok: false, msg: '请先选择或连接对端设备' });
+        return;
+      }
+      setSyncTesting(true);
+      setSyncTestResult(null);
+      try {
+        const msg = await syncService.lanTestPeer(lanSelectedPeer.host, lanSelectedPeer.port);
+        setSyncTestResult({ ok: true, msg });
+      } catch (e) {
+        setSyncTestResult({ ok: false, msg: String(e) });
+      } finally {
+        setSyncTesting(false);
+      }
+      return;
+    }
     if (syncStorageType === 'r2') {
       if (!r2AccountId || !r2AccessKey || !r2SecretKey || !r2Bucket) {
         setSyncTestResult({ ok: false, msg: '请填写完整的 R2 配置' });
@@ -129,26 +157,32 @@ export function SettingsPage() {
   const handleSyncNow = async () => {
     // 保存当前配置
     await settings.set('sync.storage_type', syncStorageType);
-    await settings.set('sync.url', syncFormUrl);
-    await settings.set('sync.username', syncFormUser);
-    await settings.set('sync.password', syncFormPass);
-    await settings.set('sync.r2.account_id', r2AccountId);
-    await settings.set('sync.r2.access_key', r2AccessKey);
-    await settings.set('sync.r2.secret_key', r2SecretKey);
-    await settings.set('sync.r2.bucket', r2Bucket);
+    if (syncStorageType === 'lan') {
+      // LAN 模式下 peer 信息已在选择时保存
+    } else {
+      await settings.set('sync.url', syncFormUrl);
+      await settings.set('sync.username', syncFormUser);
+      await settings.set('sync.password', syncFormPass);
+      await settings.set('sync.r2.account_id', r2AccountId);
+      await settings.set('sync.r2.access_key', r2AccessKey);
+      await settings.set('sync.r2.secret_key', r2SecretKey);
+      await settings.set('sync.r2.bucket', r2Bucket);
+    }
     await syncService.setSyncEnabled(true);
     await syncStore.syncNow();
   };
 
   const handleSaveSyncConfig = async () => {
     await settings.set('sync.storage_type', syncStorageType);
-    await settings.set('sync.url', syncFormUrl);
-    await settings.set('sync.username', syncFormUser);
-    await settings.set('sync.password', syncFormPass);
-    await settings.set('sync.r2.account_id', r2AccountId);
-    await settings.set('sync.r2.access_key', r2AccessKey);
-    await settings.set('sync.r2.secret_key', r2SecretKey);
-    await settings.set('sync.r2.bucket', r2Bucket);
+    if (syncStorageType !== 'lan') {
+      await settings.set('sync.url', syncFormUrl);
+      await settings.set('sync.username', syncFormUser);
+      await settings.set('sync.password', syncFormPass);
+      await settings.set('sync.r2.account_id', r2AccountId);
+      await settings.set('sync.r2.access_key', r2AccessKey);
+      await settings.set('sync.r2.secret_key', r2SecretKey);
+      await settings.set('sync.r2.bucket', r2Bucket);
+    }
     setSyncTestResult({ ok: true, msg: '配置已保存' });
     setTimeout(() => setSyncTestResult(null), 2000);
   };
@@ -217,7 +251,7 @@ export function SettingsPage() {
   // 同步表单从 settings 初始化
   useEffect(() => {
     if (settings.loaded) {
-      setSyncStorageType((settings.get('sync.storage_type', 'webdav') as 'webdav' | 'r2'));
+      setSyncStorageType((settings.get('sync.storage_type', 'webdav') as 'webdav' | 'r2' | 'lan'));
       setSyncFormUrl(settings.get('sync.url', 'https://dav.jianguoyun.com/dav/'));
       setSyncFormUser(settings.get('sync.username', ''));
       setSyncFormPass(settings.get('sync.password', ''));
@@ -225,6 +259,17 @@ export function SettingsPage() {
       setR2AccessKey(settings.get('sync.r2.access_key', ''));
       setR2SecretKey(settings.get('sync.r2.secret_key', ''));
       setR2Bucket(settings.get('sync.r2.bucket', ''));
+      // 加载 LAN 已选设备
+      const lanPeerIp = settings.get('sync.lan.peer_ip', '');
+      if (lanPeerIp) {
+        setLanSelectedPeer({
+          name: settings.get('sync.lan.peer_name', ''),
+          host: lanPeerIp,
+          port: parseInt(settings.get('sync.lan.peer_port', '9821')),
+          site_id: '',
+          online: true,
+        });
+      }
     }
   }, [settings.loaded]);
 
@@ -607,8 +652,9 @@ export function SettingsPage() {
               options={[
                 { value: 'webdav', label: '坚果云 WebDAV' },
                 { value: 'r2', label: 'Cloudflare R2' },
+                { value: 'lan', label: '局域网同步' },
               ]}
-              onChange={(v) => setSyncStorageType(v as 'webdav' | 'r2')}
+              onChange={(v) => setSyncStorageType(v as 'webdav' | 'r2' | 'lan')}
               styles={s}
             />
 
@@ -672,6 +718,211 @@ export function SettingsPage() {
                   onChange={setR2Bucket}
                   styles={s}
                 />
+              </>
+            )}
+
+            {/* LAN 配置 */}
+            {syncStorageType === 'lan' && (
+              <>
+                {/* 本机服务器状态 */}
+                <div
+                  className="rounded-xl p-4"
+                  style={{ backgroundColor: s.overlay(0.04), border: `1px solid ${s.cardBorder}` }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Monitor size={14} style={{ color: s.accent }} />
+                      <span className="text-sm font-medium" style={{ color: s.text }}>本机服务器</span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (lanServerRunning) {
+                            await syncService.lanStopServer();
+                            setLanServerRunning(false);
+                            setLanServerInfo(null);
+                          } else {
+                            const info = await syncService.lanStartServer();
+                            setLanServerRunning(true);
+                            setLanServerInfo(info);
+                          }
+                        } catch (e) {
+                          setSyncTestResult({ ok: false, msg: String(e) });
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      style={{
+                        backgroundColor: lanServerRunning ? s.dangerDim : s.accentDim,
+                        color: lanServerRunning ? s.danger : s.accent,
+                      }}
+                    >
+                      {lanServerRunning ? '停止' : '启动'}
+                    </button>
+                  </div>
+                  {lanServerInfo && (
+                    <div className="text-xs" style={{ color: s.textSub }}>
+                      地址: {lanServerInfo.ip}:{lanServerInfo.port}
+                    </div>
+                  )}
+                  {!lanServerInfo && (
+                    <div className="text-xs" style={{ color: s.overlay(0.3) }}>
+                      启动后其他设备可发现并连接本机
+                    </div>
+                  )}
+                </div>
+
+                {/* 发现的设备 */}
+                <div
+                  className="rounded-xl p-4"
+                  style={{ backgroundColor: s.overlay(0.04), border: `1px solid ${s.cardBorder}` }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium" style={{ color: s.text }}>发现的设备</span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const peers = await syncService.lanDiscoverPeers();
+                          setLanPeers(peers);
+                        } catch (e) {
+                          console.error('刷新设备列表失败:', e);
+                        }
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors"
+                      style={{ color: s.accent }}
+                    >
+                      <Search size={11} /> 刷新
+                    </button>
+                  </div>
+                  {lanPeers.length === 0 ? (
+                    <div className="text-xs py-2 text-center" style={{ color: s.overlay(0.3) }}>
+                      未发现设备，请确认对端已启动服务器
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {lanPeers.map((peer) => (
+                        <button
+                          key={`${peer.host}:${peer.port}`}
+                          onClick={() => {
+                            setLanSelectedPeer(peer);
+                            settings.set('sync.lan.peer_ip', peer.host);
+                            settings.set('sync.lan.peer_port', String(peer.port));
+                            settings.set('sync.lan.peer_name', peer.name);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors"
+                          style={{
+                            backgroundColor: lanSelectedPeer?.host === peer.host ? s.accentDim : 'transparent',
+                            border: `1px solid ${lanSelectedPeer?.host === peer.host ? s.accent : s.cardBorder}`,
+                          }}
+                        >
+                          <div
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: peer.online ? '#22c55e' : '#9ca3af' }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate" style={{ color: s.text }}>{peer.name}</div>
+                            <div className="text-xs" style={{ color: s.textSub }}>{peer.host}:{peer.port}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 手动连接 */}
+                <div
+                  className="rounded-xl p-4"
+                  style={{ backgroundColor: s.overlay(0.04), border: `1px solid ${s.cardBorder}` }}
+                >
+                  <span className="text-sm font-medium block mb-2" style={{ color: s.text }}>手动连接</span>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={lanManualIp}
+                      onChange={(e) => setLanManualIp(e.target.value)}
+                      placeholder="IP 地址"
+                      className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
+                      style={{ backgroundColor: s.inputBg, border: `1px solid ${s.inputBorder}`, color: s.text }}
+                    />
+                    <input
+                      type="text"
+                      value={lanManualPort}
+                      onChange={(e) => setLanManualPort(e.target.value)}
+                      placeholder="端口"
+                      className="w-20 px-3 py-2 rounded-lg text-sm outline-none"
+                      style={{ backgroundColor: s.inputBg, border: `1px solid ${s.inputBorder}`, color: s.text }}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!lanManualIp.trim()) return;
+                        setLanConnecting(true);
+                        setLanTestResult(null);
+                        try {
+                          const port = parseInt(lanManualPort) || 9821;
+                          const peer = await syncService.lanConnectManual(lanManualIp.trim(), port);
+                          setLanSelectedPeer(peer);
+                          settings.set('sync.lan.peer_ip', peer.host);
+                          settings.set('sync.lan.peer_port', String(peer.port));
+                          settings.set('sync.lan.peer_name', peer.name);
+                          setLanTestResult({ ok: true, msg: `已连接: ${peer.name}` });
+                          // 刷新设备列表
+                          const peers = await syncService.lanDiscoverPeers();
+                          setLanPeers(peers);
+                        } catch (e) {
+                          setLanTestResult({ ok: false, msg: String(e) });
+                        } finally {
+                          setLanConnecting(false);
+                        }
+                      }}
+                      disabled={lanConnecting || !lanManualIp.trim()}
+                      className="px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+                      style={{ backgroundColor: s.accentDim, color: s.accent }}
+                    >
+                      {lanConnecting ? <Loader2 size={14} className="animate-spin" /> : '连接'}
+                    </button>
+                  </div>
+                  {lanTestResult && (
+                    <div
+                      className="mt-2 px-3 py-1.5 rounded-lg text-xs"
+                      style={{
+                        backgroundColor: lanTestResult.ok ? `${withAlpha(s.accent, 0.08)}` : s.dangerDim,
+                        color: lanTestResult.ok ? s.accent : s.danger,
+                      }}
+                    >
+                      {lanTestResult.msg}
+                    </div>
+                  )}
+                </div>
+
+                {/* 已选设备信息 */}
+                {lanSelectedPeer && (
+                  <div
+                    className="rounded-xl p-3 flex items-center justify-between"
+                    style={{ backgroundColor: s.accentDim, border: `1px solid ${s.accent}` }}
+                  >
+                    <div>
+                      <div className="text-sm font-medium" style={{ color: s.accent }}>
+                        已选: {lanSelectedPeer.name}
+                      </div>
+                      <div className="text-xs" style={{ color: s.overlay(0.4) }}>
+                        {lanSelectedPeer.host}:{lanSelectedPeer.port}
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const msg = await syncService.lanTestPeer(lanSelectedPeer.host, lanSelectedPeer.port);
+                          setSyncTestResult({ ok: true, msg });
+                        } catch (e) {
+                          setSyncTestResult({ ok: false, msg: String(e) });
+                        }
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition-colors"
+                      style={{ backgroundColor: s.overlay(0.12), color: s.accent }}
+                    >
+                      <Wifi size={12} /> 测试连接
+                    </button>
+                  </div>
+                )}
               </>
             )}
 
@@ -745,6 +996,22 @@ export function SettingsPage() {
                 )}
               </button>
             </div>
+
+            {/* 同步进度显示 */}
+            <SyncProgress
+              isSyncing={syncStore.isSyncing}
+              result={syncStore.lastResult}
+              error={syncStore.error}
+              theme={{
+                accent: s.accent,
+                text: s.text,
+                textSub: s.textSub,
+                danger: s.danger,
+                success: '#58A968',
+                overlay: s.overlay,
+                cardBorder: s.cardBorder,
+              }}
+            />
 
             {/* 同步结果 */}
             {syncStore.lastResult && (

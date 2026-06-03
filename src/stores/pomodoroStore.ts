@@ -42,6 +42,7 @@ interface PomodoroState {
   stop: () => Promise<void>;
   complete: () => Promise<void>;
   skipBreak: () => Promise<void>;
+  _startInterval: () => void;
 }
 
 export const usePomodoroStore = create<PomodoroState>((set, get) => ({

@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, MessageSquare, Bookmark, BookOpen, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, Bookmark, BookOpen, ArrowLeft, ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { PageContainer } from '@/components/layout';
 import { NavBar } from '@/components/ui';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useKeyboardShortcuts, getShortcutLabel } from '@/hooks/useKeyboardShortcuts';
 import { ChatView } from '@/components/ai/ChatView';
+import { EmptyFavorites } from '@/components/ai/EmptyFavorites';
+import { EmptyMemories } from '@/components/ai/EmptyMemories';
+import { KeyboardShortcutsHelp } from '@/components/ai/KeyboardShortcutsHelp';
 import { useAiStore } from '@/stores/aiStore';
 import { useFavoriteStore } from '@/stores/favoriteStore';
 import { useMemoryStore } from '@/stores/memoryStore';
@@ -140,60 +144,113 @@ export function HomePage() {
 
   const selectedFav = favorites.find(f => f.id === selectedFavorite);
 
+  // 键盘快捷键支持
+  useKeyboardShortcuts({
+    enabled: viewMode === 'chat',
+    onSend: handleSend,
+    onClose: () => {
+      if (showConversations) {
+        setShowConversations(false);
+      } else if (selectedFavorite) {
+        setSelectedFavorite(null);
+      } else if (confirmDelete) {
+        setConfirmDelete(null);
+      }
+    },
+    onFocusInput: () => {
+      inputRef.current?.focus();
+    },
+    onNewConversation: handleNewConversation,
+    onPrevConversation: () => {
+      if (!currentConversation || conversations.length === 0) return;
+      const currentIndex = conversations.findIndex(c => c.id === currentConversation);
+      if (currentIndex > 0) {
+        selectConversation(conversations[currentIndex - 1].id);
+      }
+    },
+    onNextConversation: () => {
+      if (!currentConversation || conversations.length === 0) return;
+      const currentIndex = conversations.findIndex(c => c.id === currentConversation);
+      if (currentIndex < conversations.length - 1) {
+        selectConversation(conversations[currentIndex + 1].id);
+      }
+    },
+  });
+
+  const isMac = navigator.platform.toLowerCase().includes('mac');
+  const modifier = isMac ? '⌘' : 'Ctrl';
+
   return (
     <PageContainer className="relative flex flex-col">
       <NavBar title="提灯" />
 
       {/* 工具栏 */}
       <div
-        className="flex items-center gap-2 px-4 py-2 flex-shrink-0"
+        className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 flex-shrink-0"
         style={{ borderBottom: `0.5px solid ${appTheme.hairline}` }}
       >
         {/* 对话列表切换 */}
         <button
           onClick={() => { setShowConversations(!showConversations); setViewMode('chat'); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all btn-press"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-full text-sm transition-all btn-press min-w-[44px] min-h-[44px]"
           style={{
             backgroundColor: showConversations ? s(0.08) : 'transparent',
             color: appTheme.inkMuted48,
           }}
+          aria-label="历史对话"
+          title="历史"
         >
-          <MessageSquare size={14} />
+          <MessageSquare size={16} />
           <span className="hidden sm:inline">历史</span>
         </button>
 
         <div className="flex-1" />
 
+        {/* 移动端：紧凑图标按钮；桌面端：文字+图标 */}
         <button
           onClick={() => switchView('favorites')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all btn-press"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-full text-sm transition-all btn-press min-w-[44px] min-h-[44px]"
           style={{
             backgroundColor: viewMode === 'favorites' ? withAlpha(appTheme.primary, 0.08) : 'transparent',
             color: viewMode === 'favorites' ? appTheme.primary : appTheme.inkMuted48,
           }}
+          aria-label="收藏"
+          title="收藏"
         >
-          <Bookmark size={14} /> 收藏
+          <Bookmark size={16} />
+          <span className="hidden sm:inline">收藏</span>
         </button>
         <button
           onClick={() => switchView('memories')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all btn-press"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-full text-sm transition-all btn-press min-w-[44px] min-h-[44px]"
           style={{
             backgroundColor: viewMode === 'memories' ? withAlpha(appTheme.primary, 0.08) : 'transparent',
             color: viewMode === 'memories' ? appTheme.primary : appTheme.inkMuted48,
           }}
+          aria-label="笔记"
+          title="笔记"
         >
-          <BookOpen size={14} /> 笔记
+          <BookOpen size={16} />
+          <span className="hidden sm:inline">笔记</span>
         </button>
         <button
           onClick={handleNewConversation}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all btn-press"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-full text-sm transition-all btn-press min-w-[44px] min-h-[44px]"
           style={{
             backgroundColor: viewMode === 'chat' ? withAlpha(appTheme.primary, 0.08) : 'transparent',
             color: viewMode === 'chat' ? appTheme.primary : appTheme.inkMuted48,
           }}
+          aria-label="新对话"
+          title={`新对话 (${modifier}+N)`}
         >
-          <Plus size={14} /> 新对话
+          <Plus size={16} />
+          <span className="hidden sm:inline">新对话</span>
         </button>
+
+        {/* 快捷键帮助提示（仅对话模式） */}
+        {viewMode === 'chat' && (
+          <KeyboardShortcutsHelp />
+        )}
       </div>
 
       {/* 主内容区 */}
@@ -218,7 +275,7 @@ export function HomePage() {
               <div
                 key={conv.id}
                 onClick={() => { selectConversation(conv.id); setShowConversations(false); }}
-                className="group flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors"
+                className="group flex items-center gap-2 px-3 py-3 rounded-lg cursor-pointer transition-colors min-h-[48px]"
                 style={{
                   backgroundColor: currentConversation === conv.id ? withAlpha(appTheme.primary, 0.08) : 'transparent',
                   color: currentConversation === conv.id ? appTheme.ink : appTheme.inkMuted48,
@@ -230,14 +287,16 @@ export function HomePage() {
                   if (currentConversation !== conv.id) e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
-                <MessageSquare size={14} className="flex-shrink-0" />
+                <MessageSquare size={16} className="flex-shrink-0" />
                 <span className="flex-1 text-sm truncate">{conv.title}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
-                  className="opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity"
+                  className="sm:opacity-0 sm:group-hover:opacity-100 p-2 rounded-lg transition-opacity min-w-[44px] min-h-[44px] flex items-center justify-center"
                   style={{ color: appTheme.inkMuted48 }}
+                  aria-label="删除对话"
+                  title="删除"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             ))}
@@ -292,12 +351,8 @@ export function HomePage() {
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="flex-1 overflow-y-auto">
                 {favorites.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full" style={{ color: appTheme.inkMuted48 }}>
-                    <Bookmark size={40} className="mb-4 opacity-30" />
-                    <p className="text-sm">还没有收藏</p>
-                    <p className="text-xs mt-1 opacity-60">hover 任意消息点击星标即可收藏</p>
-                  </div>
-                ) : (
+                <EmptyFavorites />
+              ) : (
                   <div className="max-w-[700px] mx-auto px-4 sm:px-8 py-6 space-y-2">
                     {favorites.map((fav) => (
                       <div
@@ -374,13 +429,7 @@ export function HomePage() {
                 {memoriesLoading ? (
                   <div className="flex items-center justify-center h-40" style={{ color: appTheme.inkMuted48 }}>加载中...</div>
                 ) : memories.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: appTheme.inkMuted48 }}>
-                    <span className="text-3xl">📒</span>
-                    <p className="text-sm text-center">
-                      提灯还没有写任何笔记。<br />
-                      当你在对话中提到值得记住的事，提灯会帮你记下来。
-                    </p>
-                  </div>
+                  <EmptyMemories />
                 ) : (
                   <div className="max-w-[700px] mx-auto px-4 sm:px-8 py-4 space-y-5">
                     {(() => {
@@ -450,6 +499,7 @@ export function HomePage() {
               messagesEndRef={messagesEndRef}
               handleSend={handleSend}
               handleKeyDown={handleKeyDown}
+              isMobile={isMobile}
             />
           )}
         </div>

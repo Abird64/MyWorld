@@ -236,7 +236,7 @@ pub fn get_xp_sources(conn: &Connection) -> Result<Vec<XpSource>, String> {
     Ok(sources)
 }
 
-/// 检查并升级技能等级（在 XP 增加后调用）
+/// 检查并升级技能等级（在 XP 增加后调用），升级时奖励拾光奖券
 pub fn check_level_up(conn: &Connection, skill_id: &str) -> Result<(), String> {
     let (total_xp, current_level): (i32, i32) = conn
         .query_row(
@@ -253,6 +253,24 @@ pub fn check_level_up(conn: &Connection, skill_id: &str) -> Result<(), String> {
             params![new_level, now(), skill_id],
         )
         .map_err(|e| format!("升级技能失败: {}", e))?;
+
+        // 获取技能名称
+        let skill_name: String = conn
+            .query_row(
+                "SELECT name FROM skills WHERE id = ?1 AND deleted_at IS NULL",
+                params![skill_id],
+                |row| row.get(0),
+            )
+            .unwrap_or_else(|_| "未知属性".to_string());
+
+        // 升级奖励：拾光奖券 ×1
+        conn.execute(
+            "UPDATE glow_balances SET shimmer_tickets = shimmer_tickets + 1, updated_at = ?1 WHERE id = 'user'",
+            params![now()],
+        )
+        .map_err(|e| format!("奖励拾光奖券失败: {}", e))?;
+
+        log::info!("{} 升级到 Lv.{}，奖励拾光奖券 ×1", skill_name, new_level);
     }
     Ok(())
 }

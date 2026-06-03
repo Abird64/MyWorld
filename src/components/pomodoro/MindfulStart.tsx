@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { X, Check, Sparkles, Wind, Timer } from 'lucide-react';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { usePomodoroStore } from '@/stores/pomodoroStore';
@@ -145,7 +145,7 @@ export function MindfulStart({ open, onClose, taskTitle, taskDescription, taskId
 
             {/* 步骤列表 */}
             <div className="space-y-3 mb-6">
-              {steps.map((step, i) => (
+              {steps.map((step, _i) => (
                 <button
                   key={step.id}
                   onClick={() => handleToggle(step.id)}

@@ -1,5 +1,6 @@
 use rusqlite::{params, Connection, Row};
 use serde::{Deserialize, Serialize};
+use crate::sync::change_tracking::{next_db_version, record_change, ensure_site_id};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Task {
@@ -73,6 +74,12 @@ pub fn create_task(
         params![id, parent_id, title, description, priority, scheduled_at, deadline, estimated_minutes, tags, time, time],
     )
     .map_err(|e| format!("Failed to create task: {}", e))?;
+
+    // 记录变更
+    let db_version = next_db_version(conn)?;
+    let site_id = ensure_site_id(conn);
+    let pk_json = serde_json::json!({"id": &id}).to_string();
+    record_change(conn, "tasks", &pk_json, None, None, db_version, &site_id, 1, false)?;
 
     get_task(conn, &id)
 }
@@ -217,14 +224,38 @@ pub fn update_task(
     conn.execute(&sql, param_refs.as_slice())
         .map_err(|e| format!("Failed to update task: {}", e))?;
 
+    // 记录变更
+    let db_version = next_db_version(conn)?;
+    let site_id = ensure_site_id(conn);
+    let pk_json = serde_json::json!({"id": id}).to_string();
+    record_change(conn, "tasks", &pk_json, None, None, db_version, &site_id, 1, false)?;
+
     get_task(conn, id)
 }
 
 /// 删除任务
 pub fn delete_task(conn: &Connection, id: &str, cascade: bool) -> Result<u64, String> {
     let time = now();
+    let db_version = next_db_version(conn)?;
+    let site_id = ensure_site_id(conn);
+    let pk_json = serde_json::json!({"id": id}).to_string();
+
     if cascade {
-        // 软删除所有子任务
+        // 软删除所有子任务并记录变更
+        let child_ids: Vec<String> = conn
+            .prepare("SELECT id FROM tasks WHERE parent_id = ?1 AND deleted_at IS NULL")
+            .map_err(|e| format!("Failed to prepare: {}", e))?
+            .query_map(params![id], |row| row.get::<_, String>(0))
+            .map_err(|e| format!("Failed to query: {}", e))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        for child_id in child_ids {
+            let child_pk = serde_json::json!({"id": &child_id}).to_string();
+            let child_version = next_db_version(conn)?;
+            record_change(conn, "tasks", &child_pk, None, None, child_version, &site_id, 1, true)?;
+        }
+
         conn.execute(
             "UPDATE tasks SET deleted_at = ?1 WHERE parent_id = ?2 AND deleted_at IS NULL",
             params![time, id],
@@ -242,16 +273,41 @@ pub fn delete_task(conn: &Connection, id: &str, cascade: bool) -> Result<u64, St
     let affected = conn.execute("UPDATE tasks SET deleted_at = ?1 WHERE id = ?2", params![time, id])
         .map_err(|e| format!("Failed to delete task: {}", e))?;
 
+    // 记录删除变更
+    record_change(conn, "tasks", &pk_json, None, None, db_version, &site_id, 1, true)?;
+
     Ok(affected as u64)
 }
 
-/// 完成任务并分配XP
+/// 完成任务并分配XP和萤火
 pub fn complete_task(conn: &mut Connection, id: &str) -> Result<CompleteResult, String> {
     let time = now();
+    let site_id = ensure_site_id(conn);
 
     let tx = conn
         .transaction()
         .map_err(|e| format!("Failed to start transaction: {}", e))?;
+
+    // 获取任务信息（用于计算萤火奖励）
+    let task_info: (Option<i32>, i32) = tx
+        .query_row(
+            "SELECT estimated_minutes, xp_earned FROM tasks WHERE id = ?1",
+            params![id],
+            |row| Ok((row.get::<_, Option<i32>>(0)?, row.get::<_, i32>(1)?)),
+        )
+        .map_err(|e| format!("Failed to get task info: {}", e))?;
+
+    let estimated_minutes = task_info.0.unwrap_or(25);
+    let current_xp_earned = task_info.1;
+
+    // 如果已经获得过XP（表示之前已完成过），不再重复奖励
+    let glow_reward = if current_xp_earned == 0 {
+        // 计算萤火奖励：每估计分钟数 = 1 萤火，最少 5 萤火
+        let glow = (estimated_minutes as i32).max(5);
+        glow
+    } else {
+        0
+    };
 
     // 更新任务状态
     tx.execute(
@@ -317,8 +373,22 @@ pub fn complete_task(conn: &mut Connection, id: &str) -> Result<CompleteResult, 
     )
     .map_err(|e| format!("Failed to update task xp_earned: {}", e))?;
 
+    // 奖励萤火（如果未重复完成）
+    if glow_reward > 0 {
+        tx.execute(
+            "UPDATE glow_balances SET glow_amount = glow_amount + ?1, updated_at = ?2 WHERE id = 'user'",
+            params![glow_reward, time],
+        )
+        .map_err(|e| format!("Failed to add glow reward: {}", e))?;
+    }
+
     tx.commit()
         .map_err(|e| format!("Failed to commit transaction: {}", e))?;
+
+    // 在事务外记录变更（简化版：事务完成后记录）
+    let db_version = next_db_version(conn)?;
+    let pk_json = serde_json::json!({"id": id}).to_string();
+    record_change(conn, "tasks", &pk_json, None, None, db_version, &site_id, 1, false)?;
 
     // 升级检查（在事务提交后，确保能看到最新的 total_xp）
     for (skill_id, _) in &skill_xps {
@@ -327,6 +397,7 @@ pub fn complete_task(conn: &mut Connection, id: &str) -> Result<CompleteResult, 
 
     Ok(CompleteResult {
         xp_earned: total_xp,
+        glow_earned: glow_reward,
         skill_xps: result_skills,
     })
 }
@@ -527,5 +598,6 @@ pub struct SkillXp {
 #[derive(Debug, Serialize)]
 pub struct CompleteResult {
     pub xp_earned: i32,
+    pub glow_earned: i32,
     pub skill_xps: Vec<SkillXp>,
 }

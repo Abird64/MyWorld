@@ -100,6 +100,7 @@ interface ChatViewProps {
   messagesEndRef: RefObject<HTMLDivElement | null>;
   handleSend: () => Promise<void>;
   handleKeyDown: (e: KeyboardEvent) => void;
+  isMobile?: boolean;
 }
 
 export function ChatView({
@@ -111,6 +112,7 @@ export function ChatView({
   messagesEndRef,
   handleSend,
   handleKeyDown,
+  isMobile = false,
 }: ChatViewProps) {
   const appTheme = useAppTheme();
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -241,31 +243,38 @@ export function ChatView({
                         )}
                       </div>
 
+                      {/* 移动端：始终显示操作按钮；桌面端：hover 显示 */}
                       {(isUser || msg.role === 'assistant') && msg.content && (
                         <div
-                          className={`flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity ${
+                          className={`flex items-center gap-1 mt-1 ${
+                            isMobile ? '' : 'opacity-0 group-hover:opacity-100'
+                          } transition-opacity ${
                             isUser ? 'justify-end' : 'justify-start'
                           }`}
                         >
                           <button
                             onClick={() => handleCopy(msg.id, msg.content)}
-                            className="flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors"
+                            className="flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] min-h-[44px]"
                             style={{ color: s(0.25) }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.color = s(0.6);
-                              e.currentTarget.style.backgroundColor = s(0.08);
+                              if (!isMobile) {
+                                e.currentTarget.style.color = s(0.6);
+                                e.currentTarget.style.backgroundColor = s(0.08);
+                              }
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.color = s(0.25);
-                              e.currentTarget.style.backgroundColor =
-                                'transparent';
+                              if (!isMobile) {
+                                e.currentTarget.style.color = s(0.25);
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }
                             }}
                             title="复制"
+                            aria-label="复制消息"
                           >
                             {copiedId === msg.id ? (
-                              <Check size={12} style={{ color: t.accent }} />
+                              <Check size={14} style={{ color: t.accent }} />
                             ) : (
-                              <Copy size={12} />
+                              <Copy size={14} />
                             )}
                           </button>
                           <button
@@ -280,29 +289,34 @@ export function ChatView({
                                 title,
                               );
                             }}
-                            className="flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors"
+                            className="flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] min-h-[44px]"
                             style={{
                               color: isFavorited(msg.id)
                                 ? CREATIVITY_COLOR
                                 : s(0.25),
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.color = CREATIVITY_COLOR;
-                              e.currentTarget.style.backgroundColor = s(0.08);
+                              if (!isMobile) {
+                                e.currentTarget.style.color = CREATIVITY_COLOR;
+                                e.currentTarget.style.backgroundColor = s(0.08);
+                              }
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.color = isFavorited(msg.id)
-                                ? CREATIVITY_COLOR
-                                : s(0.25);
-                              e.currentTarget.style.backgroundColor =
-                                'transparent';
+                              if (!isMobile) {
+                                e.currentTarget.style.color = isFavorited(msg.id)
+                                  ? CREATIVITY_COLOR
+                                  : s(0.25);
+                                e.currentTarget.style.backgroundColor =
+                                  'transparent';
+                              }
                             }}
                             title={
                               isFavorited(msg.id) ? '取消收藏' : '收藏'
                             }
+                            aria-label={isFavorited(msg.id) ? '取消收藏' : '收藏'}
                           >
                             <Star
-                              size={12}
+                              size={14}
                               fill={
                                 isFavorited(msg.id) ? CREATIVITY_COLOR : 'none'
                               }
@@ -501,6 +515,7 @@ export function ChatView({
                 lineHeight: '22px',
                 maxHeight: '104px',
               }}
+              aria-label="输入消息"
               onFocus={(e) => {
                 setIsInputFocused(true);
                 const el = e.currentTarget.parentElement?.parentElement;
@@ -521,6 +536,7 @@ export function ChatView({
                 onClick={stopGeneration}
                 className="flex-shrink-0 m-1.5 h-8 w-8 flex items-center justify-center rounded-full transition-colors bg-red-500/15 text-red-400 hover:bg-red-500/25"
                 title="中断生成"
+                aria-label="中断生成"
               >
                 <StopCircle size={16} />
               </button>
@@ -534,6 +550,8 @@ export function ChatView({
                   color: input.trim() ? appTheme.onPrimary : appTheme.inkMuted48,
                   cursor: input.trim() ? 'pointer' : 'not-allowed',
                 }}
+                title="发送消息"
+                aria-label="发送消息"
                 onMouseEnter={(e) => {
                   if (input.trim())
                     e.currentTarget.style.backgroundColor = appTheme.primaryFocus;

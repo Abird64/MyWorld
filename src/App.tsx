@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { usePomodoroStore } from '@/stores/pomodoroStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { useKeyboardAware } from '@/hooks/useKeyboardAware';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { PomodoroBar } from '@/components/pomodoro/PomodoroBar';
 import { PomodoroTimer } from '@/components/pomodoro/PomodoroTimer';
@@ -15,13 +17,18 @@ import {
   SettingsPage,
   DashboardPage,
   MemoriesPage,
+  MeditationPage,
+  WishesPage,
 } from '@/pages';
 import { MinePage } from '@/pages/Mine';
 import '@/styles/global.css';
 
 function App() {
   const { activeTab, activeSubPage, goBack } = useUIStore();
-  const { phase, restoreSession, fetchSettings, fetchStats } = usePomodoroStore();
+  const isMobile = useIsMobile();
+  const { restoreSession, fetchSettings, fetchStats } = usePomodoroStore();
+
+  useKeyboardAware();
   const [showTimer, setShowTimer] = useState(false);
 
   // 恢复番茄钟会话 + 加载设置
@@ -42,7 +49,7 @@ function App() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     import('@tauri-apps/api/app').then(({ onBackButtonPress }) => {
-      onBackButtonPress((payload) => {
+      onBackButtonPress((_payload) => {
         if (activeSubPage) {
           goBack();
         } else {
@@ -64,6 +71,8 @@ function App() {
       case 'skills': return <SkillsPage />;
       case 'relations': return <RelationsPage />;
       case 'memories': return <MemoriesPage />;
+      case 'meditation': return <MeditationPage />;
+      case 'wishes': return <WishesPage />;
       case 'settings': return <SettingsPage />;
       default: return null;
     }
@@ -83,12 +92,12 @@ function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <PomodoroBar onClick={() => setShowTimer(true)} />
+    <div className="h-full flex flex-col overflow-hidden">
+      {!isMobile && <PomodoroBar onClick={() => setShowTimer(true)} />}
       <div className="flex-1 overflow-hidden">
         {renderPage()}
       </div>
-      <BottomTabBar />
+      <BottomTabBar onPomodoroClick={() => setShowTimer(true)} />
       <PomodoroTimer open={showTimer} onClose={() => setShowTimer(false)} />
     </div>
   );

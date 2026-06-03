@@ -180,7 +180,7 @@ function NormalView({ color, isFocus, isPaused, remaining, progress, boundTaskTi
 
 // ===== 沉浸模式：全屏 =====
 
-function ImmersiveView({ color, isFocus, isPaused, remaining, progress, targetSeconds, elapsedSeconds, boundTaskTitle, isRunning, onPauseResume, onStop, onComplete, onSkipBreak, onExit, onClose, appTheme }: ViewProps) {
+function ImmersiveView({ color, isFocus, isPaused, remaining, progress, targetSeconds: _targetSeconds, elapsedSeconds: _elapsedSeconds, boundTaskTitle, isRunning, onPauseResume, onStop, onComplete, onSkipBreak, onExit, onClose, appTheme }: ViewProps) {
   const radius = 160;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
@@ -208,7 +208,7 @@ function ImmersiveView({ color, isFocus, isPaused, remaining, progress, targetSe
             <Minimize2 size={20} />
           </button>
           <button
-            onClick={() => { onExit(); onClose(); }}
+            onClick={() => { onExit?.(); onClose(); }}
             className="p-2 rounded-full transition-colors"
             style={{ color: appTheme.inkMuted48 }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = withAlpha(appTheme.ink, 0.06))}

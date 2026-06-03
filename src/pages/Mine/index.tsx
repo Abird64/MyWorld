@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ListTodo, BookOpen, Repeat, Sparkles, Users, BookMarked, Settings, ChevronRight } from 'lucide-react';
+import { ListTodo, BookOpen, Repeat, Sparkles, Users, BookMarked, Settings, ChevronRight, Brain, Heart } from 'lucide-react';
 import { useUIStore, type SubPage } from '@/stores/uiStore';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useSkillStore } from '@/stores/skillStore';
@@ -29,6 +29,8 @@ const menuGroups: { title: string; items: MenuItem[] }[] = [
       { id: 'diary', label: '日记', desc: '记录生活，AI 帮你反思', icon: BookOpen, iconBg: '#fff0f3', iconColor: '#ff2d55' },
       { id: 'habits', label: '习惯', desc: '建立好习惯，每日打卡', icon: Repeat, iconBg: '#e8f8e8', iconColor: '#34c759' },
       { id: 'skills', label: '成长', desc: '六维属性与成长数据', icon: Sparkles, iconBg: '#fff8e8', iconColor: '#ff9500' },
+      { id: 'meditation', label: '冥想', desc: '呼吸练习，平静心灵', icon: Brain, iconBg: '#e8f5ff', iconColor: '#4CAF76' },
+      { id: 'wishes', label: '心愿', desc: '心愿夹与萤火奖券', icon: Heart, iconBg: '#fff0f5', iconColor: '#E8A87C' },
       { id: 'relations', label: '联系人', desc: '人脉管理与生日提醒', icon: Users, iconBg: '#f0f0ff', iconColor: TASKS_COLOR },
       { id: 'memories', label: '笔记', desc: '提灯的跨对话记忆', icon: BookMarked, iconBg: '#fff0f3', iconColor: '#ff2d55' },
     ],

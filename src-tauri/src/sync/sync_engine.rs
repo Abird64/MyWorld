@@ -6,6 +6,8 @@ use std::path::Path;
 use std::sync::Mutex;
 use tauri::Manager;
 
+use super::change_tracking::{export_changes, Change, ensure_site_id, get_current_db_version};
+use super::lan_client::LanClient;
 use super::r2_client::R2Client;
 use super::remote_storage::{RemoteFile, RemoteStorage};
 use super::webdav_client::WebDavClient;
@@ -126,7 +128,7 @@ impl SyncState {
 
 /// 同步配置
 struct SyncConfig {
-    storage_type: String,  // "webdav" 或 "r2"
+    storage_type: String,  // "webdav"、"r2" 或 "lan"
     // WebDAV
     url: String,
     username: String,
@@ -136,6 +138,9 @@ struct SyncConfig {
     r2_access_key: String,
     r2_secret_key: String,
     r2_bucket: String,
+    // LAN
+    lan_peer_ip: String,
+    lan_peer_port: u16,
     // 通用
     remote_path: String,
 }
@@ -202,6 +207,13 @@ fn read_config(conn: &rusqlite::Connection) -> Result<SyncConfig, String> {
         .map(|s| s.value)
         .unwrap_or_default();
 
+    let lan_peer_ip = setting_repo::get_setting(conn, "sync.lan.peer_ip")?
+        .map(|s| s.value)
+        .unwrap_or_default();
+    let lan_peer_port: u16 = setting_repo::get_setting(conn, "sync.lan.peer_port")?
+        .map(|s| s.value.parse().unwrap_or(9821))
+        .unwrap_or(9821);
+
     let remote_path = setting_repo::get_setting(conn, "sync.remote_path")?
         .map(|s| s.value)
         .unwrap_or_else(|| "/lantern/".to_string());
@@ -215,6 +227,8 @@ fn read_config(conn: &rusqlite::Connection) -> Result<SyncConfig, String> {
         r2_access_key,
         r2_secret_key,
         r2_bucket,
+        lan_peer_ip,
+        lan_peer_port,
         remote_path,
     })
 }
@@ -247,6 +261,13 @@ pub async fn run_full_sync(db_state: &DbState, app_data: &AppDataState) -> SyncR
                 Err(e) => return SyncResult::error(e),
             }
         }
+        "lan" => {
+            if config.lan_peer_ip.is_empty() {
+                return SyncResult::error("局域网同步未配置，请先选择对端设备".to_string());
+            }
+            let url = format!("http://{}:{}", config.lan_peer_ip, config.lan_peer_port);
+            Box::new(LanClient::new(&url))
+        }
         _ => {
             if config.url.is_empty() || config.username.is_empty() || config.password.is_empty() {
                 return SyncResult::error("WebDAV 配置不完整，请填写服务器地址、用户名和密码".to_string());
@@ -274,7 +295,7 @@ pub async fn run_full_sync(db_state: &DbState, app_data: &AppDataState) -> SyncR
 
     // === 1. 快照同步数据库 ===
     let mut site_id_conflict = false;
-    match sync_snapshot(&*client, db_state, remote_path).await {
+    match sync_snapshot(&*client, db_state, remote_path, &config.storage_type).await {
         Ok((action, up, down, conflict)) => {
             result.db_action = action;
             bytes_uploaded += up;
@@ -353,29 +374,6 @@ pub async fn run_full_sync(db_state: &DbState, app_data: &AppDataState) -> SyncR
 
     log::info!("[SYNC] ===== 同步结束: {} =====", if result.success { "成功" } else { "有错误" });
     result
-}
-fn get_site_id(conn: &rusqlite::Connection) -> String {
-    conn.query_row(
-        "SELECT COALESCE(value, '') FROM settings WHERE key = 'sync.site_id'",
-        [],
-        |r| r.get::<_, String>(0),
-    )
-    .unwrap_or_default()
-}
-
-/// 确保本地设备有唯一 ID
-fn ensure_site_id(conn: &rusqlite::Connection) -> String {
-    let existing = get_site_id(conn);
-    if !existing.is_empty() {
-        return existing;
-    }
-    let id = nanoid::nanoid!(12);
-    let now = chrono::Utc::now().to_rfc3339();
-    let _ = conn.execute(
-        "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('sync.site_id', ?1, ?2)",
-        params![id, now],
-    );
-    id
 }
 
 /// 导出所有表的变更行（updated_at > since 或 deleted_at > since）
@@ -525,6 +523,7 @@ async fn sync_snapshot(
     client: &dyn RemoteStorage,
     db_state: &DbState,
     remote_path: &str,
+    storage_type: &str,
 ) -> Result<(String, u64, u64, bool), String> {
     let remote_snapshots_dir = format!("{}/snapshots", remote_path);
 
@@ -596,8 +595,13 @@ async fn sync_snapshot(
         }
     };
     // 检测 site_id 冲突：如果远端已有同名文件但本次没有上传（说明另一台设备用了相同 ID）
+    // 注意：LAN 模式是点对点，对端设备有自己的快照是正常的，不是冲突
     let mut my_prefix = format!("snapshot_{}", site_id);
-    let has_conflict = remote_files.iter().any(|f| f.display_name.starts_with(&my_prefix)) && !has_local_changes;
+    let has_conflict = if storage_type == "lan" {
+        false // LAN 模式下不检测 site_id 冲突
+    } else {
+        remote_files.iter().any(|f| f.display_name.starts_with(&my_prefix)) && !has_local_changes
+    };
     if has_conflict {
         let new_id = nanoid::nanoid!(12);
         log::warn!("[SYNC] 检测到 site_id 冲突！远端已有同名快照，重新生成: {} → {}", site_id, new_id);
@@ -1165,4 +1169,164 @@ pub fn spawn_background_sync(handle: tauri::AppHandle) {
             tokio::time::sleep(std::time::Duration::from_secs(sleep_secs)).await;
         }
     });
+}
+
+// ============ CRDT 变更同步（新增） ============
+
+/// 导出变更数据（新版本）
+pub async fn export_changes_data(
+    db_state: &DbState,
+    since_version: i64,
+) -> Result<Vec<u8>, String> {
+    let conn = db_state.conn.lock().map_err(|e| e.to_string())?;
+    let changes = export_changes(&conn, since_version)?;
+    let site_id = ensure_site_id(&conn);
+    let current_version = get_current_db_version(&conn)?;
+
+    let export = CrdtExport {
+        site_id,
+        version: current_version,
+        since_version,
+        changes,
+        timestamp: Utc::now().to_rfc3339(),
+    };
+
+    serde_json::to_vec(&export).map_err(|e| e.to_string())
+}
+
+/// 导入变更数据（新版本）
+pub async fn import_changes_data(
+    db_state: &DbState,
+    data: &[u8],
+) -> Result<ImportResult, String> {
+    let import: CrdtExport = serde_json::from_slice(data).map_err(|e| format!("解析导入数据失败: {}", e))?;
+
+    // 检查站点冲突
+    let conn = db_state.conn.lock().map_err(|e| e.to_string())?;
+    let local_site_id = ensure_site_id(&conn);
+
+    if import.site_id == local_site_id {
+        return Err("无法导入本机数据".to_string());
+    }
+
+    // 应用变更
+    let applied = import_changes(&conn, &import.changes)?;
+
+    // 记录同步点
+    let _ = setting_repo::set_setting(&conn, "sync.last_sync_version", &import.version.to_string());
+
+    Ok(ImportResult {
+        peer_site_id: import.site_id,
+        applied,
+        peer_version: import.version,
+    })
+}
+
+/// CRDT 导出数据结构
+#[derive(Debug, Serialize, Deserialize)]
+struct CrdtExport {
+    site_id: String,
+    version: i64,
+    since_version: i64,
+    changes: Vec<Change>,
+    timestamp: String,
+}
+
+/// 导入结果
+#[derive(Debug, Serialize)]
+pub struct ImportResult {
+    pub peer_site_id: String,
+    pub applied: usize,
+    pub peer_version: i64,
+}
+
+/// 应用单个变更到数据库
+fn apply_change(
+    conn: &rusqlite::Connection,
+    change: &Change,
+) -> Result<bool, String> {
+    // 检查本地是否有更新版本
+    let local_version: Option<i64> = conn.query_row(
+        "SELECT db_version FROM sync_changes
+         WHERE table_name = ?1 AND row_pk = ?2 AND column_name = ?3
+         ORDER BY db_version DESC LIMIT 1",
+        params![change.table_name, change.row_pk, change.column_name],
+        |row| row.get(0),
+    ).ok();
+
+    if let Some(lv) = local_version {
+        if lv >= change.db_version {
+            // 本地版本更新或相同，跳过
+            return Ok(false);
+        }
+    }
+
+    // 插入变更记录
+    conn.execute(
+        "INSERT INTO sync_changes
+         (table_name, row_pk, column_name, value, col_version, db_version, site_id, seq, is_delete)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![
+            change.table_name,
+            change.row_pk,
+            change.column_name,
+            change.value,
+            change.col_version,
+            change.db_version,
+            change.site_id,
+            change.seq,
+            if change.is_delete { 1i64 } else { 0i64 }
+        ],
+    ).map_err(|e| format!("插入变更记录失败: {}", e))?;
+
+    // 应用到实际表
+    if change.is_delete {
+        // 软删除
+        let time = Utc::now().to_rfc3339();
+        conn.execute(
+            &format!("UPDATE {} SET deleted_at = ?1 WHERE id = ?2", change.table_name),
+            params![time, change.row_pk],
+        ).ok();
+    } else {
+        // 解析主键和值
+        let pk: serde_json::Value = serde_json::from_str(&change.row_pk)
+            .map_err(|e| format!("解析主键失败: {}", e))?;
+        let id = pk.get("id").and_then(|v| v.as_str())
+            .ok_or("主键缺少id字段")?;
+
+        if let Some(column) = &change.column_name {
+            if let Some(value_json) = &change.value {
+                // 列级更新
+                let value: serde_json::Value = serde_json::from_str(value_json)
+                    .map_err(|e| format!("解析值失败: {}", e))?;
+                if let Some(val) = value.get("v") {
+                    let val_str = if let Some(s) = val.as_str() {
+                        s.to_string()
+                    } else {
+                        val.to_string()
+                    };
+                    conn.execute(
+                        &format!("UPDATE {} SET {} = ?1 WHERE id = ?2", change.table_name, column),
+                        params![val_str, id],
+                    ).ok();
+                }
+            }
+        }
+    }
+
+    Ok(true)
+}
+
+/// 导入变更（批量）
+fn import_changes(
+    conn: &rusqlite::Connection,
+    changes: &[Change],
+) -> Result<usize, String> {
+    let mut applied = 0;
+    for change in changes {
+        if apply_change(conn, change)? {
+            applied += 1;
+        }
+    }
+    Ok(applied)
 }

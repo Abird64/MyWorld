@@ -377,6 +377,82 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
         rusqlite::params![nanoid::nanoid!()],
     );
 
+    // 增量迁移：心愿表（心愿夹系统）
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS wishes (
+            id              TEXT PRIMARY KEY,
+            title           TEXT NOT NULL,
+            description     TEXT,
+            level           INTEGER NOT NULL DEFAULT 1,
+            cost_glow       INTEGER NOT NULL DEFAULT 0,
+            quantity        INTEGER DEFAULT -1,
+            achieved_count  INTEGER DEFAULT 0,
+            status          TEXT NOT NULL DEFAULT 'active',
+            achieved_at     TEXT,
+            sort_order      INTEGER DEFAULT 0,
+            created_at      TEXT NOT NULL,
+            updated_at      TEXT NOT NULL,
+            deleted_at      TEXT
+        )",
+        [],
+    );
+    // 为已有表添加 quantity 列
+    let _ = conn.execute(
+        "ALTER TABLE wishes ADD COLUMN quantity INTEGER DEFAULT -1",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE wishes ADD COLUMN achieved_count INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_wishes_level ON wishes(level)",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_wishes_status ON wishes(status)",
+        [],
+    );
+
+    // 增量迁移：抽奖记录表
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS wish_draws (
+            id              TEXT PRIMARY KEY,
+            draw_type       TEXT NOT NULL DEFAULT 'micro',
+            ticket_type     TEXT NOT NULL DEFAULT 'micro',
+            cost            INTEGER NOT NULL DEFAULT 0,
+            result_wish_id  TEXT,
+            result_type     TEXT DEFAULT 'none',
+            pity_count      INTEGER DEFAULT 0,
+            created_at      TEXT NOT NULL,
+            updated_at      TEXT NOT NULL,
+            FOREIGN KEY (result_wish_id) REFERENCES wishes(id) ON DELETE SET NULL
+        )",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_wish_draws_type ON wish_draws(draw_type)",
+        [],
+    );
+
+    // 增量迁移：萤火余额表（用户虚拟货币）
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS glow_balances (
+            id              TEXT PRIMARY KEY,
+            glow_amount     INTEGER NOT NULL DEFAULT 0,
+            micro_tickets   INTEGER NOT NULL DEFAULT 0,
+            shimmer_tickets INTEGER NOT NULL DEFAULT 0,
+            updated_at      TEXT NOT NULL
+        )",
+        [],
+    );
+    // 初始化默认余额记录
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO glow_balances (id, glow_amount, micro_tickets, shimmer_tickets, updated_at)
+         VALUES ('user', 0, 0, 0, datetime('now'))",
+        [],
+    );
+
     // 增量迁移：番茄钟会话表
     let _ = conn.execute(
         "CREATE TABLE IF NOT EXISTS pomodoro_sessions (
@@ -538,6 +614,74 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
             [],
         );
     }
+
+    // === 增量迁移：CRDT 变更追踪表 ===
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS sync_changes (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            table_name      TEXT NOT NULL,      -- 表名
+            row_pk          TEXT NOT NULL,      -- 主键值（JSON）
+            column_name     TEXT,               -- 列名，NULL 表示整行操作
+            value           TEXT,               -- 值（JSON），NULL 表示删除
+            col_version     INTEGER DEFAULT 1,  -- 列版本号
+            db_version      INTEGER NOT NULL,   -- 数据库版本号（单调递增）
+            site_id         TEXT NOT NULL,      -- 站点ID
+            seq             INTEGER,            -- 同事务内序列
+            is_delete       INTEGER DEFAULT 0,  -- 是否是删除操作
+            created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        )",
+        [],
+    )
+    .map_err(|e| format!("Migration sync_changes failed: {}", e))?;
+
+    // 变更追踪表索引
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_sync_changes_version ON sync_changes(db_version, seq)",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_sync_changes_site ON sync_changes(site_id, db_version)",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_sync_changes_row ON sync_changes(table_name, row_pk, column_name)",
+        [],
+    );
+
+    // === 增量迁移：数据库版本计数器表 ===
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS sync_db_version (
+            id              INTEGER PRIMARY KEY CHECK (id = 1),
+            version         INTEGER DEFAULT 0,
+            updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        )",
+        [],
+    )
+    .map_err(|e| format!("Migration sync_db_version failed: {}", e))?;
+
+    // 初始化版本计数器
+    let _ = conn.execute("INSERT OR IGNORE INTO sync_db_version (id, version) VALUES (1, 0)", []);
+
+    // === 增量迁移：Counter CRDT 支持表 ===
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS sync_counters (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            table_name      TEXT NOT NULL,      -- 表名
+            row_pk          TEXT NOT NULL,      -- 主键
+            column_name     TEXT NOT NULL,      -- 列名
+            site_id         TEXT NOT NULL,      -- 站点ID
+            delta           INTEGER NOT NULL,   -- 增量值
+            db_version      INTEGER NOT NULL,   -- 版本号
+            created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        )",
+        [],
+    )
+    .map_err(|e| format!("Migration sync_counters failed: {}", e))?;
+
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_sync_counters_lookup ON sync_counters(table_name, row_pk, column_name, site_id)",
+        [],
+    );
 
     log::info!("Database migrations completed");
     Ok(())

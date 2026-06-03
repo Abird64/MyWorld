@@ -391,9 +391,17 @@ pub fn complete_diary_with_xp(
         }
     }
 
+    let time = now();
+
+    // 奖励日记萤火：固定20萤火
+    conn.execute(
+        "UPDATE glow_balances SET glow_amount = glow_amount + 20, updated_at = ?1 WHERE id = 'user'",
+        params![time],
+    )
+    .map_err(|e| format!("Failed to add diary glow reward: {}", e))?;
+
     // 创建虚拟任务
     let task_id = gen_id();
-    let time = now();
 
     conn.execute(
         "INSERT INTO tasks (id, title, status, created_at, updated_at)
@@ -414,7 +422,14 @@ pub fn complete_diary_with_xp(
     }
 
     // 复用 complete_task 完成 XP 结算
-    super::task_repo::complete_task(conn, &task_id)
+    let result = super::task_repo::complete_task(conn, &task_id)?;
+
+    // 返回包含日记萤火奖励的结果
+    Ok(super::task_repo::CompleteResult {
+        xp_earned: result.xp_earned,
+        glow_earned: result.glow_earned + 20, // 额外20萤火
+        skill_xps: result.skill_xps,
+    })
 }
 
 /// 日记搜索结果（含上下文片段）

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Timer } from 'lucide-react';
 import { usePomodoroStore } from '@/stores/pomodoroStore';
-import { useAppTheme, withAlpha } from '@/stores/themeStore';
+import { useAppTheme } from '@/stores/themeStore';
 import { FOCUS_COLOR } from '@/styles/theme';
 import { DashboardCard } from '@/components/dashboard/DashboardCard';
 

@@ -52,6 +52,7 @@ export interface ListTasksInput {
 /** 完成任务的结果 */
 export interface CompleteResult {
   xp_earned: number;
+  glow_earned: number;
   skill_xps: SkillXp[];
 }
 

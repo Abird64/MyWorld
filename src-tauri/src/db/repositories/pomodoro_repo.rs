@@ -96,7 +96,7 @@ pub fn complete_session(
     )
     .map_err(|e| format!("Failed to complete session: {}", e))?;
 
-    // 如果是专注类型，给 focus 技能 award XP
+    // 如果是专注类型，给 focus 技能 award XP 和萤火
     if session.session_type == "focus" {
         let xp = session.target_minutes; // 25分钟 = 25 XP
 
@@ -120,6 +120,14 @@ pub fn complete_session(
             params![event_id, xp, session_id, note, time],
         )
         .map_err(|e| format!("Failed to create skill event: {}", e))?;
+
+        // 奖励萤火：每分钟 = 1 萤火，最少 5 萤火
+        let glow_reward = (session.target_minutes as i32).max(5);
+        tx.execute(
+            "UPDATE glow_balances SET glow_amount = glow_amount + ?1, updated_at = ?2 WHERE id = 'user'",
+            params![glow_reward, time],
+        )
+        .map_err(|e| format!("Failed to add pomodoro glow reward: {}", e))?;
     }
 
     tx.commit()
