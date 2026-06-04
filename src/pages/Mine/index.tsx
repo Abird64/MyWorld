@@ -1,38 +1,29 @@
-import { useEffect, useState } from 'react';
-import { ListTodo, BookOpen, Repeat, Sparkles, Users, BookMarked, Settings, ChevronRight, Brain, Heart } from 'lucide-react';
+import { useEffect } from 'react';
+import { Users, Settings, ChevronRight, Brain, Heart } from 'lucide-react';
 import { useUIStore, type SubPage } from '@/stores/uiStore';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useSkillStore } from '@/stores/skillStore';
-import { useTaskStore } from '@/stores/taskStore';
-import { useHabitStore } from '@/stores/habitStore';
-import { getJournalCount } from '@/services/journalService';
 import { NavBar } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
 import { LEVEL_TITLES } from '@/utils/dateFormat';
-import { TASKS_COLOR } from '@/styles/theme';
 import { Card } from '@/components/ui/Card';
 
 interface MenuItem {
   id: SubPage;
   label: string;
   desc: string;
-  icon: typeof ListTodo;
+  icon: typeof Users;
   iconBg: string;
   iconColor: string;
 }
 
 const menuGroups: { title: string; items: MenuItem[] }[] = [
   {
-    title: '核心功能',
+    title: '功能',
     items: [
-      { id: 'tasks', label: '任务', desc: '任务与待办', icon: ListTodo, iconBg: '#f0f0ff', iconColor: TASKS_COLOR },
-      { id: 'diary', label: '日记', desc: '记录生活，AI 帮你反思', icon: BookOpen, iconBg: '#fff0f3', iconColor: '#ff2d55' },
-      { id: 'habits', label: '习惯', desc: '建立好习惯，每日打卡', icon: Repeat, iconBg: '#e8f8e8', iconColor: '#34c759' },
-      { id: 'skills', label: '成长', desc: '六维属性与成长数据', icon: Sparkles, iconBg: '#fff8e8', iconColor: '#ff9500' },
       { id: 'meditation', label: '冥想', desc: '呼吸练习，平静心灵', icon: Brain, iconBg: '#e8f5ff', iconColor: '#4CAF76' },
       { id: 'wishes', label: '心愿', desc: '心愿夹与萤火奖券', icon: Heart, iconBg: '#fff0f5', iconColor: '#E8A87C' },
-      { id: 'relations', label: '联系人', desc: '人脉管理与生日提醒', icon: Users, iconBg: '#f0f0ff', iconColor: TASKS_COLOR },
-      { id: 'memories', label: '笔记', desc: '提灯的跨对话记忆', icon: BookMarked, iconBg: '#fff0f3', iconColor: '#ff2d55' },
+      { id: 'relations', label: '联系人', desc: '人脉管理与生日提醒', icon: Users, iconBg: '#f0f0ff', iconColor: '#5856d6' },
     ],
   },
   {
@@ -49,17 +40,10 @@ export function MinePage() {
   const setActiveSubPage = useUIStore((s) => s.setActiveSubPage);
 
   const { skills, fetchSkills } = useSkillStore();
-  const { tasks, fetchTasks } = useTaskStore();
-  const { habits, fetchAll: fetchHabits } = useHabitStore();
-
-  const [journalCount, setJournalCount] = useState(0);
 
   useEffect(() => {
     fetchSkills();
-    fetchTasks('pending');
-    fetchHabits();
-    getJournalCount().then(setJournalCount).catch(() => {});
-  }, [fetchSkills, fetchTasks, fetchHabits]);
+  }, [fetchSkills]);
 
   // XP & level
   const totalXp = skills.reduce((sum, s) => sum + s.total_xp, 0);
@@ -70,11 +54,6 @@ export function MinePage() {
   const nextLevelXp = 100 * avgLevel;
   const currentLevelXp = totalXp - (100 * avgLevel * (avgLevel - 1) / 2);
   const xpProgress = nextLevelXp > 0 ? Math.min(currentLevelXp / (nextLevelXp * skills.length || 1), 1) : 0;
-
-  // Quick stats
-  const pendingCount = tasks.filter((t) => t.status === 'pending').length;
-  const todayHabits = habits.filter((h) => h.checked_today).length;
-  const maxStreak = habits.length > 0 ? Math.max(...habits.map((h) => h.streak)) : 0;
 
   return (
     <PageContainer className="flex flex-col" bgColor={appTheme.canvasParchment}>
@@ -118,35 +97,6 @@ export function MinePage() {
               </div>
             </div>
 
-            {/* 快捷统计 */}
-            <div
-              className="grid grid-cols-4"
-              style={{ borderTop: `0.5px solid ${appTheme.hairline}` }}
-            >
-              {[
-                { num: pendingCount, label: '待办任务', page: 'tasks' as SubPage },
-                { num: `${todayHabits}/${habits.length}`, label: '今日习惯', page: 'habits' as SubPage },
-                { num: journalCount, label: '日记天数', page: 'diary' as SubPage },
-                { num: maxStreak, label: '连续打卡', page: 'habits' as SubPage },
-              ].map((stat, i) => (
-                <button
-                  key={stat.label}
-                  onClick={() => setActiveSubPage(stat.page)}
-                  className="flex flex-col items-center py-3 transition-colors"
-                  style={{ borderRight: i < 3 ? `0.5px solid ${appTheme.divider}` : 'none' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = appTheme.canvasParchment)}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  <span
-                    className="text-xl font-semibold"
-                    style={{ color: appTheme.ink, fontFamily: 'var(--font-display, system-ui)' }}
-                  >
-                    {stat.num}
-                  </span>
-                  <span className="text-xs mt-0.5" style={{ color: appTheme.inkMuted48 }}>{stat.label}</span>
-                </button>
-              ))}
-            </div>
           </Card>
 
           {/* ─── 功能列表 ─── */}

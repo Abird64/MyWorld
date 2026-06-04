@@ -7,13 +7,14 @@ import { useTaskStore } from '@/stores/taskStore';
 import { useSkillStore } from '@/stores/skillStore';
 import * as skillService from '@/services/skillService';
 import { isToday, isFuture, isOverdue } from '@/utils/dateFormat';
-import type { Task } from '@/types/task';
+import type { Task, CompleteResult } from '@/types/task';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import type { CreateTaskData } from '@/components/tasks/CreateTaskModal';
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
 import type { SaveData } from '@/components/tasks/TaskDetailPanel';
 import { BatchOperationsBar } from '@/components/tasks/BatchOperationsBar';
 import { TaskCard } from '@/components/tasks/TaskCard';
+import { RewardPopup } from '@/components/tasks/RewardPopup';
 
 // ========== 常量 ==========
 
@@ -107,8 +108,13 @@ export function TasksPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [detailSubtasks, setDetailSubtasks] = useState<Task[]>([]);
 
+  // Reward popup
+  const [rewardResult, setRewardResult] = useState<CompleteResult | null>(null);
+
   // Toast
   const [toast, setToast] = useState('');
+  // 确认
+  const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
 
   const { tasks, isLoading, fetchTasks, completeTask, uncompleteTask, createTask, updateTask, deleteTask, fetchSubtasks } = useTaskStore();
   const { fetchSkills } = useSkillStore();
@@ -163,7 +169,10 @@ export function TasksPage() {
 
   const handleQuickComplete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    try { await completeTask(id); } catch (err) { console.error('完成任务失败:', err); }
+    try {
+      const result = await completeTask(id);
+      setRewardResult(result);
+    } catch { showToast('操作失败，请重试', 3000); }
   };
 
   const handleSubtaskComplete = async (id: string) => {
@@ -173,7 +182,7 @@ export function TasksPage() {
         const subs = await fetchSubtasks(selectedTask.id);
         setDetailSubtasks(subs);
       }
-    } catch { /* skip */ }
+    } catch { showToast('操作失败，请重试', 3000); }
   };
 
   const toggleSubtasks = useCallback(async (taskId: string) => {
@@ -196,6 +205,7 @@ export function TasksPage() {
       scheduled_at: data.scheduled_at,
       deadline: data.deadline,
       estimated_minutes: data.estimated_minutes,
+      glow_reward: data.glow_reward,
       tags: data.tags,
     });
     const skillEntries = Object.entries(data.skillXps)
@@ -228,8 +238,9 @@ export function TasksPage() {
   };
 
   const handleCompleteFromDetail = async (id: string) => {
-    await completeTask(id);
+    const result = await completeTask(id);
     closeDetail();
+    setRewardResult(result);
   };
 
   const handleUncompleteFromDetail = async (id: string) => {
@@ -256,22 +267,31 @@ export function TasksPage() {
   // ========== 批量操作 ==========
 
   const handleBatchComplete = async () => {
+    let ok = 0;
     for (const id of selectedIds) {
       const task = tasks.find((t) => t.id === id);
       if (task && task.status !== 'completed') {
-        try { await completeTask(id); } catch { /* skip */ }
+        try { await completeTask(id); ok++; } catch { /* skip */ }
       }
     }
+    if (ok > 0) showToast(`已完成 ${ok} 个任务`, 2000);
     setSelectedIds(new Set());
     setMultiSelectMode(false);
   };
 
-  const handleBatchDelete = async () => {
+  const executeBatchDelete = async () => {
+    let ok = 0;
     for (const id of selectedIds) {
-      try { await deleteTask(id); } catch { /* skip */ }
+      try { await deleteTask(id); ok++; } catch { /* skip */ }
     }
+    if (ok > 0) showToast(`已删除 ${ok} 个任务`, 2000);
     setSelectedIds(new Set());
     setMultiSelectMode(false);
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    setShowBatchDeleteConfirm(true);
   };
 
   // ========== 渲染 ==========
@@ -315,7 +335,9 @@ export function TasksPage() {
               className="w-11 h-11 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors"
               style={{ backgroundColor: withAlpha(appTheme.canvas, 0.6), color: txtMeta }}
               onMouseEnter={(e) => (e.currentTarget.style.color = txtMid)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = txtMeta)}>
+              onMouseLeave={(e) => (e.currentTarget.style.color = txtMeta)}
+              title="排序"
+              aria-label="排序方式">
               <ArrowUpDown size={18} />
             </button>
             {showSortMenu && (
@@ -347,7 +369,9 @@ export function TasksPage() {
               ? { backgroundColor: appTheme.primary, color: appTheme.onPrimary }
               : { backgroundColor: withAlpha(appTheme.canvas, 0.6), color: txtMeta }}
             onMouseEnter={!multiSelectMode ? (e) => (e.currentTarget.style.color = txtMid) : undefined}
-            onMouseLeave={!multiSelectMode ? (e) => (e.currentTarget.style.color = txtMeta) : undefined}>
+            onMouseLeave={!multiSelectMode ? (e) => (e.currentTarget.style.color = txtMeta) : undefined}
+            title="批量操作"
+            aria-label="批量操作">
             <ListChecks size={18} />
           </button>
         </div>
@@ -429,12 +453,37 @@ export function TasksPage() {
         </button>
       )}
 
+      {/* 批量删除确认 */}
+      {showBatchDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onClick={() => setShowBatchDeleteConfirm(false)}>
+          <div className="rounded-2xl p-6 mx-4 w-[320px]" style={{ backgroundColor: appTheme.canvas }} onClick={(e) => e.stopPropagation()}>
+            <p className="text-base mb-6" style={{ color: txtMid }}>确定要删除选中的 {selectedIds.size} 个任务吗？一旦删除，就不能回来了。</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowBatchDeleteConfirm(false)}
+                className="flex-1 py-2.5 rounded-2xl text-sm transition-colors"
+                style={{ color: txtMid, backgroundColor: bgSubtle }}>
+                取消
+              </button>
+              <button onClick={() => { executeBatchDelete(); setShowBatchDeleteConfirm(false); }}
+                className="flex-1 py-2.5 rounded-2xl text-sm transition-colors"
+                style={{ backgroundColor: appTheme.danger, color: '#fff' }}>
+                确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] bg-black/80 text-white px-6 py-3 rounded-2xl text-sm max-w-[500px]">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl text-sm max-w-[500px]"
+          style={{ backgroundColor: appTheme.surfaceDark2, color: appTheme.ink }}>
           {toast}
         </div>
       )}
+
+      {/* 结算卡片 */}
+      <RewardPopup result={rewardResult} onClose={() => setRewardResult(null)} />
 
     </PageContainer>
   );

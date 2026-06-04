@@ -2,12 +2,18 @@ import { useState, useEffect } from 'react';
 import { useAppTheme } from '@/stores/themeStore';
 import { listUpcomingBirthdays, type BirthdayInfo } from '@/services/contactService';
 
-/** 根据名字生成柔和色 */
-function nameColor(name: string): string {
-  const colors = ['#ff6b6b', '#51cf66', '#339af0', '#cc5de8', '#ff922b', '#20c997', '#f06595', '#845ef7', '#228be6', '#fab005'];
-  let hash = 0;
-  for (const ch of name) hash = ((hash << 5) - hash) + ch.charCodeAt(0);
-  return colors[Math.abs(hash) % colors.length];
+const GROUP_COLORS: Record<string, string> = {
+  '家人': '#C17F59',
+  '朋友': '#D4A84B',
+  '同学': '#6B8BA4',
+  '同事': '#5A9468',
+  '老师': '#3478A0',
+};
+
+/** 根据分组生成头像颜色，匹配 Relations 页面分组色 */
+function avatarColor(groupName: string | null): string {
+  if (groupName && GROUP_COLORS[groupName]) return GROUP_COLORS[groupName];
+  return '#4CAF76';
 }
 
 export function BirthdayBar() {
@@ -52,7 +58,7 @@ export function BirthdayBar() {
             {/* 首字头像 */}
             <div
               className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-semibold text-white"
-              style={{ backgroundColor: nameColor(b.name) }}
+              style={{ backgroundColor: avatarColor(b.group_name) }}
             >
               {b.name.charAt(0)}
             </div>

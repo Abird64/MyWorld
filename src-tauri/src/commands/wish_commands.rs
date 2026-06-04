@@ -35,6 +35,7 @@ pub struct CreateWishInput {
     pub title: String,
     pub description: Option<String>,
     pub level: i32,
+    #[serde(default)]
     pub cost_glow: i32,
     pub quantity: Option<i32>,  // -1 表示无限，默认为1
 }
@@ -75,6 +76,7 @@ pub struct UpdateWishInput {
     pub title: String,
     pub description: Option<String>,
     pub level: i32,
+    #[serde(default)]
     pub cost_glow: i32,
     pub quantity: Option<i32>,
 }
@@ -89,7 +91,7 @@ pub fn update_wish(
 
     let existing = repo.get_wish(&input.id)
         .map_err(|e| e.to_string())?
-        .ok_or_else(|| "Wish not found".to_string())?;
+        .ok_or_else(|| "心愿不存在".to_string())?;
 
     let updated = Wish {
         id: input.id,
@@ -165,6 +167,21 @@ pub fn add_glow(
     repo.update_glow(input.amount)
         .map_err(|e| e.to_string())?;
 
+    // 记录萤火账本
+    {
+        let balance_after: i32 = conn
+            .query_row("SELECT glow_amount FROM glow_balances WHERE id = 'user'", [], |row| row.get(0))
+            .unwrap_or(0);
+        let ledger_id = nanoid!();
+        let now = Utc::now().to_rfc3339();
+        let source_desc = format!("手动添加萤火 ({})", input.source);
+        let _ = conn.execute(
+            "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+             VALUES (?1, 'glow', ?2, ?3, 'manual_add', ?4, '', ?5)",
+            rusqlite::params![ledger_id, input.amount, balance_after, source_desc, now],
+        );
+    }
+
     repo.get_balance()
         .map_err(|e| e.to_string())
 }
@@ -180,6 +197,31 @@ pub fn add_tickets(
 
     repo.update_tickets(micro, shimmer)
         .map_err(|e| e.to_string())?;
+
+    // 记录萤火账本
+    let now = Utc::now().to_rfc3339();
+    if micro > 0 {
+        let balance_after: i32 = conn
+            .query_row("SELECT micro_tickets FROM glow_balances WHERE id = 'user'", [], |row| row.get(0))
+            .unwrap_or(0);
+        let ledger_id = nanoid!();
+        let _ = conn.execute(
+            "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+             VALUES (?1, 'micro_ticket', ?2, ?3, 'manual_add', '手动添加微光奖券', '', ?4)",
+            rusqlite::params![ledger_id, micro, balance_after, now],
+        );
+    }
+    if shimmer > 0 {
+        let balance_after: i32 = conn
+            .query_row("SELECT shimmer_tickets FROM glow_balances WHERE id = 'user'", [], |row| row.get(0))
+            .unwrap_or(0);
+        let ledger_id = nanoid!();
+        let _ = conn.execute(
+            "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+             VALUES (?1, 'shimmer_ticket', ?2, ?3, 'manual_add', '手动添加拾光奖券', '', ?4)",
+            rusqlite::params![ledger_id, shimmer, balance_after, now],
+        );
+    }
 
     repo.get_balance()
         .map_err(|e| e.to_string())
@@ -198,8 +240,10 @@ pub fn list_draws(
         .map_err(|e| e.to_string())
 }
 
-/// Draw with pity system
-/// Micro: 30 draws pity, Shimmer: 80 draws pity
+/// Draw with level-based probability + pity progress
+/// Micro: L1 80% / L2 20%, pity at 30
+/// Shimmer: L3 90% / L4 10%, pity at 80
+/// Pity is now self-select (not auto-trigger)
 #[tauri::command]
 pub fn draw_wish(
     state: State<'_, DbState>,
@@ -214,17 +258,32 @@ pub fn draw_wish(
 
     // Check and consume ticket
     if !repo.consume_ticket(&ticket_type).map_err(|e| e.to_string())? {
-        return Err("Insufficient tickets".to_string());
+        return Err("奖券不足，请先购买或获取奖券".to_string());
     }
 
-    // Get available wishes based on ticket type
-    let levels: Vec<i32> = if ticket_type == "micro" {
-        vec![1, 2] // Lv.1 即刻轻享, Lv.2 生活犒赏
-    } else {
-        vec![3, 4] // Lv.3 进阶装备, Lv.4 梦想实现
-    };
+    // 记录奖券消耗账本
+    {
+        let asset_type = if ticket_type == "micro" { "micro_ticket" } else { "shimmer_ticket" };
+        let column = if ticket_type == "micro" { "micro_tickets" } else { "shimmer_tickets" };
+        let balance_after: i32 = conn
+            .query_row(&format!("SELECT {} FROM glow_balances WHERE id = 'user'", column), [], |row| row.get(0))
+            .unwrap_or(0);
+        let ledger_id = nanoid!();
+        let now = Utc::now().to_rfc3339();
+        let ticket_label = if ticket_type == "micro" { "微光奖券" } else { "拾光奖券" };
+        let _ = conn.execute(
+            "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+             VALUES (?1, ?2, -1, ?3, 'draw_consume', ?4, '', ?5)",
+            rusqlite::params![ledger_id, asset_type, balance_after, format!("消耗{}抽奖", ticket_label), now],
+        );
+    }
 
-    let pity_threshold = if ticket_type == "micro" { 30 } else { 80 };
+    // Level probability: Micro → L1 80% / L2 20%, Shimmer → L3 90% / L4 10%
+    let (level_weights, pity_threshold): (Vec<(i32, f64)>, i32) = if ticket_type == "micro" {
+        (vec![(1, 0.8), (2, 0.2)], 30)
+    } else {
+        (vec![(3, 0.9), (4, 0.1)], 80)
+    };
 
     // Get current pity count
     let pity_count: i32 = conn
@@ -235,29 +294,33 @@ pub fn draw_wish(
         )
         .unwrap_or(0);
 
-    let mut all_wishes: Vec<Wish> = Vec::new();
-    for level in &levels {
-        let wishes = repo.get_wishes_by_level(*level)
-            .map_err(|e| e.to_string())?;
-        all_wishes.extend(wishes);
+    // Roll for level, then pick random wish from that level
+    let mut rng = thread_rng();
+    let level_roll: f64 = rng.gen();
+    let mut cumulative = 0.0;
+    let mut target_level = level_weights[0].0;
+    for (level, prob) in &level_weights {
+        cumulative += prob;
+        if level_roll < cumulative {
+            target_level = *level;
+            break;
+        }
     }
 
-    // Draw logic with pity
-    let (selected, is_pity) = if all_wishes.is_empty() {
-        (None, false)
-    } else if pity_count >= pity_threshold - 1 {
-        // Trigger pity: guarantee a wish
-        let mut rng = thread_rng();
-        (all_wishes.choose(&mut rng).cloned(), true)
-    } else {
-        // Normal draw: 80% chance
-        let mut rng = thread_rng();
-        let roll: f64 = rng.gen();
-        if roll < 0.8 {
-            (all_wishes.choose(&mut rng).cloned(), false)
-        } else {
-            (None, false)
+    let wishes = repo.get_wishes_by_level(target_level)
+        .map_err(|e| e.to_string())?;
+
+    // If target level is empty, fallback to any level in the pool
+    let selected = if wishes.is_empty() {
+        let mut all_wishes = Vec::new();
+        for (level, _) in &level_weights {
+            all_wishes.extend(
+                repo.get_wishes_by_level(*level).map_err(|e| e.to_string())?
+            );
         }
+        all_wishes.choose(&mut rng).cloned()
+    } else {
+        wishes.choose(&mut rng).cloned()
     };
 
     let has_wish = selected.is_some();
@@ -269,24 +332,118 @@ pub fn draw_wish(
         ticket_type: ticket_type.clone(),
         cost: 1,
         result_wish_id: selected.as_ref().map(|w| w.id.clone()),
-        result_type: if is_pity { "pity".to_string() } else if has_wish { "wish".to_string() } else { "none".to_string() },
+        result_type: if has_wish { "wish".to_string() } else { "none".to_string() },
         pity_count: pity_count + 1,
         created_at: Utc::now().to_rfc3339(),
     };
     repo.create_draw(&draw).map_err(|e| e.to_string())?;
 
+    // 抽中后自动完成心愿，不再需要额外花萤火兑换
+    if let Some(ref wish) = selected {
+        drop(repo);
+        let now = Utc::now().to_rfc3339();
+        conn.execute(
+            "UPDATE wishes SET achieved_count = achieved_count + 1, updated_at = ?1 WHERE id = ?2",
+            rusqlite::params![now, wish.id],
+        ).map_err(|e| e.to_string())?;
+    }
+
+    let new_pity = pity_count + 1;
+    let pity_available = new_pity >= pity_threshold;
+
+    let message = if has_wish {
+        let w = selected.as_ref().unwrap();
+        format!("抽中了「{}」！", w.title)
+    } else {
+        "心愿池为空，请先添加心愿".to_string()
+    };
+
     let result = WishDrawResult {
         success: has_wish,
         wish: selected,
-        is_pity,
+        is_pity: false,
+        pity_count: new_pity,
+        pity_threshold,
+        pity_available,
+        message,
+    };
+
+    Ok(result)
+}
+
+/// 保底自选：抽满保底次数后免费任选一个心愿
+#[tauri::command]
+pub fn claim_pity_wish(
+    state: State<'_, DbState>,
+    ticket_type: String,
+    wish_id: String,
+) -> Result<WishDrawResult, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    let pity_threshold = if ticket_type == "micro" { 30 } else { 80 };
+
+    // Check pity progress
+    let pity_count: i32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM wish_draws WHERE ticket_type = ?1 AND result_type != 'pity' AND created_at > datetime('now', '-30 days')",
+            [&ticket_type],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    if pity_count < pity_threshold {
+        return Err(format!("保底条件尚未满足（{}/{}）", pity_count, pity_threshold));
+    }
+
+    // Verify wish exists and is active
+    let repo = WishRepository::new(&conn);  // immutable ref is fine
+    let wish = repo.get_wish(&wish_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "心愿不存在".to_string())?;
+
+    if wish.status != "active" {
+        return Err("该心愿不可选".to_string());
+    }
+
+    // Verify wish level matches ticket type pool
+    if ticket_type == "micro" && (wish.level != 1 && wish.level != 2) {
+        return Err("微光保底仅可选 Lv.1-2 心愿".to_string());
+    }
+    if ticket_type == "shimmer" && (wish.level != 3 && wish.level != 4) {
+        return Err("拾光保底仅可选 Lv.3-4 心愿".to_string());
+    }
+
+    drop(repo);  // release immutable borrow
+
+    // Mark wish as achieved
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE wishes SET achieved_count = achieved_count + 1, updated_at = ?1 WHERE id = ?2",
+        rusqlite::params![now, wish_id],
+    ).map_err(|e| e.to_string())?;
+
+    // Record the pity draw (resets counter)
+    let repo = WishRepository::new(&conn);
+    let draw = WishDraw {
+        id: nanoid!(),
+        draw_type: ticket_type.clone(),
+        ticket_type: ticket_type.clone(),
+        cost: 0,  // free — pity reward
+        result_wish_id: Some(wish_id.clone()),
+        result_type: "pity".to_string(),
         pity_count: pity_count + 1,
-        message: if is_pity {
-            format!("保底触发！恭喜你抽中了一个心愿！（{}抽）", pity_count + 1)
-        } else if has_wish {
-            "恭喜你抽中了一个心愿！".to_string()
-        } else {
-            "这次没有抽中，再接再厉！".to_string()
-        },
+        created_at: now,
+    };
+    repo.create_draw(&draw).map_err(|e| e.to_string())?;
+
+    let result = WishDrawResult {
+        success: true,
+        wish: Some(wish),
+        is_pity: true,
+        pity_count: 0,  // reset after claim
+        pity_threshold,
+        pity_available: false,
+        message: "保底自选成功！".to_string(),
     };
 
     Ok(result)
@@ -369,9 +526,37 @@ pub fn buy_tickets(
     let column = if ticket_type == "micro" { "micro_tickets" } else { "shimmer_tickets" };
     tx.execute(
         &format!("UPDATE glow_balances SET {} = {} + ?1, updated_at = ?2 WHERE id = 'user'", column, column),
-        [count.to_string(), now],
+        [count.to_string(), now.clone()],
     )
     .map_err(|e| e.to_string())?;
+
+    // 记录萤火账本：萤火支出
+    {
+        let glow_after: i32 = tx
+            .query_row("SELECT glow_amount FROM glow_balances WHERE id = 'user'", [], |row| row.get(0))
+            .unwrap_or(0);
+        let ledger_id = nanoid!();
+        let ticket_label = if ticket_type == "micro" { "微光奖券" } else { "拾光奖券" };
+        let _ = tx.execute(
+            "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+             VALUES (?1, 'glow', ?2, ?3, 'buy_ticket', ?4, '', ?5)",
+            rusqlite::params![ledger_id, -total_cost, glow_after, format!("购买 {} 张{}", count, ticket_label), now],
+        );
+    }
+    // 记录萤火账本：奖券收入
+    {
+        let ticket_after: i32 = tx
+            .query_row(&format!("SELECT {} FROM glow_balances WHERE id = 'user'", column), [], |row| row.get(0))
+            .unwrap_or(0);
+        let ledger_id = nanoid!();
+        let ticket_label = if ticket_type == "micro" { "微光奖券" } else { "拾光奖券" };
+        let asset_type = if ticket_type == "micro" { "micro_ticket" } else { "shimmer_ticket" };
+        let _ = tx.execute(
+            "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+             VALUES (?1, ?2, ?3, ?4, 'buy_ticket', ?5, '', ?6)",
+            rusqlite::params![ledger_id, asset_type, count, ticket_after, format!("购买 {} 张{}", count, ticket_label), now],
+        );
+    }
 
     tx.commit().map_err(|e| e.to_string())?;
 
@@ -386,6 +571,8 @@ pub struct WishDrawResult {
     pub wish: Option<Wish>,
     pub is_pity: bool,
     pub pity_count: i32,
+    pub pity_threshold: i32,
+    pub pity_available: bool,
     pub message: String,
 }
 
@@ -404,7 +591,7 @@ pub fn redeem_wish(
         let repo = WishRepository::new(&conn);
         let wish = repo.get_wish(&wish_id)
             .map_err(|e| e.to_string())?
-            .ok_or_else(|| "Wish not found".to_string())?;
+            .ok_or_else(|| "心愿不存在".to_string())?;
         let available = repo.check_wish_available(&wish_id)
             .map_err(|e| e.to_string())?;
         (wish.cost_glow, available)
@@ -417,6 +604,10 @@ pub fn redeem_wish(
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
     // 扣除萤火（如果 cost_glow > 0）
+    let wish_title: String = tx
+        .query_row("SELECT title FROM wishes WHERE id = ?1", [&wish_id], |row| row.get(0))
+        .unwrap_or_default();
+
     if cost_glow > 0 {
         let current_glow: i32 = tx
             .query_row(
@@ -433,9 +624,20 @@ pub fn redeem_wish(
         let now = Utc::now().to_rfc3339();
         tx.execute(
             "UPDATE glow_balances SET glow_amount = glow_amount - ?1, updated_at = ?2 WHERE id = 'user'",
-            [cost_glow.to_string(), now],
+            [cost_glow.to_string(), now.clone()],
         )
         .map_err(|e| e.to_string())?;
+
+        // 记录萤火账本：兑换消耗
+        let glow_after: i32 = tx
+            .query_row("SELECT glow_amount FROM glow_balances WHERE id = 'user'", [], |row| row.get(0))
+            .unwrap_or(0);
+        let ledger_id = nanoid!();
+        let _ = tx.execute(
+            "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+             VALUES (?1, 'glow', ?2, ?3, 'redeem_wish', ?4, ?5, ?6)",
+            rusqlite::params![ledger_id, -(cost_glow), glow_after, format!("兑换心愿「{}」", wish_title), wish_id, now],
+        );
     }
 
     // 增加 achieved_count
@@ -452,5 +654,5 @@ pub fn redeem_wish(
     let repo = WishRepository::new(&conn);
     repo.get_wish(&wish_id)
         .map_err(|e| e.to_string())?
-        .ok_or_else(|| "Wish not found after update".to_string())
+        .ok_or_else(|| "兑换失败，请重试".to_string())
 }

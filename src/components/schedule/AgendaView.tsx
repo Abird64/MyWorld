@@ -36,8 +36,9 @@ export function AgendaView({ schedules, onEventClick }: AgendaViewProps) {
 
   if (sortedDates.length === 0) {
     return (
-      <div className="w-full rounded-2xl p-8 text-center" style={{ backgroundColor: appTheme.canvas }}>
-        <p className="text-lg" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>暂无日程</p>
+      <div className="w-full rounded-2xl p-12 text-center space-y-2" style={{ backgroundColor: appTheme.canvas }}>
+        <p className="text-base" style={{ color: `${withAlpha(appTheme.ink, 0.3)}` }}>接下来的日子还很空旷</p>
+        <p className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.18)}` }}>种下一颗种子，让它慢慢长大</p>
       </div>
     );
   }
@@ -90,20 +91,18 @@ export function AgendaView({ schedules, onEventClick }: AgendaViewProps) {
                     onClick={() => onEventClick(event)}
                   >
                     {/* 时间 */}
-                    <div className="w-16 text-right flex-shrink-0">
+                    <div className="w-16 text-right flex-shrink-0 flex items-center gap-2">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={isTaskSync
+                          ? { backgroundColor: 'transparent', border: `1.5px dashed ${bgColor}` }
+                          : { backgroundColor: bgColor }
+                        }
+                      />
                       <span className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.7)}` }}>
                         {pad(startDate.getHours())}:{pad(startDate.getMinutes())}
                       </span>
                     </div>
-
-                    {/* 颜色条 */}
-                    <div
-                      className="w-1 h-8 rounded-full flex-shrink-0"
-                      style={{
-                        backgroundColor: isTaskSync ? 'transparent' : bgColor,
-                        borderLeft: isTaskSync ? `2px dashed ${bgColor}` : 'none',
-                      }}
-                    />
 
                     {/* 内容 */}
                     <div className="flex-1 min-w-0">

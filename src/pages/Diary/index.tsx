@@ -259,9 +259,14 @@ export function DiaryPage() {
                 );
               })}
             </div>
-            <p className="text-xs text-center" style={{ color: `${withAlpha(appTheme.ink, 0.3)}` }}>
-              共获得 {xpToast.xp_earned} XP · 点击关闭
-            </p>
+            <div className="flex items-center justify-center gap-4">
+              <span className="text-sm font-medium" style={{ color: '#D4A843' }}>
+                +{xpToast.glow_earned} 萤火
+              </span>
+              <span className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.3)}` }}>
+                {xpToast.xp_earned} XP · 点击关闭
+              </span>
+            </div>
           </div>
         </div>
       )}

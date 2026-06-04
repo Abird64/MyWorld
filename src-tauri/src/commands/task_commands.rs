@@ -13,6 +13,7 @@ pub struct CreateTaskInput {
     pub deadline: Option<String>,
     pub estimated_minutes: Option<i32>,
     pub tags: Option<String>,
+    pub glow_reward: Option<i32>,
 }
 
 #[derive(Deserialize)]
@@ -61,6 +62,7 @@ pub fn create_task(
         input.deadline.as_deref(),
         input.estimated_minutes.unwrap_or(0),
         input.tags.as_deref(),
+        input.glow_reward.unwrap_or(0),
     )?;
     serde_json::to_value(task).map_err(|e| e.to_string())
 }

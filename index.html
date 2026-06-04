@@ -3,11 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <script>
-      // 深色模式防闪烁：在 body 渲染前读取 localStorage 并应用 class
+      // 主题防闪烁：在 body 渲染前读取 localStorage 并应用 class
       try {
         const stored = JSON.parse(localStorage.getItem('shijie-theme') || '{}');
         if (stored?.state?.mode === 'dark') {
           document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.add('light');
         }
       } catch {}
     </script>

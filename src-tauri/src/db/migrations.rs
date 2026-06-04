@@ -47,6 +47,8 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
             task_id         TEXT NOT NULL,
             skill_id        TEXT NOT NULL,
             xp_amount       INTEGER DEFAULT 0,
+            created_at      TEXT NOT NULL DEFAULT '',
+            updated_at      TEXT NOT NULL DEFAULT '',
             FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
             FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE,
             UNIQUE(task_id, skill_id)
@@ -555,6 +557,17 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
         [],
     );
 
+    // 修复：将 habit_records UNIQUE 索引改为条件索引，排除已软删除的记录
+    // 否则取消打卡（软删除）后同一天无法重新打卡
+    let _ = conn.execute(
+        "DROP INDEX IF EXISTS idx_habit_records_unique",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_habit_records_unique ON habit_records(habit_id, checked_at) WHERE deleted_at IS NULL",
+        [],
+    );
+
     // 增量迁移：技能 ID 英文重命名
     // knowledge→focus, physique→vitality, talent→creativity, worldliness→insight, charm→empathy, cultivation→expression
     // 先更新子表（避免外键冲突），再更新主表
@@ -603,6 +616,14 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
         // 回填已有数据的 updated_at = created_at（如果有的话），否则用当前时间
         let _ = conn.execute(
             &format!("UPDATE {table} SET updated_at = COALESCE(created_at, {now}) WHERE updated_at = ''"),
+            [],
+        );
+    }
+
+    // === 增量迁移：给缺 created_at 的表添加列 ===
+    for table in &["task_skills"] {
+        let _ = conn.execute(
+            &format!("ALTER TABLE {} ADD COLUMN created_at TEXT NOT NULL DEFAULT ''", table),
             [],
         );
     }
@@ -680,6 +701,35 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
 
     let _ = conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_sync_counters_lookup ON sync_counters(table_name, row_pk, column_name, site_id)",
+        [],
+    );
+
+    // 增量迁移：tasks 表加 glow_reward（完成任务时奖励的萤火数，0 则自动计算）
+    let _ = conn.execute(
+        "ALTER TABLE tasks ADD COLUMN glow_reward INTEGER DEFAULT 0",
+        [],
+    );
+
+    // 增量迁移：萤火账本表
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS glow_ledger (
+            id              TEXT PRIMARY KEY,
+            asset_type      TEXT NOT NULL,
+            change_amount   INTEGER NOT NULL,
+            balance_after   INTEGER NOT NULL,
+            reason          TEXT NOT NULL,
+            source_desc     TEXT NOT NULL DEFAULT '',
+            related_id      TEXT NOT NULL DEFAULT '',
+            created_at      TEXT NOT NULL
+        )",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_glow_ledger_type ON glow_ledger(asset_type)",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_glow_ledger_created ON glow_ledger(created_at)",
         [],
     );
 

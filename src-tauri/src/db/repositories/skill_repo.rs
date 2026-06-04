@@ -125,17 +125,16 @@ pub fn get_task_skills(conn: &Connection, task_id: &str) -> Result<Vec<TaskSkill
     Ok(skills)
 }
 
-/// 设置任务的技能XP分配（先软删后插）
+/// 设置任务的技能XP分配（先删后插，避免UNIQUE约束冲突）
 pub fn set_task_skills(
     conn: &Connection,
     task_id: &str,
     skills: &[(String, i32)],
 ) -> Result<(), String> {
-    // 软删除旧的分配
-    let time = now();
+    // 硬删除该任务所有旧的技能分配（避免 UNIQUE(task_id, skill_id) 约束冲突）
     conn.execute(
-        "UPDATE task_skills SET deleted_at = ?1 WHERE task_id = ?2 AND deleted_at IS NULL",
-        params![time, task_id],
+        "DELETE FROM task_skills WHERE task_id = ?1",
+        params![task_id],
     )
     .map_err(|e| format!("Failed to clear task_skills: {}", e))?;
 
@@ -145,10 +144,9 @@ pub fn set_task_skills(
             continue;
         }
         let id = gen_id();
-        let time = now();
         conn.execute(
-            "INSERT INTO task_skills (id, task_id, skill_id, xp_amount, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
-            params![id, task_id, skill_id, xp_amount, time],
+            "INSERT INTO task_skills (id, task_id, skill_id, xp_amount) VALUES (?1, ?2, ?3, ?4)",
+            params![id, task_id, skill_id, xp_amount],
         )
         .map_err(|e| format!("Failed to insert task_skill: {}", e))?;
     }
@@ -269,6 +267,20 @@ pub fn check_level_up(conn: &Connection, skill_id: &str) -> Result<(), String> {
             params![now()],
         )
         .map_err(|e| format!("奖励拾光奖券失败: {}", e))?;
+
+        // 记录萤火账本
+        {
+            let balance_after: i32 = conn
+                .query_row("SELECT shimmer_tickets FROM glow_balances WHERE id = 'user'", [], |row| row.get(0))
+                .unwrap_or(0);
+            let ledger_id = nanoid::nanoid!();
+            let time = now();
+            let _ = conn.execute(
+                "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+                 VALUES (?1, 'shimmer_ticket', 1, ?2, 'skill_level_up', ?3, ?4, ?5)",
+                rusqlite::params![ledger_id, balance_after, format!("{} 升级到 Lv.{}", skill_name, new_level), skill_id, time],
+            );
+        }
 
         log::info!("{} 升级到 Lv.{}，奖励拾光奖券 ×1", skill_name, new_level);
     }

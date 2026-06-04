@@ -10,4 +10,5 @@ pub mod schedule_repo;
 pub mod setting_repo;
 pub mod skill_repo;
 pub mod task_repo;
+pub mod glow_ledger_repo;
 pub mod wish_repo;

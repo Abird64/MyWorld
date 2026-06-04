@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Select } from '@/components/ui/Select';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import type { CreateScheduleInput } from '@/types/schedule';
@@ -8,6 +9,7 @@ interface EventFormProps {
   defaultEnd?: string;
   onSubmit: (input: CreateScheduleInput) => void;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }
 
 const repeatOptions = [
@@ -61,7 +63,7 @@ function buildRrule(repeat: string, selectedDays: string[], interval: number): s
   return parts.join(';');
 }
 
-export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: EventFormProps) {
+export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel, isSubmitting }: EventFormProps) {
   const appTheme = useAppTheme();
   const { calendars } = useCalendarStore();
   const [title, setTitle] = useState('');
@@ -78,6 +80,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [isSubmitHovered, setIsSubmitHovered] = useState(false);
   const [isCancelHovered, setIsCancelHovered] = useState(false);
+  const [timeError, setTimeError] = useState<string | null>(null);
 
   // 开始时间变化时自动更新结束时间（+40 分钟）
   const handleStartChange = (val: string) => {
@@ -105,6 +108,17 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
     e.preventDefault();
     if (!title.trim()) return;
 
+    // 时间校验：结束时间必须晚于开始时间
+    if (endAt) {
+      const startDate = new Date(startAt);
+      const endDate = new Date(endAt);
+      if (endDate <= startDate) {
+        setTimeError('结束时间必须晚于开始时间');
+        return;
+      }
+    }
+    setTimeError(null);
+
     const rrule = buildRrule(repeat, selectedDays, interval);
 
     onSubmit({
@@ -126,7 +140,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
         .event-form-input::placeholder { color: ${withAlpha(appTheme.ink, 0.3)}; }
       `}</style>
       <div
-        className="rounded-[18px] p-6 w-[95vw] sm:w-[380px]"
+        className="rounded-2xl p-6 w-[95vw] sm:w-[380px]"
         style={{ backgroundColor: appTheme.canvas }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -139,7 +153,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="日程标题"
-            className="event-form-input w-full px-4 py-3 rounded-2xl focus:outline-none text-sm"
+            className="event-form-input w-full px-4 py-3 rounded-xl focus:outline-none text-sm"
             style={{
               color: appTheme.ink,
               border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`,
@@ -154,11 +168,11 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
             <input
               type="datetime-local"
               value={startAt}
-              onChange={(e) => handleStartChange(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-2xl focus:outline-none text-sm"
+              onChange={(e) => { handleStartChange(e.target.value); setTimeError(null); }}
+              className="w-full px-4 py-2.5 rounded-xl focus:outline-none text-sm"
               style={{
                 color: appTheme.ink,
-                border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`,
+                border: `1px solid ${timeError ? 'rgba(201,112,112,0.6)' : withAlpha(appTheme.primary, 0.3)}`,
                 backgroundColor: appTheme.canvasParchment,
               }}
             />
@@ -170,36 +184,28 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
             <input
               type="datetime-local"
               value={endAt}
-              onChange={(e) => setEndAt(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-2xl focus:outline-none text-sm"
+              onChange={(e) => { setEndAt(e.target.value); setTimeError(null); }}
+              className="w-full px-4 py-2.5 rounded-xl focus:outline-none text-sm"
               style={{
                 color: appTheme.ink,
-                border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`,
+                border: `1px solid ${timeError ? 'rgba(201,112,112,0.6)' : withAlpha(appTheme.primary, 0.3)}`,
                 backgroundColor: appTheme.canvasParchment,
               }}
             />
+            {timeError && (
+              <p className="text-xs mt-1" style={{ color: appTheme.danger }}>{timeError}</p>
+            )}
           </div>
 
           {/* 日历 */}
           <div>
             <label className="text-xs mb-2 block" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>日历</label>
-            <select
+            <Select
               value={calendarId ?? ''}
-              onChange={(e) => setCalendarId(e.target.value || null)}
-              className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-              style={{
-                backgroundColor: appTheme.canvasParchment,
-                border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`,
-                color: appTheme.ink,
-              }}
-            >
-              <option value="">无分类</option>
-              {calendars.map((cal) => (
-                <option key={cal.id} value={cal.id} style={{ backgroundColor: appTheme.canvas, color: appTheme.ink }}>
-                  {cal.name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setCalendarId(v || null)}
+              placeholder="无分类"
+              options={calendars.map((cal) => ({ value: cal.id, label: cal.name }))}
+            />
           </div>
 
           {/* 重复规则 */}
@@ -302,7 +308,7 @@ export function EventForm({ defaultStart, defaultEnd, onSubmit, onCancel }: Even
             </button>
             <button
               type="submit"
-              disabled={!title.trim()}
+              disabled={!title.trim() || isSubmitting}
               className="px-5 py-2 rounded-full text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               style={{ color: appTheme.ink, backgroundColor: isSubmitHovered ? `${withAlpha(appTheme.primary, 0.8)}` : appTheme.primary }}
               onMouseEnter={() => setIsSubmitHovered(true)}

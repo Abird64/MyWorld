@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { PageContainer } from '@/components/layout';
 import { NavBar } from '@/components/ui';
+import { Toast } from '@/components/ui/Toast';
 import { HabitCard } from '@/components/habits/HabitCard';
 import { CreateHabitModal } from '@/components/habits/CreateHabitModal';
 import { HabitHeatmap } from '@/components/habits/HabitHeatmap';
+import { RewardPopup } from '@/components/tasks/RewardPopup';
 import { useHabitStore } from '@/stores/habitStore';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { Plus } from 'lucide-react';
 import type { HabitWithStreak, CreateHabitInput, UpdateHabitInput } from '@/types/habit';
+import type { CompleteResult } from '@/types/task';
 
 export function HabitsPage() {
   const appTheme = useAppTheme();
@@ -15,16 +18,28 @@ export function HabitsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<HabitWithStreak | null>(null);
   const [viewingDetail, setViewingDetail] = useState<HabitWithStreak | null>(null);
+  const [rewardResult, setRewardResult] = useState<CompleteResult | null>(null);
+  const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
 
-  const handleToggle = useCallback((habitId: string, checked: boolean) => {
-    if (checked) {
-      uncheckHabit(habitId);
-    } else {
-      checkHabit(habitId);
+  const handleToggle = useCallback(async (habitId: string, checked: boolean) => {
+    setLoadingId(habitId);
+    try {
+      if (checked) {
+        await uncheckHabit(habitId);
+      } else {
+        const result = await checkHabit(habitId);
+        setRewardResult(result);
+      }
+    } catch (e) {
+      console.error('[HabitsPage] toggle error:', e);
+      setToast({ visible: true, message: '今天已经打过卡了，明天再来吧' });
+    } finally {
+      setLoadingId(null);
     }
   }, [checkHabit, uncheckHabit]);
 
@@ -64,12 +79,19 @@ export function HabitsPage() {
               >
                 {todayChecked}/{totalHabits}
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium" style={{ color: appTheme.ink }}>今日进度</p>
                 <p className="text-xs" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>
                   {todayChecked === totalHabits ? '全部完成！继续加油' : `还有 ${totalHabits - todayChecked} 个习惯待打卡`}
                 </p>
               </div>
+              <button
+                onClick={() => { setEditing(null); setShowForm(true); }}
+                className="hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors"
+                style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.12)}`, color: appTheme.primary }}
+              >
+                <Plus size={16} /> 新建
+              </button>
             </div>
           )}
 
@@ -84,12 +106,14 @@ export function HabitsPage() {
                   onToggle={handleToggle}
                   onEdit={(h) => { setEditing(h); setShowForm(true); }}
                   onViewDetail={(h) => setViewingDetail(h)}
+                  loading={loadingId === habit.id}
                 />
               ))}
             </div>
           ) : (
             <div className="rounded-[18px] p-12 text-center space-y-4" style={{ backgroundColor: appTheme.canvas, border: `0.5px solid ${appTheme.hairline}` }}>
               <p className="text-lg" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>还没有习惯</p>
+              <p className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.25)}` }}>种下第一个习惯的种子，每天给它浇水，看它慢慢长大。</p>
               <button
                 onClick={() => { setEditing(null); setShowForm(true); }}
                 className="px-5 py-2.5 rounded-full text-sm font-medium inline-flex items-center gap-2"
@@ -102,11 +126,11 @@ export function HabitsPage() {
         </div>
       </div>
 
-      {/* FAB */}
+      {/* FAB — mobile/tablet only */}
       {totalHabits > 0 && (
         <button
           onClick={() => { setEditing(null); setShowForm(true); }}
-          className="fixed bottom-[72px] right-8 z-30 w-14 h-14 rounded-full text-white active:scale-95 transition-all flex items-center justify-center"
+          className="fixed bottom-[72px] right-8 z-30 w-14 h-14 rounded-full text-white active:scale-95 transition-all flex items-center justify-center lg:hidden"
           style={{ backgroundColor: appTheme.primary }}
         >
           <Plus size={28} strokeWidth={2.5} />
@@ -130,6 +154,20 @@ export function HabitsPage() {
           onClose={() => setViewingDetail(null)}
         />
       )}
+
+      {/* 打卡奖励弹窗 */}
+      <RewardPopup
+        result={rewardResult}
+        onClose={() => setRewardResult(null)}
+        title="打卡完成"
+      />
+
+      {/* Toast 提示 */}
+      <Toast
+        message={toast.message}
+        visible={toast.visible}
+        onClose={() => setToast({ visible: false, message: '' })}
+      />
     </PageContainer>
   );
 }

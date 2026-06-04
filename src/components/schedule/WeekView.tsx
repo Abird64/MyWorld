@@ -1,12 +1,13 @@
 import type { Schedule } from '@/types/schedule';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
-import { EventBlock } from './EventBlock';
+import { EventBlock, getContrastColor } from './EventBlock';
 import {
   HOUR_START,
   HOUR_END,
   hourToPercent,
   layoutOverlappingEvents,
 } from '@/utils/scheduleLayout';
+import { CurrentTimeLine } from './CurrentTimeLine';
 
 
 interface WeekViewProps {
@@ -117,7 +118,7 @@ export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) 
                     style={{
                       backgroundColor: isTaskSync ? 'transparent' : bgColor,
                       border: isTaskSync ? `1px dashed ${bgColor}` : 'none',
-                      color: isTaskSync ? bgColor : appTheme.onPrimary,
+                      color: isTaskSync ? bgColor : getContrastColor(bgColor),
                       opacity: isTaskSync ? 0.7 : 1,
                     }}
                     onClick={() => onEventClick(event)}
@@ -285,27 +286,7 @@ export function WeekView({ weekStart, schedules, onEventClick }: WeekViewProps) 
 
         </div>
       </div>
-      </div>{/* end min-w wrapper */}
-    </div>
-  );
-}
-
-/** 当前时间红色指示线 */
-function CurrentTimeLine() {
-  const now = new Date();
-  const hour = now.getHours() + now.getMinutes() / 60;
-
-  if (hour < HOUR_START || hour > HOUR_END) return null;
-
-  const top = hourToPercent(hour);
-
-  return (
-    <div
-      className="absolute w-full left-0 z-20 pointer-events-none"
-      style={{ top: `${top}%` }}
-    >
-      <div className="w-full h-[2px] bg-red-500" />
-      <div className="absolute -left-1 -top-[4px] w-[10px] h-[10px] rounded-full bg-red-500" />
+      </div>
     </div>
   );
 }

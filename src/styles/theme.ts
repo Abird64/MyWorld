@@ -218,6 +218,7 @@ export const xpColors = {
 
 /** 常用语义色（从 SKILL_COLORS 提取，便于直接引用） */
 export const FOCUS_COLOR = SKILL_COLORS.focus.hex;      // #3A8FB7 专注蓝
+export const BREAK_COLOR = SKILL_COLORS.vitality.hex;     // #4B7F52 休息绿（复用生命力色）
 export const CREATIVITY_COLOR = SKILL_COLORS.creativity.hex; // #E8B959 创造金
 export const TASKS_COLOR = '#5856d6';                    // 任务紫（UI 语义色）
 

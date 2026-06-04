@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, X, Trash2, Loader2, CircleCheck, Search, Send, Pencil, Zap } from 'lucide-react';
+import { Check, X, Trash2, Loader2, CircleCheck, Search, Send, Pencil, Zap, Sparkles } from 'lucide-react';
 import type { ToolCallDef } from '@/types/ai';
 import { parseGenericArgs } from '@/utils/aiParsers';
 import { TOOL_LABELS } from '@/utils/aiLabels';
@@ -45,6 +45,8 @@ export function ToolCallCard(props: ToolCallCardProps) {
       return <UpdateCard {...props} info={info} />;
     case '查询':
       return <QueryCard {...props} info={info} />;
+    case '奖励':
+      return <RewardCard {...props} info={info} />;
     default:
       return <GenericCard {...props} info={info} />;
   }
@@ -217,6 +219,49 @@ function QueryCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info 
           isExecuting={isExecuting} onConfirm={onConfirm} onCancel={onCancel}
           onModifyClick={onModify ? () => setModifyMode(true) : undefined}
           confirmLabel="执行" confirmColor={info?.color || '#6B9BD2'}
+        />
+      )}
+    </div>
+  );
+}
+
+// ========== 分组卡片：萤火奖励 ==========
+
+function RewardCard({ toolCall, isExecuting, onConfirm, onCancel, onModify, info }: ToolCallCardProps) {
+  const appTheme = useAppTheme();
+  const params = parseGenericArgs(toolCall);
+  const [modifyMode, setModifyMode] = useState(false);
+
+  const amount = (params.amount as number) || 0;
+  const reason = (params.reason as string) || '';
+  const category = (params.category as string) || '';
+
+  const goldColor = info?.color || '#D4A843';
+
+  return (
+    <div className="mt-2 rounded-xl border overflow-hidden" style={{ backgroundColor: appTheme.canvas, borderColor: `${withAlpha(goldColor, 0.25)}` }}>
+      <CardHeader icon={<Sparkles size={12} />} color={goldColor} title={info?.label || '萤火奖励'} />
+      <div className="px-4 py-3 space-y-2.5">
+        {category ? (
+          <div className="inline-block px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: withAlpha(goldColor, 0.12), color: goldColor }}>
+            {category}
+          </div>
+        ) : null}
+        {reason ? (
+          <p className="text-sm leading-relaxed" style={{ color: appTheme.ink }}>{reason}</p>
+        ) : null}
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-2xl font-bold" style={{ color: goldColor, fontFamily: 'var(--font-display, system-ui)' }}>+{amount}</span>
+          <span className="text-xs" style={{ color: appTheme.inkMuted48 }}>萤火</span>
+        </div>
+      </div>
+      {modifyMode ? (
+        <CardModifyInput onSubmit={(text) => { onModify?.(text); setModifyMode(false); }} onBack={() => setModifyMode(false)} />
+      ) : (
+        <CardActions
+          isExecuting={isExecuting} onConfirm={onConfirm} onCancel={onCancel}
+          onModifyClick={onModify ? () => setModifyMode(true) : undefined}
+          confirmLabel="确认奖励" confirmColor={goldColor}
         />
       )}
     </div>

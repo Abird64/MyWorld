@@ -10,6 +10,7 @@ const SOURCE_META: Record<string, { icon: string; name: string; color: string }>
   habit: { icon: '↻', name: '习惯打卡', color: '#34c759' },
   journal: { icon: '✎', name: '写日记', color: '#ff2d55' },
   ai_chat: { icon: '✦', name: 'AI 对话', color: '#0071e3' },
+  pomodoro: { icon: '⏱', name: '番茄钟', color: '#ff9500' },
 };
 
 export function SourceBreakdown({ sources }: SourceBreakdownProps) {
@@ -42,7 +43,7 @@ export function SourceBreakdown({ sources }: SourceBreakdownProps) {
               <div className="flex items-baseline justify-between mb-1">
                 <span className="text-sm" style={{ color: appTheme.ink }}>{meta.name}</span>
                 <span className="text-xs font-medium" style={{ color: appTheme.inkMuted80 }}>
-                  +{src.total_xp.toLocaleString()} XP
+                  +{src.total_xp.toLocaleString()} 经验
                 </span>
               </div>
               <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.08)}` }}>

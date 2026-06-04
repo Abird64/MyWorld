@@ -31,19 +31,35 @@ export interface TestConnectionParams {
   r2AccessKey: string;
   r2SecretKey: string;
   r2Bucket: string;
+  cosSecretId: string;
+  cosSecretKey: string;
+  cosBucket: string;
+  cosRegion: string;
+  ossAccessKeyId: string;
+  ossAccessKeySecret: string;
+  ossBucket: string;
+  ossRegion: string;
 }
 
-/** 测试连接（支持 WebDAV 和 R2） */
+/** 测试连接（支持 WebDAV、R2、COS 和 OSS） */
 export async function testConnection(params: TestConnectionParams): Promise<string> {
   return tauriInvoke<string>('sync_test_connection', {
-    storage_type: params.storageType,
+    storageType: params.storageType,
     url: params.url,
     username: params.username,
     password: params.password,
-    r2_account_id: params.r2AccountId,
-    r2_access_key: params.r2AccessKey,
-    r2_secret_key: params.r2SecretKey,
-    r2_bucket: params.r2Bucket,
+    r2AccountId: params.r2AccountId,
+    r2AccessKey: params.r2AccessKey,
+    r2SecretKey: params.r2SecretKey,
+    r2Bucket: params.r2Bucket,
+    cosSecretId: params.cosSecretId,
+    cosSecretKey: params.cosSecretKey,
+    cosBucket: params.cosBucket,
+    cosRegion: params.cosRegion,
+    ossAccessKeyId: params.ossAccessKeyId,
+    ossAccessKeySecret: params.ossAccessKeySecret,
+    ossBucket: params.ossBucket,
+    ossRegion: params.ossRegion,
   });
 }
 

@@ -149,7 +149,9 @@ pub fn run() {
             commands::wish_commands::get_pity_progress,
             commands::wish_commands::list_draws,
             commands::wish_commands::draw_wish,
+            commands::wish_commands::claim_pity_wish,
             commands::wish_commands::redeem_wish,
+            commands::glow_ledger_commands::list_glow_ledger,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

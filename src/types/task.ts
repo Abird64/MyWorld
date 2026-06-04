@@ -28,6 +28,7 @@ export interface CreateTaskInput {
   deadline?: string;
   estimated_minutes?: number;
   tags?: string;
+  glow_reward?: number;
 }
 
 /** 更新任务的输入参数 */

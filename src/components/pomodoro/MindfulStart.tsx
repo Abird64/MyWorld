@@ -145,7 +145,7 @@ export function MindfulStart({ open, onClose, taskTitle, taskDescription, taskId
 
             {/* 步骤列表 */}
             <div className="space-y-3 mb-6">
-              {steps.map((step, _i) => (
+              {steps.map((step) => (
                 <button
                   key={step.id}
                   onClick={() => handleToggle(step.id)}

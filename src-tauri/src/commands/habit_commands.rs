@@ -119,9 +119,9 @@ pub fn check_habit(
     state: State<'_, DbState>,
     input: CheckHabitInput,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.conn.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
-    let record = habit_repo::check_habit(&conn, &input.habit_id, input.date.as_deref(), input.note.as_deref())?;
-    serde_json::to_value(record).map_err(|e| e.to_string())
+    let mut conn = state.conn.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+    let result = habit_repo::check_habit(&mut conn, &input.habit_id, input.date.as_deref(), input.note.as_deref())?;
+    serde_json::to_value(result).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

@@ -16,6 +16,7 @@ export interface CreateTaskData {
   scheduled_at?: string;
   deadline?: string;
   estimated_minutes?: number;
+  glow_reward?: number;
   tags?: string;
   skillXps: Record<string, number>;
 }
@@ -25,6 +26,7 @@ export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProp
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('');
   const [estimatedMinutes, setEstimatedMinutes] = useState('');
+  const [glowReward, setGlowReward] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [expanded, setExpanded] = useState(false);
@@ -49,6 +51,7 @@ export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProp
     setScheduledAt('');
     setDeadline('');
     setEstimatedMinutes('');
+    setGlowReward('');
     setTags([]);
     setTagInput('');
     setSkillXps({});
@@ -67,6 +70,7 @@ export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProp
         scheduled_at: scheduledAt || undefined,
         deadline: deadline || undefined,
         estimated_minutes: estimatedMinutes ? parseInt(estimatedMinutes) : undefined,
+        glow_reward: glowReward ? parseInt(glowReward) : undefined,
         tags: tags.length > 0 ? JSON.stringify(tags) : undefined,
         skillXps,
       });
@@ -79,7 +83,7 @@ export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProp
 
   // 动态颜色
   const txt = appTheme.ink;
-  const txtHint = withAlpha(txt, 0.2);
+  const txtHint = withAlpha(txt, 0.35);
   const txtLight = withAlpha(txt, 0.3);
   const txtMid = withAlpha(txt, 0.5);
   const txtBody = withAlpha(txt, 0.7);
@@ -193,7 +197,7 @@ export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProp
                   className="time-input text-sm w-20" style={{ color: txt }}
                 />
               </div>
-              <div className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 ml-auto" style={{ backgroundColor: bgSubtle }}>
+              <div className="flex items-center gap-1.5 rounded-xl px-3 py-2.5" style={{ backgroundColor: bgSubtle }}>
                 <span className="text-sm" style={{ color: txtLight }}>预计</span>
                 <input
                   type="number"
@@ -205,6 +209,18 @@ export function CreateTaskModal({ show, onClose, onCreate }: CreateTaskModalProp
                   style={{ color: txt }}
                 />
                 <span className="text-sm" style={{ color: txtLight }}>分钟</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 ml-auto" style={{ backgroundColor: bgSubtle }}>
+                <span className="text-sm" style={{ color: txtLight }}>萤火</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={glowReward}
+                  onChange={(e) => setGlowReward(e.target.value)}
+                  placeholder="自动"
+                  className="w-12 text-sm bg-transparent text-center focus:outline-none"
+                  style={{ color: txt }}
+                />
               </div>
             </div>
 

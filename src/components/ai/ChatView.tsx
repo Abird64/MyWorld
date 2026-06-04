@@ -119,12 +119,15 @@ export function ChatView({
   const [isInputFocused, setIsInputFocused] = useState(false);
   const emptyStateRef = useRef<HTMLDivElement>(null);
 
-  // 加载锦囊（内置 + 自定义）
+  // 加载锦囊（localStorage 为单一来源，首次已由设置页播种默认值）
   const allPrompts = useMemo(() => {
     try {
       const raw = localStorage.getItem('lantern_custom_prompts');
-      const custom: PromptTemplate[] = raw ? JSON.parse(raw) : [];
-      return [...BUILTIN_PROMPTS, ...custom].sort((a, b) => a.sort_order - b.sort_order);
+      if (raw) {
+        const prompts: PromptTemplate[] = JSON.parse(raw);
+        return prompts.sort((a, b) => a.sort_order - b.sort_order);
+      }
+      return [...BUILTIN_PROMPTS];
     } catch {
       return [...BUILTIN_PROMPTS];
     }

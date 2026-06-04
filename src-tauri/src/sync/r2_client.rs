@@ -163,7 +163,12 @@ impl R2Client {
         let timestamp = Utc::now();
         let sig_headers = self.sign_request(method.as_str(), url, query, extra_headers, body, &timestamp);
 
-        let mut req = self.client.request(method, url);
+        let full_url = if query.is_empty() {
+            url.to_string()
+        } else {
+            format!("{}?{}", url, query)
+        };
+        let mut req = self.client.request(method, &full_url);
         for (k, v) in &sig_headers {
             req = req.header(k.as_str(), v.as_str());
         }
@@ -262,7 +267,7 @@ impl RemoteStorage for R2Client {
 // === 辅助函数 ===
 
 /// 规范化路径为 S3 key 前缀（确保以 / 结尾、不以 / 开头）
-fn normalize_prefix(path: &str) -> String {
+pub(crate) fn normalize_prefix(path: &str) -> String {
     let p = path.trim_matches('/');
     if p.is_empty() {
         return String::new();
@@ -271,31 +276,31 @@ fn normalize_prefix(path: &str) -> String {
 }
 
 /// 规范化路径为 S3 key（不以 / 开头）
-fn normalize_key(path: &str) -> String {
+pub(crate) fn normalize_key(path: &str) -> String {
     path.trim_start_matches('/').to_string()
 }
 
 /// SHA-256 哈希
-fn sha256(data: &[u8]) -> Vec<u8> {
+pub(crate) fn sha256(data: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(data);
     hasher.finalize().to_vec()
 }
 
 /// HMAC-SHA256
-fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
+pub(crate) fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
     let mut mac = HmacSha256::new_from_slice(key).expect("HMAC key length should be valid");
     mac.update(data);
     mac.finalize().into_bytes().to_vec()
 }
 
 /// 十六进制编码
-fn hex_encode(bytes: &[u8]) -> String {
+pub(crate) fn hex_encode(bytes: &[u8]) -> String {
     hex::encode(bytes)
 }
 
 /// URL 编码（S3 查询字符串用，保留 = 和 &）
-fn urlencoding(s: &str) -> String {
+pub(crate) fn urlencoding(s: &str) -> String {
     let mut result = String::new();
     for c in s.chars() {
         match c {
@@ -315,7 +320,7 @@ fn urlencoding(s: &str) -> String {
 }
 
 /// 解析 ListObjectsV2 XML 响应
-fn parse_list_objects_response(xml: &str, prefix: &str) -> Result<Vec<RemoteFile>, String> {
+pub(crate) fn parse_list_objects_response(xml: &str, prefix: &str) -> Result<Vec<RemoteFile>, String> {
     use quick_xml::events::Event;
     use quick_xml::Reader;
 

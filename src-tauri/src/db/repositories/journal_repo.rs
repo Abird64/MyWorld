@@ -400,6 +400,20 @@ pub fn complete_diary_with_xp(
     )
     .map_err(|e| format!("Failed to add diary glow reward: {}", e))?;
 
+    // 记录萤火账本
+    {
+        let balance_after: i32 = conn
+            .query_row("SELECT glow_amount FROM glow_balances WHERE id = 'user'", [], |row| row.get(0))
+            .unwrap_or(0);
+        let ledger_id = gen_id();
+        conn.execute(
+            "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+             VALUES (?1, 'glow', 20, ?2, 'diary_settle', ?3, ?4, ?5)",
+            params![ledger_id, balance_after, format!("「{}」日省结算", date), date, time],
+        )
+        .map_err(|e| format!("Failed to record diary ledger: {}", e))?;
+    }
+
     // 创建虚拟任务
     let task_id = gen_id();
 

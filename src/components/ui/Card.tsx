@@ -16,6 +16,8 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         : 'p-6'
       : '';
 
+    const { style: incomingStyle, ...restProps } = props;
+
     return (
       <div
         ref={ref}
@@ -24,9 +26,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
           backgroundColor: appTheme.canvas,
           borderRadius: 18,
           border: `0.5px solid ${appTheme.hairline}`,
-          ...(props.style || {}),
+          ...(incomingStyle || {}),
         }}
-        {...props}
+        {...restProps}
       >
         {children}
       </div>

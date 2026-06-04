@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Wish, WishDraw, GlowBalance, CreateWishInput, UpdateWishInput, WishLevel, PityProgress } from '@/types/wish';
+import type { Wish, WishDraw, GlowBalance, CreateWishInput, UpdateWishInput, WishLevel, PityProgress, GlowLedgerEntry, GlowLedgerResult, DrawResult } from '@/types/wish';
 import * as wishService from '@/services/wishService';
 
 interface WishState {
@@ -8,6 +8,8 @@ interface WishState {
   draws: WishDraw[];
   balance: GlowBalance | null;
   pityProgress: Record<'micro' | 'shimmer', PityProgress | null>;
+  ledger: GlowLedgerEntry[];
+  ledgerTotal: number;
 
   // UI State
   isLoading: boolean;
@@ -15,7 +17,7 @@ interface WishState {
   selectedLevel: WishLevel | null;
   showAddModal: boolean;
   editingWish: Wish | null;
-  activeTab: 'wishes' | 'history' | 'shop';
+  activeTab: 'wishes' | 'history' | 'ledger';
 
   // Actions
   fetchWishes: () => Promise<void>;
@@ -26,22 +28,18 @@ interface WishState {
   updateWish: (input: UpdateWishInput) => Promise<void>;
   deleteWish: (id: string) => Promise<void>;
   markAchieved: (id: string) => Promise<void>;
-  draw: (ticketType: 'micro' | 'shimmer') => Promise<{
-    success: boolean;
-    wish: Wish | null;
-    is_pity: boolean;
-    pity_count: number;
-    message: string;
-  }>;
+  draw: (ticketType: 'micro' | 'shimmer') => Promise<DrawResult>;
+  claimPityWish: (ticketType: 'micro' | 'shimmer', wishId: string) => Promise<DrawResult>;
   buyTickets: (ticketType: 'micro' | 'shimmer', count: number) => Promise<void>;
   redeemWish: (wishId: string) => Promise<void>;
   addGlow: (amount: number, source: string) => Promise<void>;
+  fetchLedger: (assetType?: 'glow' | 'micro_ticket' | 'shimmer_ticket', limit?: number, offset?: number) => Promise<void>;
 
   // UI Actions
   setSelectedLevel: (level: WishLevel | null) => void;
   setShowAddModal: (show: boolean) => void;
   setEditingWish: (wish: Wish | null) => void;
-  setActiveTab: (tab: 'wishes' | 'history' | 'shop') => void;
+  setActiveTab: (tab: 'wishes' | 'history' | 'ledger') => void;
   clearError: () => void;
 }
 
@@ -59,6 +57,8 @@ export const useWishStore = create<WishState>((set, get) => ({
   draws: [],
   balance: null,
   pityProgress: { micro: null, shimmer: null },
+  ledger: [],
+  ledgerTotal: 0,
   isLoading: false,
   error: null,
   selectedLevel: null,
@@ -165,11 +165,29 @@ export const useWishStore = create<WishState>((set, get) => ({
       await get().fetchBalance();
       await get().fetchDraws();
       await get().fetchPityProgress(ticketType);
+      await get().fetchWishes();
       set({ isLoading: false });
       return result;
     } catch (e) {
       set({ error: String(e), isLoading: false });
-      return { success: false, wish: null, is_pity: false, pity_count: 0, message: String(e) };
+      return { success: false, wish: null, is_pity: false, pity_count: 0, pity_threshold: 0, pity_available: false, message: String(e) };
+    }
+  },
+
+  // Claim pity (self-select)
+  claimPityWish: async (ticketType, wishId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await wishService.claimPityWish(ticketType, wishId);
+      await get().fetchBalance();
+      await get().fetchDraws();
+      await get().fetchPityProgress(ticketType);
+      await get().fetchWishes();
+      set({ isLoading: false });
+      return result;
+    } catch (e) {
+      set({ error: String(e), isLoading: false });
+      throw e;
     }
   },
 
@@ -207,6 +225,20 @@ export const useWishStore = create<WishState>((set, get) => ({
       await get().fetchBalance();
     } catch (e) {
       console.error('Failed to add glow:', e);
+    }
+  },
+
+  // Fetch ledger
+  fetchLedger: async (assetType, limit = 50, offset = 0) => {
+    try {
+      const result: GlowLedgerResult = await wishService.listGlowLedger({
+        assetType,
+        limit,
+        offset,
+      });
+      set({ ledger: result.entries, ledgerTotal: result.total });
+    } catch (e) {
+      console.error('Failed to fetch ledger:', e);
     }
   },
 

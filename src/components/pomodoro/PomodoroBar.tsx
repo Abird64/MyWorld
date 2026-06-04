@@ -1,9 +1,7 @@
 import { Timer, Coffee, Pause, Play } from 'lucide-react';
 import { usePomodoroStore } from '@/stores/pomodoroStore';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
-import { FOCUS_COLOR } from '@/styles/theme';
-
-const BREAK_COLOR = '#4B7F52';
+import { FOCUS_COLOR, BREAK_COLOR } from '@/styles/theme';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -17,29 +15,40 @@ interface PomodoroBarProps {
 
 export function PomodoroBar({ onClick }: PomodoroBarProps) {
   const appTheme = useAppTheme();
-  const { phase, isPaused, elapsedSeconds, targetSeconds, boundTaskTitle, pause, resume } = usePomodoroStore();
+  const { phase, isPaused, elapsedSeconds, targetSeconds, boundTaskTitle, countUp, pause, resume } = usePomodoroStore();
 
   if (phase === 'idle') return null;
 
   const isFocus = phase === 'focus';
   const color = isFocus ? FOCUS_COLOR : BREAK_COLOR;
   const remaining = Math.max(0, targetSeconds - elapsedSeconds);
+  const displaySeconds = countUp ? elapsedSeconds : remaining;
   const progress = targetSeconds > 0 ? elapsedSeconds / targetSeconds : 0;
 
   return (
     <div
-      className="flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-all"
+      role="button"
+      tabIndex={0}
+      aria-label={isFocus ? `专注中：${formatTime(displaySeconds)}，${boundTaskTitle || '无关联任务'}` : `休息中：${formatTime(displaySeconds)}`}
+      className="flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
       style={{
-        backgroundColor: appTheme.surfaceDark,
+        backgroundColor: appTheme.canvasParchment,
         borderBottom: `1px solid ${withAlpha(color, 0.2)}`,
+        outlineColor: color,
       }}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
     >
       {/* 图标 */}
       {isFocus ? (
-        <Timer size={14} style={{ color }} />
+        <Timer size={14} style={{ color }} aria-hidden="true" />
       ) : (
-        <Coffee size={14} style={{ color }} />
+        <Coffee size={14} style={{ color }} aria-hidden="true" />
       )}
 
       {/* 进度条 */}
@@ -61,7 +70,7 @@ export function PomodoroBar({ onClick }: PomodoroBarProps) {
         className="text-xs font-medium tabular-nums min-w-[36px] text-right"
         style={{ color }}
       >
-        {formatTime(remaining)}
+        {formatTime(displaySeconds)}
       </span>
 
       {/* 任务名 */}
@@ -80,10 +89,11 @@ export function PomodoroBar({ onClick }: PomodoroBarProps) {
           e.stopPropagation();
           isPaused ? resume() : pause();
         }}
-        className="p-1 rounded-full transition-colors"
-        style={{ color }}
+        aria-label={isPaused ? '继续计时' : '暂停计时'}
+        className="p-1 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+        style={{ color, outlineColor: color }}
       >
-        {isPaused ? <Play size={14} /> : <Pause size={14} />}
+        {isPaused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
       </button>
     </div>
   );

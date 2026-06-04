@@ -6,12 +6,13 @@ import { useAppTheme, useThemeMode, useThemeHelpers, withAlpha } from '@/stores/
 import { PageContainer } from '@/components/layout';
 import { BUILTIN_PROMPTS } from '@/utils/builtinPrompts';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
-import { Plus, Pencil, Trash2, X, Check, Lock, Download, AlertTriangle, Cloud, Loader2, RefreshCw, Wifi, WifiOff, ChevronDown, Monitor, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, Download, AlertTriangle, Cloud, Loader2, RefreshCw, Wifi, WifiOff, ChevronDown, Monitor, Search } from 'lucide-react';
 import * as scheduleService from '@/services/scheduleService';
 import { useSyncStore } from '@/stores/syncStore';
 import { invoke } from '@tauri-apps/api/core';
 import * as syncService from '@/services/syncService';
 import { SyncProgress } from '@/components/sync';
+import { Select } from '@/components/ui/Select';
 
 const AI_PROVIDERS = [
   { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1' },
@@ -56,8 +57,19 @@ export function SettingsPage() {
   const syncStore = useSyncStore();
   const [appVersion, setAppVersion] = useState('…');
 
+  // Accordion
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['appearance']));
+
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
   // 同步表单
-  const [syncStorageType, setSyncStorageType] = useState<'webdav' | 'r2' | 'lan'>('webdav');
+  const [syncStorageType, setSyncStorageType] = useState<'webdav' | 'r2' | 'cos' | 'oss' | 'lan'>('webdav');
   const [syncFormUrl, setSyncFormUrl] = useState('');
   const [syncFormUser, setSyncFormUser] = useState('');
   const [syncFormPass, setSyncFormPass] = useState('');
@@ -65,6 +77,14 @@ export function SettingsPage() {
   const [r2AccessKey, setR2AccessKey] = useState('');
   const [r2SecretKey, setR2SecretKey] = useState('');
   const [r2Bucket, setR2Bucket] = useState('');
+  const [cosSecretId, setCosSecretId] = useState('');
+  const [cosSecretKey, setCosSecretKey] = useState('');
+  const [cosBucket, setCosBucket] = useState('');
+  const [cosRegion, setCosRegion] = useState('');
+  const [ossAccessKeyId, setOssAccessKeyId] = useState('');
+  const [ossAccessKeySecret, setOssAccessKeySecret] = useState('');
+  const [ossBucket, setOssBucket] = useState('');
+  const [ossRegion, setOssRegion] = useState('');
   const [syncTestResult, setSyncTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [syncTesting, setSyncTesting] = useState(false);
 
@@ -94,6 +114,7 @@ export function SettingsPage() {
   const [editForm, setEditForm] = useState({ title: '', prompt: '' });
   const [isAdding, setIsAdding] = useState(false);
   const [addForm, setAddForm] = useState({ title: '', prompt: '' });
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const handleTestConnection = async () => {
     if (syncStorageType === 'lan') {
@@ -118,6 +139,16 @@ export function SettingsPage() {
         setSyncTestResult({ ok: false, msg: '请填写完整的 R2 配置' });
         return;
       }
+    } else if (syncStorageType === 'cos') {
+      if (!cosSecretId || !cosSecretKey || !cosBucket || !cosRegion) {
+        setSyncTestResult({ ok: false, msg: '请填写完整的 COS 配置' });
+        return;
+      }
+    } else if (syncStorageType === 'oss') {
+      if (!ossAccessKeyId || !ossAccessKeySecret || !ossBucket || !ossRegion) {
+        setSyncTestResult({ ok: false, msg: '请填写完整的 OSS 配置' });
+        return;
+      }
     } else {
       if (!syncFormUrl || !syncFormUser || !syncFormPass) {
         setSyncTestResult({ ok: false, msg: '请填写完整的 WebDAV 配置' });
@@ -136,6 +167,14 @@ export function SettingsPage() {
       await settings.set('sync.r2.access_key', r2AccessKey);
       await settings.set('sync.r2.secret_key', r2SecretKey);
       await settings.set('sync.r2.bucket', r2Bucket);
+      await settings.set('sync.cos.secret_id', cosSecretId);
+      await settings.set('sync.cos.secret_key', cosSecretKey);
+      await settings.set('sync.cos.bucket', cosBucket);
+      await settings.set('sync.cos.region', cosRegion);
+      await settings.set('sync.oss.access_key_id', ossAccessKeyId);
+      await settings.set('sync.oss.access_key_secret', ossAccessKeySecret);
+      await settings.set('sync.oss.bucket', ossBucket);
+      await settings.set('sync.oss.region', ossRegion);
       const msg = await syncStore.testConnection({
         storageType: syncStorageType,
         url: syncFormUrl,
@@ -145,6 +184,14 @@ export function SettingsPage() {
         r2AccessKey,
         r2SecretKey,
         r2Bucket,
+        cosSecretId,
+        cosSecretKey,
+        cosBucket,
+        cosRegion,
+        ossAccessKeyId,
+        ossAccessKeySecret,
+        ossBucket,
+        ossRegion,
       });
       setSyncTestResult({ ok: true, msg });
     } catch (e) {
@@ -167,6 +214,14 @@ export function SettingsPage() {
       await settings.set('sync.r2.access_key', r2AccessKey);
       await settings.set('sync.r2.secret_key', r2SecretKey);
       await settings.set('sync.r2.bucket', r2Bucket);
+      await settings.set('sync.cos.secret_id', cosSecretId);
+      await settings.set('sync.cos.secret_key', cosSecretKey);
+      await settings.set('sync.cos.bucket', cosBucket);
+      await settings.set('sync.cos.region', cosRegion);
+      await settings.set('sync.oss.access_key_id', ossAccessKeyId);
+      await settings.set('sync.oss.access_key_secret', ossAccessKeySecret);
+      await settings.set('sync.oss.bucket', ossBucket);
+      await settings.set('sync.oss.region', ossRegion);
     }
     await syncService.setSyncEnabled(true);
     await syncStore.syncNow();
@@ -182,6 +237,14 @@ export function SettingsPage() {
       await settings.set('sync.r2.access_key', r2AccessKey);
       await settings.set('sync.r2.secret_key', r2SecretKey);
       await settings.set('sync.r2.bucket', r2Bucket);
+      await settings.set('sync.cos.secret_id', cosSecretId);
+      await settings.set('sync.cos.secret_key', cosSecretKey);
+      await settings.set('sync.cos.bucket', cosBucket);
+      await settings.set('sync.cos.region', cosRegion);
+      await settings.set('sync.oss.access_key_id', ossAccessKeyId);
+      await settings.set('sync.oss.access_key_secret', ossAccessKeySecret);
+      await settings.set('sync.oss.bucket', ossBucket);
+      await settings.set('sync.oss.region', ossRegion);
     }
     setSyncTestResult({ ok: true, msg: '配置已保存' });
     setTimeout(() => setSyncTestResult(null), 2000);
@@ -251,7 +314,7 @@ export function SettingsPage() {
   // 同步表单从 settings 初始化
   useEffect(() => {
     if (settings.loaded) {
-      setSyncStorageType((settings.get('sync.storage_type', 'webdav') as 'webdav' | 'r2' | 'lan'));
+      setSyncStorageType((settings.get('sync.storage_type', 'webdav') as 'webdav' | 'r2' | 'cos' | 'oss' | 'lan'));
       setSyncFormUrl(settings.get('sync.url', 'https://dav.jianguoyun.com/dav/'));
       setSyncFormUser(settings.get('sync.username', ''));
       setSyncFormPass(settings.get('sync.password', ''));
@@ -259,6 +322,14 @@ export function SettingsPage() {
       setR2AccessKey(settings.get('sync.r2.access_key', ''));
       setR2SecretKey(settings.get('sync.r2.secret_key', ''));
       setR2Bucket(settings.get('sync.r2.bucket', ''));
+      setCosSecretId(settings.get('sync.cos.secret_id', ''));
+      setCosSecretKey(settings.get('sync.cos.secret_key', ''));
+      setCosBucket(settings.get('sync.cos.bucket', ''));
+      setCosRegion(settings.get('sync.cos.region', ''));
+      setOssAccessKeyId(settings.get('sync.oss.access_key_id', ''));
+      setOssAccessKeySecret(settings.get('sync.oss.access_key_secret', ''));
+      setOssBucket(settings.get('sync.oss.bucket', ''));
+      setOssRegion(settings.get('sync.oss.region', ''));
       // 加载 LAN 已选设备
       const lanPeerIp = settings.get('sync.lan.peer_ip', '');
       if (lanPeerIp) {
@@ -279,13 +350,29 @@ export function SettingsPage() {
   const loadCustomPrompts = () => {
     try {
       const raw = localStorage.getItem('lantern_custom_prompts');
-      if (raw) setCustomPrompts(JSON.parse(raw));
+      if (raw) {
+        setCustomPrompts(JSON.parse(raw));
+      } else {
+        // 首次加载：用内置锦囊初始化
+        const seed = BUILTIN_PROMPTS.map((p, i) => ({ ...p, sort_order: i + 1 }));
+        localStorage.setItem('lantern_custom_prompts', JSON.stringify(seed));
+        setCustomPrompts(seed);
+      }
     } catch { /* ignore */ }
   };
 
   const persistCustomPrompts = (prompts: PromptTemplate[]) => {
     localStorage.setItem('lantern_custom_prompts', JSON.stringify(prompts));
     setCustomPrompts(prompts);
+  };
+
+  const handleRestoreDefaults = () => {
+    const defaults = BUILTIN_PROMPTS.map((p, i) => ({ ...p, sort_order: i + 1 }));
+    persistCustomPrompts(defaults);
+    setEditingId(null);
+    setIsAdding(false);
+    setToast({ message: '已恢复默认快捷发送', type: 'success' });
+    setTimeout(() => setToast(null), 2500);
   };
 
   const handleDeleteCustom = (id: string) => {
@@ -337,7 +424,7 @@ export function SettingsPage() {
         <div className="w-full max-w-[800px] space-y-5">
 
           {/* ===== 外观 ===== */}
-          <Section title="外观" styles={s}>
+          <Section sectionKey="appearance" title="外观" styles={s} expanded={openSections.has('appearance')} onToggle={() => toggleSection('appearance')}>
             <div className="flex items-center justify-between">
               <span className="text-base" style={{ color: s.textSub }}>主题模式</span>
               <div className="flex rounded-full p-0.5" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.05)}` }}>
@@ -363,7 +450,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ===== 通知设置 ===== */}
-          <Section title="通知设置" styles={s}>
+          <Section sectionKey="notifications" title="通知设置" styles={s} expanded={openSections.has('notifications')} onToggle={() => toggleSection('notifications')}>
             <ToggleRow
               label="任务提醒"
               checked={get('notification.task_reminder') === 'true'}
@@ -379,7 +466,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ===== 番茄钟设置 ===== */}
-          <Section title="番茄钟" styles={s}>
+          <Section sectionKey="pomodoro" title="番茄钟" styles={s} expanded={openSections.has('pomodoro')} onToggle={() => toggleSection('pomodoro')}>
             <InputRow
               label="专注时长（分钟）"
               value={get('pomodoro_focus_minutes', '25')}
@@ -410,34 +497,19 @@ export function SettingsPage() {
           </Section>
 
           {/* ===== AI 助手设置 ===== */}
-          <Section title="AI 助手设置" styles={s}>
+          <Section sectionKey="ai" title="AI 助手设置" styles={s} expanded={openSections.has('ai')} onToggle={() => toggleSection('ai')}>
             {/* Provider 选择 */}
             <div className="mb-4">
               <label className="text-sm mb-1.5 block" style={{ color: s.textSub }}>AI 服务提供商</label>
-              <select
+              <Select
                 value={get('ai.provider', 'deepseek')}
-                onChange={(e) => {
-                  const p = AI_PROVIDERS.find(p => p.id === e.target.value);
-                  set('ai.provider', e.target.value);
+                onChange={(v) => {
+                  const p = AI_PROVIDERS.find(p => p.id === v);
+                  set('ai.provider', v);
                   if (p) set('ai.api_url', p.defaultUrl);
                 }}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none cursor-pointer"
-                style={{
-                  backgroundColor: s.inputBg,
-                  border: `1px solid ${s.inputBorder}`,
-                  color: s.text,
-                }}
-              >
-                {AI_PROVIDERS.map((p) => (
-                  <option
-                    key={p.id}
-                    value={p.id}
-                    style={{ backgroundColor: s.card, color: s.text }}
-                  >
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+                options={AI_PROVIDERS.map((p) => ({ value: p.id, label: p.name }))}
+              />
             </div>
 
             {/* API 地址 */}
@@ -470,36 +542,15 @@ export function SettingsPage() {
 
           </Section>
 
-          {/* ===== 锦囊管理 ===== */}
-          <Section title="锦囊管理" styles={s}>
+          {/* ===== 快捷发送 ===== */}
+          <Section sectionKey="prompts" title="快捷发送" styles={s} expanded={openSections.has('prompts')} onToggle={() => toggleSection('prompts')}>
             <p className="text-sm mb-4" style={{ color: s.textSub }}>
-              自定义提灯弹窗中的快捷提示词（锦囊），点击即可自动发送
+              发送给 AI 的快捷提示词，点击即可自动发送
             </p>
 
-            {/* 内置锦囊（只读） */}
-            <div className="mb-5">
-              <h4 className="text-xs mb-2 flex items-center gap-1.5" style={{ color: s.textSub }}>
-                <Lock size={11} /> 系统内置
-              </h4>
-              <div className="space-y-1.5">
-                {BUILTIN_PROMPTS.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg"
-                    style={{ backgroundColor: s.overlay(0.04), border: `1px solid ${s.cardBorder}` }}
-                  >
-                    <span className="text-sm w-20 flex-shrink-0" style={{ color: s.overlay(0.35) }}>{p.title}</span>
-                    <span className="text-xs truncate" style={{ color: s.overlay(0.18) }}>{p.prompt}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 自定义锦囊 */}
             <div>
-              <h4 className="text-xs mb-2" style={{ color: s.textSub }}>我的锦囊</h4>
               {customPrompts.length === 0 && !isAdding ? (
-                <p className="text-xs mb-3" style={{ color: s.overlay(0.18) }}>暂无自定义锦囊</p>
+                <p className="text-xs mb-3" style={{ color: s.overlay(0.38) }}>暂无快捷发送</p>
               ) : (
                 <div className="space-y-1.5 mb-3">
                   {customPrompts.map((p) => (
@@ -548,7 +599,7 @@ export function SettingsPage() {
                         /* 显示模式 */
                         <>
                           <span className="text-sm w-20 flex-shrink-0" style={{ color: s.text }}>{p.title}</span>
-                          <span className="text-xs truncate flex-1" style={{ color: s.overlay(0.3) }}>{p.prompt}</span>
+                          <span className="text-xs truncate flex-1" style={{ color: s.overlay(0.4) }}>{p.prompt}</span>
                           <div className="flex items-center gap-1 flex-shrink-0">
                             <button
                               onClick={() => handleStartEdit(p)}
@@ -560,7 +611,7 @@ export function SettingsPage() {
                               <Pencil size={11} />
                             </button>
                             <button
-                              onClick={() => handleDeleteCustom(p.id)}
+                              onClick={() => setDeleteTargetId(p.id)}
                               className="w-6 h-6 rounded flex items-center justify-center transition-colors"
                               style={{ color: s.overlay(0.3) }}
                               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = s.overlay(0.1))}
@@ -586,7 +637,7 @@ export function SettingsPage() {
                     type="text"
                     value={addForm.title}
                     onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
-                    placeholder="锦囊标题"
+                    placeholder="标题"
                     className="w-full px-2 py-1 rounded text-sm outline-none"
                     style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
                   />
@@ -622,14 +673,26 @@ export function SettingsPage() {
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors"
                   style={{ backgroundColor: s.inputBg, color: s.accent, border: `1px dashed ${withAlpha(s.accent, 0.25)}` }}
                 >
-                  <Plus size={14} /> 添加锦囊
+                  <Plus size={14} /> 添加快捷发送
                 </button>
               )}
+            </div>
+
+            <div className="pt-3 border-t" style={{ borderColor: s.cardBorder }}>
+              <button
+                onClick={handleRestoreDefaults}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm transition-colors"
+                style={{ color: s.textSub, backgroundColor: s.overlay(0.04) }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = s.overlay(0.1))}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = s.overlay(0.04))}
+              >
+                <RefreshCw size={13} /> 恢复默认
+              </button>
             </div>
           </Section>
 
           {/* ===== 数据同步 ===== */}
-          <Section title="数据同步" styles={s}>
+          <Section sectionKey="sync" title="数据同步" styles={s} expanded={openSections.has('sync')} onToggle={() => toggleSection('sync')}>
             <div className="flex items-center gap-2 mb-2">
               <Cloud size={16} style={{ color: s.accent }} />
               <span className="text-sm" style={{ color: s.textSub }}>
@@ -652,9 +715,11 @@ export function SettingsPage() {
               options={[
                 { value: 'webdav', label: '坚果云 WebDAV' },
                 { value: 'r2', label: 'Cloudflare R2' },
+                { value: 'cos', label: '腾讯云 COS' },
+                { value: 'oss', label: '阿里云 OSS' },
                 { value: 'lan', label: '局域网同步' },
               ]}
-              onChange={(v) => setSyncStorageType(v as 'webdav' | 'r2' | 'lan')}
+              onChange={(v) => setSyncStorageType(v as 'webdav' | 'r2' | 'cos' | 'oss' | 'lan')}
               styles={s}
             />
 
@@ -716,6 +781,76 @@ export function SettingsPage() {
                   value={r2Bucket}
                   placeholder="my-lantern-bucket"
                   onChange={setR2Bucket}
+                  styles={s}
+                />
+              </>
+            )}
+
+            {/* COS 配置 */}
+            {syncStorageType === 'cos' && (
+              <>
+                <InputRow
+                  label="SecretId"
+                  value={cosSecretId}
+                  placeholder="腾讯云 API SecretId"
+                  onChange={setCosSecretId}
+                  styles={s}
+                />
+                <InputRow
+                  label="SecretKey"
+                  value={cosSecretKey}
+                  type="password"
+                  placeholder="腾讯云 API SecretKey"
+                  onChange={setCosSecretKey}
+                  styles={s}
+                />
+                <InputRow
+                  label="Bucket"
+                  value={cosBucket}
+                  placeholder="my-lantern-1234567890"
+                  onChange={setCosBucket}
+                  styles={s}
+                />
+                <InputRow
+                  label="Region"
+                  value={cosRegion}
+                  placeholder="ap-guangzhou"
+                  onChange={setCosRegion}
+                  styles={s}
+                />
+              </>
+            )}
+
+            {/* OSS 配置 */}
+            {syncStorageType === 'oss' && (
+              <>
+                <InputRow
+                  label="AccessKey ID"
+                  value={ossAccessKeyId}
+                  placeholder="阿里云 RAM AccessKey ID"
+                  onChange={setOssAccessKeyId}
+                  styles={s}
+                />
+                <InputRow
+                  label="AccessKey Secret"
+                  value={ossAccessKeySecret}
+                  type="password"
+                  placeholder="阿里云 RAM AccessKey Secret"
+                  onChange={setOssAccessKeySecret}
+                  styles={s}
+                />
+                <InputRow
+                  label="Bucket"
+                  value={ossBucket}
+                  placeholder="my-lantern-bucket"
+                  onChange={setOssBucket}
+                  styles={s}
+                />
+                <InputRow
+                  label="Region"
+                  value={ossRegion}
+                  placeholder="oss-cn-hangzhou 或 cn-hangzhou"
+                  onChange={setOssRegion}
                   styles={s}
                 />
               </>
@@ -816,7 +951,7 @@ export function SettingsPage() {
                         >
                           <div
                             className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: peer.online ? '#22c55e' : '#9ca3af' }}
+                            style={{ backgroundColor: peer.online ? appTheme.success : appTheme.inkMuted48 }}
                           />
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate" style={{ color: s.text }}>{peer.name}</div>
@@ -1007,7 +1142,7 @@ export function SettingsPage() {
                 text: s.text,
                 textSub: s.textSub,
                 danger: s.danger,
-                success: '#58A968',
+                success: appTheme.success,
                 overlay: s.overlay,
                 cardBorder: s.cardBorder,
               }}
@@ -1044,7 +1179,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ===== 数据管理 ===== */}
-          <Section title="数据管理" styles={s}>
+          <Section sectionKey="data" title="数据管理" styles={s} expanded={openSections.has('data')} onToggle={() => toggleSection('data')}>
             <button
               onClick={() => setShowExportDialog(true)}
               className="w-full py-3 px-4 rounded-xl text-lg transition-colors"
@@ -1071,6 +1206,8 @@ export function SettingsPage() {
       {showExportDialog && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          role="dialog"
+          aria-modal="true"
           onClick={() => setShowExportDialog(false)}
         >
           <div
@@ -1078,7 +1215,7 @@ export function SettingsPage() {
             style={{ backgroundColor: s.card }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-medium mb-5 tracking-wider" style={{ color: s.text }}>
+            <h2 className="text-lg font-medium mb-5" style={{ color: s.text }}>
               导出数据
             </h2>
 
@@ -1094,23 +1231,15 @@ export function SettingsPage() {
                 </div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xs" style={{ color: s.textSub }}>日历：</span>
-                  <select
+                  <Select
                     value={exportCalendarId ?? ''}
-                    onChange={(e) => setExportCalendarId(e.target.value || null)}
-                    className="px-3 py-1.5 rounded-lg text-sm outline-none"
-                    style={{
-                      backgroundColor: s.inputBg,
-                      border: `1px solid ${s.inputBorder}`,
-                      color: s.text,
-                    }}
-                  >
-                    <option value="" style={{ backgroundColor: s.card, color: s.text }}>全部日程</option>
-                    {calendars.map((cal) => (
-                      <option key={cal.id} value={cal.id} style={{ backgroundColor: s.card, color: s.text }}>
-                        {cal.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setExportCalendarId(v || null)}
+                    placeholder="全部日程"
+                    options={[
+                      { value: '', label: '全部日程' },
+                      ...calendars.map((cal) => ({ value: cal.id, label: cal.name })),
+                    ]}
+                  />
                 </div>
                 <button
                   onClick={handleExport}
@@ -1138,8 +1267,10 @@ export function SettingsPage() {
             {/* 关闭按钮 */}
             <button
               onClick={() => setShowExportDialog(false)}
-              className="w-full mt-4 py-2 rounded-full text-sm transition-colors"
-              style={{ color: s.textSub }}
+              className="w-full mt-4 py-2.5 rounded-full text-sm transition-colors"
+              style={{ color: s.text, backgroundColor: s.overlay(0.06) }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = s.overlay(0.12))}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = s.overlay(0.06))}
             >
               关闭
             </button>
@@ -1151,6 +1282,8 @@ export function SettingsPage() {
       {showClearDialog && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          role="dialog"
+          aria-modal="true"
           onClick={() => setShowClearDialog(false)}
         >
           <div
@@ -1160,7 +1293,7 @@ export function SettingsPage() {
           >
             <div className="flex items-center gap-2 mb-1 flex-shrink-0">
               <AlertTriangle size={16} style={{ color: s.danger }} />
-              <h2 className="text-base font-medium tracking-wider" style={{ color: s.text }}>
+              <h2 className="text-base font-medium" style={{ color: s.text }}>
                 清除数据
               </h2>
             </div>
@@ -1228,6 +1361,40 @@ export function SettingsPage() {
         </div>
       )}
 
+      {/* ===== 删除锦囊确认 ===== */}
+      {deleteTargetId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setDeleteTargetId(null)}
+        >
+          <div
+            className="rounded-[18px] p-6 mx-4 w-[320px]"
+            style={{ backgroundColor: s.card }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-base mb-6" style={{ color: s.text }}>确定要删除这个锦囊吗？删除后无法恢复。</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTargetId(null)}
+                className="flex-1 py-2.5 rounded-2xl text-sm transition-colors"
+                style={{ color: s.textSub, backgroundColor: s.overlay(0.06) }}
+              >
+                取消
+              </button>
+              <button
+                onClick={() => { handleDeleteCustom(deleteTargetId); setDeleteTargetId(null); }}
+                className="flex-1 py-2.5 rounded-2xl text-sm transition-colors"
+                style={{ backgroundColor: s.danger, color: '#fff' }}
+              >
+                确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ===== Toast 提示 ===== */}
       {toast && (
         <div
@@ -1250,18 +1417,41 @@ export function SettingsPage() {
 
 /* ========== 子组件 ========== */
 
-function Section({ title, children, styles }: { title: string; children: React.ReactNode; styles: SettingsStyles }) {
+function Section({ sectionKey, title, children, styles, expanded, onToggle }: {
+  sectionKey: string;
+  title: string;
+  children: React.ReactNode;
+  styles: SettingsStyles;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   return (
     <Card
       className="w-full p-5"
       style={{ backgroundColor: styles.card, border: `0.5px solid ${styles.cardBorder}` }}
     >
-      <h3 className="text-xl mb-4 font-semibold" style={{ color: styles.text }}>
-        {title}
-      </h3>
-      <div className="space-y-4">
-        {children}
-      </div>
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between mb-4 text-left"
+        aria-expanded={expanded}
+      >
+        <h3 className="text-xl font-medium" style={{ color: styles.text }}>
+          {title}
+        </h3>
+        <ChevronDown
+          size={18}
+          style={{
+            color: styles.textSub,
+            transform: expanded ? 'rotate(180deg)' : 'none',
+            transition: 'transform 0.2s ease',
+          }}
+        />
+      </button>
+      {expanded && (
+        <div className="space-y-4">
+          {children}
+        </div>
+      )}
     </Card>
   );
 }
@@ -1278,6 +1468,9 @@ function ToggleRow({ label, checked, onChange, styles, disabled = false }: {
       <span className="text-base" style={{ color: styles.textSub }}>{label}</span>
       <button
         onClick={() => !disabled && onChange(!checked)}
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
         className="relative w-11 h-6 rounded-full transition-colors"
         style={{
           backgroundColor: checked ? styles.accent : styles.overlay(0.2),

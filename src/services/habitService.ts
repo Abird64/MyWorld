@@ -31,9 +31,9 @@ export async function listHabits(): Promise<Habit[]> {
   return tauriInvoke<Habit[]>('list_habits');
 }
 
-/** 打卡 */
-export async function checkHabit(habitId: string, date?: string, note?: string): Promise<HabitRecord> {
-  return tauriInvoke<HabitRecord>('check_habit', { input: { habit_id: habitId, date, note } });
+/** 打卡（返回 XP / 萤火 / 技能奖励） */
+export async function checkHabit(habitId: string, date?: string, note?: string): Promise<{ xp_earned: number; glow_earned: number; skill_xps: { skill_id: string; skill_name: string; xp: number }[] }> {
+  return tauriInvoke('check_habit', { input: { habit_id: habitId, date, note } });
 }
 
 /** 取消打卡 */

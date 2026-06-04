@@ -7,6 +7,7 @@ import {
   hourToPercent,
   layoutOverlappingEvents,
 } from '@/utils/scheduleLayout';
+import { CurrentTimeLine } from './CurrentTimeLine';
 
 
 interface DayViewProps {
@@ -175,25 +176,6 @@ export function DayView({ date, schedules, onEventClick, onBack, backLabel = 'è¿
           <CurrentTimeLine />
         </div>
       </div>
-    </div>
-  );
-}
-
-function CurrentTimeLine() {
-  const now = new Date();
-  const hour = now.getHours() + now.getMinutes() / 60;
-
-  if (hour < HOUR_START || hour > HOUR_END) return null;
-
-  const top = hourToPercent(hour);
-
-  return (
-    <div
-      className="absolute w-full left-0 z-20 pointer-events-none"
-      style={{ top: `${top}%` }}
-    >
-      <div className="w-full h-[2px] bg-red-500" />
-      <div className="absolute -left-1 -top-[4px] w-[10px] h-[10px] rounded-full bg-red-500" />
     </div>
   );
 }

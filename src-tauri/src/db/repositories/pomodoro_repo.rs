@@ -128,6 +128,22 @@ pub fn complete_session(
             params![glow_reward, time],
         )
         .map_err(|e| format!("Failed to add pomodoro glow reward: {}", e))?;
+
+        // 记录萤火账本
+        let balance_after: i32 = tx
+            .query_row("SELECT glow_amount FROM glow_balances WHERE id = 'user'", [], |row| row.get(0))
+            .unwrap_or(0);
+        let ledger_id = gen_id();
+        let note = if session.task_id.is_some() {
+            "番茄钟专注（绑定任务）".to_string()
+        } else {
+            format!("番茄钟专注 {} 分钟", session.target_minutes)
+        };
+        let _ = tx.execute(
+            "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+             VALUES (?1, 'glow', ?2, ?3, 'pomodoro_focus', ?4, ?5, ?6)",
+            params![ledger_id, glow_reward, balance_after, note, session_id, time],
+        );
     }
 
     tx.commit()

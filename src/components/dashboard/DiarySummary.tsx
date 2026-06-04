@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { BookOpen } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAppTheme } from '@/stores/themeStore';
@@ -10,23 +10,29 @@ export function DiarySummary() {
   const setActiveSubPage = useUIStore((s) => s.setActiveSubPage);
   const [wordCount, setWordCount] = useState<number | null>(null);
   const [hasAiSummary, setHasAiSummary] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     const today = new Date();
     const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-    getJournalByDate(date)
-      .then((entry) => {
+    setLoading(true);
+    setError(false);
+
+    Promise.all([
+      getJournalByDate(date).then((entry) => {
         if (entry.content && entry.content.trim().length > 0) {
           setWordCount(entry.content.length);
         }
-      })
-      .catch(() => {});
-
-    getAiDiary(date)
-      .then((ai) => setHasAiSummary(ai.exists))
-      .catch(() => {});
+      }),
+      getAiDiary(date).then((ai) => setHasAiSummary(ai.exists)),
+    ])
+      .then(() => setLoading(false))
+      .catch(() => { setError(true); setLoading(false); });
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const hasWritten = wordCount !== null && wordCount > 0;
 
@@ -36,9 +42,15 @@ export function DiarySummary() {
       icon={BookOpen}
       color="#ff2d55"
       onClick={() => setActiveSubPage('diary')}
+      variant="prominent"
+      loading={loading}
+      error={error}
+      onRetry={load}
     >
       {!hasWritten ? (
-        <p className="text-xs" style={{ color: appTheme.inkMuted48 }}>今日还未写日记</p>
+        <p className="text-xs leading-relaxed" style={{ color: appTheme.inkMuted48 }}>
+          今天的故事，还等着被记下
+        </p>
       ) : (
         <div className="space-y-1">
           <div className="flex items-end gap-1">
@@ -49,9 +61,13 @@ export function DiarySummary() {
               {wordCount}
             </span>
             <span className="text-xs" style={{ color: appTheme.inkMuted48 }}>字</span>
+            <span
+              className="firefly-glow inline-block w-1.5 h-1.5 rounded-full ml-1 mb-1"
+              style={{ backgroundColor: appTheme.primary }}
+            />
           </div>
-          <p className="text-xs" style={{ color: hasAiSummary ? '#34c759' : appTheme.inkMuted48 }}>
-            {hasAiSummary ? '✓ 已总结' : '待总结'}
+          <p className="text-xs" style={{ color: hasAiSummary ? appTheme.primary : appTheme.inkMuted48 }}>
+            {hasAiSummary ? '萤火已点亮' : '待总结'}
           </p>
         </div>
       )}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import * as scheduleService from '@/services/scheduleService';
+import { getContrastColor } from './EventBlock';
 import { Plus, X, Trash2 } from 'lucide-react';
 import type { Schedule, CreateScheduleInput } from '@/types/schedule';
 
@@ -132,7 +133,7 @@ function CountdownForm({
           <button
             onClick={handleSubmit}
             className="px-6 py-2 rounded-xl text-sm font-medium"
-            style={{ backgroundColor: color, color: appTheme.onPrimary }}
+            style={{ backgroundColor: color, color: getContrastColor(color) }}
           >
             {editing ? '保存' : '创建'}
           </button>
@@ -184,10 +185,11 @@ export function CountdownList() {
   if (sorted.length === 0 && !showForm) {
     return (
       <div className="w-full rounded-2xl p-12 text-center space-y-4" style={{ backgroundColor: appTheme.canvas }}>
-        <p className="text-lg" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>还没有倒数日</p>
+        <p className="text-base" style={{ color: `${withAlpha(appTheme.ink, 0.35)}` }}>还没有倒数日</p>
+        <p className="text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.2)}` }}>标记一个值得等待的日子，让每一天都有盼头</p>
         <button
           onClick={() => { setEditing(null); setShowForm(true); }}
-          className="px-5 py-2.5 rounded-full text-sm font-medium inline-flex items-center gap-2"
+          className="mt-3 px-5 py-2.5 rounded-full text-sm font-medium inline-flex items-center gap-2"
           style={{ backgroundColor: appTheme.primary, color: appTheme.ink }}
         >
           <Plus size={18} /> 创建第一个倒数日
@@ -211,16 +213,18 @@ export function CountdownList() {
               className="rounded-2xl p-5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{
                 backgroundColor: appTheme.canvas,
-                borderLeft: `4px solid ${item.color || COLOR_OPTIONS[0]}`,
                 opacity: isExpired ? 0.5 : 1,
               }}
             >
               <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium" style={{ color: appTheme.ink }}>{item.title}</p>
-                  <p className="text-xs mt-1" style={{ color: `${withAlpha(appTheme.ink, 0.53)}` }}>
-                    {formatDate(item.start_at)}
-                  </p>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: item.color || COLOR_OPTIONS[0] }} />
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: appTheme.ink }}>{item.title}</p>
+                    <p className="text-xs mt-1" style={{ color: `${withAlpha(appTheme.ink, 0.53)}` }}>
+                      {formatDate(item.start_at)}
+                    </p>
+                  </div>
                 </div>
                 <div className="text-right">
                   <p

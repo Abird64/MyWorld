@@ -47,6 +47,7 @@ export async function searchContacts(query: string): Promise<Contact[]> {
 export interface BirthdayInfo {
   contact_id: string;
   name: string;
+  group_name: string | null;
   birthday_year: number | null;
   birthday_month: number;
   birthday_day: number;

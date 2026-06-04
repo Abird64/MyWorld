@@ -215,16 +215,15 @@ impl<'a> WishRepository<'a> {
     // === 抽奖记录 ===
 
     pub fn create_draw(&self, draw: &WishDraw) -> SqliteResult<()> {
-        let wish_id = draw.result_wish_id.clone().unwrap_or_default();
         self.conn.execute(
             "INSERT INTO wish_draws (id, draw_type, ticket_type, cost, result_wish_id, result_type, pity_count, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)",
-            [
+            rusqlite::params![
                 &draw.id,
                 &draw.draw_type,
                 &draw.ticket_type,
                 &draw.cost.to_string(),
-                &wish_id,
+                &draw.result_wish_id,
                 &draw.result_type,
                 &draw.pity_count.to_string(),
                 &draw.created_at,

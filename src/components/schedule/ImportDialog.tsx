@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Select } from '@/components/ui/Select';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import * as calendarService from '@/services/calendarService';
@@ -51,23 +52,13 @@ export function ImportDialog({ eventCount, onConfirm, onCancel }: ImportDialogPr
         {loading ? (
           <div className="text-center py-4 text-sm" style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>加载中...</div>
         ) : (
-          <select
+          <Select
             value={selectedId ?? ''}
-            onChange={(e) => setSelectedId(e.target.value || null)}
-            className="w-full px-3 py-2 rounded-xl text-sm mb-4 border outline-none"
-            style={{
-              backgroundColor: `${withAlpha(appTheme.primary, 0.1)}`,
-              borderColor: `${withAlpha(appTheme.primary, 0.4)}`,
-              color: appTheme.ink,
-            }}
-          >
-            <option value="">无分类</option>
-            {calendars.map((cal) => (
-              <option key={cal.id} value={cal.id} style={{ backgroundColor: appTheme.canvas, color: appTheme.ink }}>
-                {cal.name}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setSelectedId(v || null)}
+            placeholder="无分类"
+            options={calendars.map((cal) => ({ value: cal.id, label: cal.name }))}
+            className="mb-4"
+          />
         )}
 
         <div className="flex gap-3 justify-end">

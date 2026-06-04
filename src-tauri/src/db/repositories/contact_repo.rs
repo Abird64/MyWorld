@@ -351,6 +351,7 @@ pub fn search_contacts(conn: &Connection, query: &str) -> Result<Vec<Contact>, S
 pub struct BirthdayInfo {
     pub contact_id: String,
     pub name: String,
+    pub group_name: Option<String>,
     pub birthday_year: Option<i32>,
     pub birthday_month: i32,
     pub birthday_day: i32,
@@ -366,7 +367,7 @@ pub struct BirthdayInfo {
 pub fn list_all_birthdays(conn: &Connection) -> Result<Vec<BirthdayInfo>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, birthday_year, birthday_month, birthday_day, birthday_calendar
+            "SELECT id, name, group_name, birthday_year, birthday_month, birthday_day, birthday_calendar
              FROM contacts
              WHERE birthday_month IS NOT NULL AND birthday_day IS NOT NULL AND deleted_at IS NULL
              ORDER BY birthday_month ASC, birthday_day ASC",
@@ -380,17 +381,18 @@ pub fn list_all_birthdays(conn: &Connection) -> Result<Vec<BirthdayInfo>, String
         .query_map([], |row| {
             let id: String = row.get(0)?;
             let name: String = row.get(1)?;
-            let year: Option<i32> = row.get(2)?;
-            let month: i32 = row.get(3)?;
-            let day: i32 = row.get(4)?;
-            let cal: Option<String> = row.get(5)?;
-            Ok((id, name, year, month, day, cal))
+            let group_name: Option<String> = row.get(2)?;
+            let year: Option<i32> = row.get(3)?;
+            let month: i32 = row.get(4)?;
+            let day: i32 = row.get(5)?;
+            let cal: Option<String> = row.get(6)?;
+            Ok((id, name, group_name, year, month, day, cal))
         })
         .map_err(|e| format!("Failed to query birthdays: {}", e))?;
 
     let mut results = Vec::new();
     for row in rows {
-        let (id, name, year, month, day, cal) = row.map_err(|e| format!("Failed to read row: {}", e))?;
+        let (id, name, group_name, year, month, day, cal) = row.map_err(|e| format!("Failed to read row: {}", e))?;
         let calendar = cal.as_deref().unwrap_or("solar").to_string();
         let is_lunar = calendar == "lunar";
 
@@ -422,6 +424,7 @@ pub fn list_all_birthdays(conn: &Connection) -> Result<Vec<BirthdayInfo>, String
         results.push(BirthdayInfo {
             contact_id: id,
             name,
+            group_name,
             birthday_year: year,
             birthday_month: month,
             birthday_day: day,

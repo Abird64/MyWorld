@@ -7,7 +7,9 @@ use std::sync::Mutex;
 use tauri::Manager;
 
 use super::change_tracking::{export_changes, Change, ensure_site_id, get_current_db_version};
+use super::cos_client::CosClient;
 use super::lan_client::LanClient;
+use super::oss_client::OssClient;
 use super::r2_client::R2Client;
 use super::remote_storage::{RemoteFile, RemoteStorage};
 use super::webdav_client::WebDavClient;
@@ -128,7 +130,7 @@ impl SyncState {
 
 /// 同步配置
 struct SyncConfig {
-    storage_type: String,  // "webdav"、"r2" 或 "lan"
+    storage_type: String,  // "webdav"、"r2"、"cos"、"oss" 或 "lan"
     // WebDAV
     url: String,
     username: String,
@@ -138,6 +140,16 @@ struct SyncConfig {
     r2_access_key: String,
     r2_secret_key: String,
     r2_bucket: String,
+    // COS
+    cos_secret_id: String,
+    cos_secret_key: String,
+    cos_bucket: String,
+    cos_region: String,
+    // OSS
+    oss_access_key_id: String,
+    oss_access_key_secret: String,
+    oss_bucket: String,
+    oss_region: String,
     // LAN
     lan_peer_ip: String,
     lan_peer_port: u16,
@@ -207,6 +219,32 @@ fn read_config(conn: &rusqlite::Connection) -> Result<SyncConfig, String> {
         .map(|s| s.value)
         .unwrap_or_default();
 
+    let cos_secret_id = setting_repo::get_setting(conn, "sync.cos.secret_id")?
+        .map(|s| s.value)
+        .unwrap_or_default();
+    let cos_secret_key = setting_repo::get_setting(conn, "sync.cos.secret_key")?
+        .map(|s| s.value)
+        .unwrap_or_default();
+    let cos_bucket = setting_repo::get_setting(conn, "sync.cos.bucket")?
+        .map(|s| s.value)
+        .unwrap_or_default();
+    let cos_region = setting_repo::get_setting(conn, "sync.cos.region")?
+        .map(|s| s.value)
+        .unwrap_or_default();
+
+    let oss_access_key_id = setting_repo::get_setting(conn, "sync.oss.access_key_id")?
+        .map(|s| s.value)
+        .unwrap_or_default();
+    let oss_access_key_secret = setting_repo::get_setting(conn, "sync.oss.access_key_secret")?
+        .map(|s| s.value)
+        .unwrap_or_default();
+    let oss_bucket = setting_repo::get_setting(conn, "sync.oss.bucket")?
+        .map(|s| s.value)
+        .unwrap_or_default();
+    let oss_region = setting_repo::get_setting(conn, "sync.oss.region")?
+        .map(|s| s.value)
+        .unwrap_or_default();
+
     let lan_peer_ip = setting_repo::get_setting(conn, "sync.lan.peer_ip")?
         .map(|s| s.value)
         .unwrap_or_default();
@@ -227,6 +265,14 @@ fn read_config(conn: &rusqlite::Connection) -> Result<SyncConfig, String> {
         r2_access_key,
         r2_secret_key,
         r2_bucket,
+        cos_secret_id,
+        cos_secret_key,
+        cos_bucket,
+        cos_region,
+        oss_access_key_id,
+        oss_access_key_secret,
+        oss_bucket,
+        oss_region,
         lan_peer_ip,
         lan_peer_port,
         remote_path,
@@ -257,6 +303,28 @@ pub async fn run_full_sync(db_state: &DbState, app_data: &AppDataState) -> SyncR
                 return SyncResult::error("R2 配置不完整，请填写 Account ID、Access Key、Secret Key 和 Bucket".to_string());
             }
             match R2Client::new(&config.r2_account_id, &config.r2_access_key, &config.r2_secret_key, &config.r2_bucket) {
+                Ok(c) => Box::new(c),
+                Err(e) => return SyncResult::error(e),
+            }
+        }
+        "cos" => {
+            if config.cos_secret_id.is_empty() || config.cos_secret_key.is_empty()
+                || config.cos_bucket.is_empty() || config.cos_region.is_empty()
+            {
+                return SyncResult::error("COS 配置不完整，请填写 SecretId、SecretKey、Bucket 和 Region".to_string());
+            }
+            match CosClient::new(&config.cos_bucket, &config.cos_region, &config.cos_secret_id, &config.cos_secret_key) {
+                Ok(c) => Box::new(c),
+                Err(e) => return SyncResult::error(e),
+            }
+        }
+        "oss" => {
+            if config.oss_access_key_id.is_empty() || config.oss_access_key_secret.is_empty()
+                || config.oss_bucket.is_empty() || config.oss_region.is_empty()
+            {
+                return SyncResult::error("OSS 配置不完整，请填写 AccessKey ID、AccessKey Secret、Bucket 和 Region".to_string());
+            }
+            match OssClient::new(&config.oss_bucket, &config.oss_region, &config.oss_access_key_id, &config.oss_access_key_secret) {
                 Ok(c) => Box::new(c),
                 Err(e) => return SyncResult::error(e),
             }

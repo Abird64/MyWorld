@@ -41,6 +41,13 @@ export const TOOL_LABELS: Record<string, { group: string; label: string; color: 
   search_journals:   { group: '查询', label: '搜索日记', color: '#6B9BD2' },
   list_calendars:    { group: '查询', label: '查看日历', color: '#6B9BD2' },
   get_guide:         { group: '查询', label: '获取指南', color: '#6B9BD2' },
+  // 萤火
+  reward_glow:       { group: '奖励', label: '萤火奖励', color: '#D4A843' },
+  get_glow_balance:  { group: '查询', label: '萤火余额', color: '#6B9BD2' },
+  list_wishes:       { group: '查询', label: '查看心愿', color: '#6B9BD2' },
+  // 专注
+  start_pomodoro:    { group: '执行', label: '开始专注', color: '#7CB342' },
+  get_pomodoro_stats:{ group: '查询', label: '专注统计', color: '#6B9BD2' },
 };
 
 /** 状态中文映射 */

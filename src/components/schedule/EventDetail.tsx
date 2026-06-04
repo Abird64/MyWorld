@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Select } from '@/components/ui/Select';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import type { Schedule, UpdateScheduleInput } from '@/types/schedule';
@@ -12,6 +13,7 @@ interface EventDetailProps {
   /** 删除重复事件的单次实例：baseId, dateStr */
   onDeleteInstance?: (baseId: string, dateStr: string) => void;
   onClose: () => void;
+  isSubmitting?: boolean;
 }
 
 function toLocalDatetime(isoStr: string): string {
@@ -44,7 +46,7 @@ function parseRecurringInstanceId(id: string): { baseId: string; dateStr: string
 
 type EditScope = 'this' | 'all';
 
-export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDeleteInstance, onClose }: EventDetailProps) {
+export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDeleteInstance, onClose, isSubmitting }: EventDetailProps) {
   const appTheme = useAppTheme();
   const { calendars, getCalendarById } = useCalendarStore();
   const inputBg = appTheme.canvasParchment;
@@ -59,7 +61,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSaveHovered, setIsSaveHovered] = useState(false);
   const [isCloseHovered, setIsCloseHovered] = useState(false);
-  const [showScopeChoice, setShowScopeChoice] = useState<'edit' | 'delete' | null>(null);
+  const [deleteScope, setDeleteScope] = useState<EditScope>('all');
 
   const isTaskSync = event.source_type === 'task_sync';
   const bgColor = event.color || appTheme.primary;
@@ -91,49 +93,24 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
   };
 
   const handleEditClick = () => {
-    if (isRecurringInstance) {
-      setShowScopeChoice('edit');
-    } else {
-      setIsEditing(true);
-    }
+    setEditScope('this');
+    setIsEditing(true);
   };
 
-  const handleScopeChoice = (scope: EditScope) => {
-    setShowScopeChoice(null);
-    if (showScopeChoice === 'edit') {
-      if (scope === 'this' && onUpdateInstance) {
-        // 单次编辑：直接进入编辑模式，保存时再处理
-        setIsEditing(true);
-        // 标记当前编辑模式
-        setEditScope('this');
-      } else {
-        // 编辑所有：用 baseId 进入编辑
-        setIsEditing(true);
-        setEditScope('all');
-      }
-    } else if (showScopeChoice === 'delete') {
-      if (scope === 'this' && onDeleteInstance && recurringInfo) {
-        onDeleteInstance(recurringInfo.baseId, recurringInfo.dateStr);
-      } else {
-        const targetId = isRecurringInstance && recurringInfo ? recurringInfo.baseId : event.id;
-        onDelete(targetId);
-      }
-      setShowDeleteConfirm(false);
-    }
-  };
-
-  const [editScope, setEditScope] = useState<EditScope>('all');
+  const [editScope, setEditScope] = useState<EditScope>('this');
 
   const handleDeleteClick = () => {
-    if (isRecurringInstance) {
-      setShowScopeChoice('delete');
-    } else {
-      setShowDeleteConfirm(true);
-    }
+    setDeleteScope('all');
+    setShowDeleteConfirm(true);
   };
 
   const handleDelete = () => {
-    onDelete(event.id);
+    if (isRecurringInstance && deleteScope === 'this' && onDeleteInstance && recurringInfo) {
+      onDeleteInstance(recurringInfo.baseId, recurringInfo.dateStr);
+    } else {
+      const targetId = isRecurringInstance && recurringInfo ? recurringInfo.baseId : event.id;
+      onDelete(targetId);
+    }
     setShowDeleteConfirm(false);
   };
 
@@ -183,14 +160,33 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
         {isEditing ? (
           /* 编辑模式 */
           <div className="space-y-4">
-            {isRecurringInstance && editScope === 'this' && (
-              <div className="text-[10px] rounded-lg px-3 py-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.5)}`, backgroundColor: `${withAlpha(appTheme.primary, 0.1)}` }}>
-                仅修改 {recurringInfo?.dateStr} 这一天的实例
+            {isRecurringInstance && (
+              <div className="flex items-center gap-1 rounded-lg p-1" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.04)}` }}>
+                <button
+                  onClick={() => setEditScope('this')}
+                  className="flex-1 px-3 py-1.5 rounded-md text-xs transition-all"
+                  style={{
+                    backgroundColor: editScope === 'this' ? `${withAlpha(appTheme.primary, 0.15)}` : 'transparent',
+                    color: editScope === 'this' ? appTheme.primary : `${withAlpha(appTheme.ink, 0.5)}`,
+                  }}
+                >
+                  仅此一次
+                </button>
+                <button
+                  onClick={() => setEditScope('all')}
+                  className="flex-1 px-3 py-1.5 rounded-md text-xs transition-all"
+                  style={{
+                    backgroundColor: editScope === 'all' ? `${withAlpha(appTheme.primary, 0.15)}` : 'transparent',
+                    color: editScope === 'all' ? appTheme.primary : `${withAlpha(appTheme.ink, 0.5)}`,
+                  }}
+                >
+                  所有实例
+                </button>
               </div>
             )}
-            {isRecurringInstance && editScope === 'all' && (
-              <div className="text-[10px] rounded-lg px-3 py-1.5" style={{ color: `${withAlpha(appTheme.ink, 0.5)}`, backgroundColor: `${withAlpha(appTheme.primary, 0.1)}` }}>
-                修改所有重复实例
+            {isRecurringInstance && editScope === 'this' && recurringInfo && (
+              <div className="text-[10px] -mt-2 px-1" style={{ color: `${withAlpha(appTheme.ink, 0.35)}` }}>
+                仅影响 {recurringInfo.dateStr} 这一天
               </div>
             )}
 
@@ -199,7 +195,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl focus:outline-none text-sm"
+              className="w-full px-4 py-3 rounded-xl focus:outline-none text-sm"
               style={{ color: appTheme.ink, border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`, backgroundColor: inputBg }}
               autoFocus
             />
@@ -231,23 +227,12 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
             {/* 日历 */}
             <div>
               <label className="text-xs mb-2 block" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>日历</label>
-              <select
+              <Select
                 value={calendarId ?? ''}
-                onChange={(e) => setCalendarId(e.target.value || null)}
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                style={{
-                  backgroundColor: inputBg,
-                  border: `1px solid ${withAlpha(appTheme.primary, 0.3)}`,
-                  color: appTheme.ink,
-                }}
-              >
-                <option value="">无分类</option>
-                {calendars.map((cal) => (
-                  <option key={cal.id} value={cal.id} style={{ backgroundColor: appTheme.canvas, color: appTheme.ink }}>
-                    {cal.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setCalendarId(v || null)}
+                placeholder="无分类"
+                options={calendars.map((cal) => ({ value: cal.id, label: cal.name }))}
+              />
             </div>
 
             {/* 地点 */}
@@ -280,13 +265,16 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
             <div className="flex justify-between pt-2">
               <button
                 onClick={handleDeleteClick}
-                className="px-4 py-2 rounded-full text-sm text-red-500/70 hover:text-red-500 hover:bg-red-50 transition-colors"
+                className="px-4 py-2 rounded-full text-sm transition-colors"
+                style={{ color: `${withAlpha(appTheme.danger, 0.7)}` }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = appTheme.danger; e.currentTarget.style.backgroundColor = `${withAlpha(appTheme.danger, 0.08)}`; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = `${withAlpha(appTheme.danger, 0.7)}`; e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 删除
               </button>
               <div className="flex gap-3">
                 <button
-                  onClick={() => { setIsEditing(false); setEditScope('all'); }}
+                  onClick={() => { setIsEditing(false); setEditScope('this'); }}
                   className="event-detail-cancel-btn px-4 py-2 rounded-full text-sm transition-colors"
                   style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }}
                 >
@@ -294,7 +282,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
                 </button>
                 <button
                   onClick={() => handleSave(editScope)}
-                  disabled={!title.trim()}
+                  disabled={!title.trim() || isSubmitting}
                   className="px-4 py-2 rounded-full text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   style={{ color: appTheme.onPrimary, backgroundColor: isSaveHovered ? `${withAlpha(appTheme.primary, 0.8)}` : appTheme.primary }}
                   onMouseEnter={() => setIsSaveHovered(true)}
@@ -339,7 +327,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
             {/* 重复规则 */}
             {event.rrule && (
               <div className="text-xs rounded-lg px-3 py-2" style={{ color: `${withAlpha(appTheme.ink, 0.5)}`, backgroundColor: appTheme.divider }}>
-                重复: {event.rrule}
+                重复: {humanizeRrule(event.rrule)}
               </div>
             )}
 
@@ -358,63 +346,38 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
           </div>
         )}
 
-        {/* 重复事件范围选择 */}
-        {showScopeChoice && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50">
-            <div className="rounded-2xl p-5 w-[300px]" style={{ backgroundColor: appTheme.canvas }}>
-              <h3 className="text-lg font-medium mb-3" style={{ color: appTheme.ink }}>
-                {showScopeChoice === 'edit' ? '编辑范围' : '删除范围'}
-              </h3>
-              <p className="text-sm mb-4" style={{ color: `${withAlpha(appTheme.ink, 0.7)}` }}>
-                这是一个重复事件，你想{showScopeChoice === 'edit' ? '修改' : '删除'}哪个范围？
-              </p>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => handleScopeChoice('this')}
-                  className="w-full px-4 py-3 rounded-xl text-sm text-left transition-colors"
-                  style={{ border: `1px solid ${withAlpha(appTheme.primary, 0.2)}`, backgroundColor: inputBg }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = appTheme.canvasParchment)}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = inputBg)}
-                >
-                  <div className="font-medium" style={{ color: appTheme.ink }}>只{showScopeChoice === 'edit' ? '修改' : '删除'}这一次</div>
-                  <div className="text-[10px] mt-0.5" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>
-                    仅影响 {recurringInfo?.dateStr} 这一天
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleScopeChoice('all')}
-                  className="w-full px-4 py-3 rounded-xl text-sm text-left transition-colors"
-                  style={{ border: `1px solid ${withAlpha(appTheme.primary, 0.2)}`, backgroundColor: inputBg }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = appTheme.canvasParchment)}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = inputBg)}
-                >
-                  <div className="font-medium" style={{ color: appTheme.ink }}>{showScopeChoice === 'edit' ? '修改' : '删除'}所有实例</div>
-                  <div className="text-[10px] mt-0.5" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>
-                    影响整个重复事件系列
-                  </div>
-                </button>
-              </div>
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={() => setShowScopeChoice(null)}
-                  className="event-detail-cancel-btn px-4 py-2 rounded-full text-sm transition-colors"
-                  style={{ color: `${withAlpha(appTheme.ink, 0.6)}` }}
-                >
-                  取消
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 删除确认（非重复事件） */}
-        {showDeleteConfirm && !isRecurringInstance && (
+        {/* 删除确认 */}
+        {showDeleteConfirm && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50">
             <div className="rounded-2xl p-5 w-[300px]" style={{ backgroundColor: appTheme.canvas }}>
               <h3 className="text-lg font-medium mb-3" style={{ color: appTheme.ink }}>确认删除</h3>
               <p className="text-sm mb-4" style={{ color: `${withAlpha(appTheme.ink, 0.7)}` }}>
                 确定要删除「{event.title}」吗？
               </p>
+              {isRecurringInstance && (
+                <div className="flex items-center gap-1 rounded-lg p-1 mb-4" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.04)}` }}>
+                  <button
+                    onClick={() => setDeleteScope('this')}
+                    className="flex-1 px-3 py-1.5 rounded-md text-xs transition-all"
+                    style={{
+                      backgroundColor: deleteScope === 'this' ? `${withAlpha(appTheme.danger, 0.15)}` : 'transparent',
+                      color: deleteScope === 'this' ? appTheme.danger : `${withAlpha(appTheme.ink, 0.5)}`,
+                    }}
+                  >
+                    仅此一次
+                  </button>
+                  <button
+                    onClick={() => setDeleteScope('all')}
+                    className="flex-1 px-3 py-1.5 rounded-md text-xs transition-all"
+                    style={{
+                      backgroundColor: deleteScope === 'all' ? `${withAlpha(appTheme.danger, 0.15)}` : 'transparent',
+                      color: deleteScope === 'all' ? appTheme.danger : `${withAlpha(appTheme.ink, 0.5)}`,
+                    }}
+                  >
+                    所有实例
+                  </button>
+                </div>
+              )}
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
@@ -425,7 +388,8 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-4 py-2 rounded-full text-sm bg-red-500 text-white hover:bg-red-600 transition-colors"
+                  className="px-4 py-2 rounded-full text-sm transition-colors"
+                  style={{ backgroundColor: appTheme.danger, color: appTheme.onPrimary }}
                 >
                   删除
                 </button>
@@ -436,4 +400,33 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
       </div>
     </div>
   );
+}
+
+const FREQ_LABELS: Record<string, string> = {
+  DAILY: '天', WEEKLY: '周', MONTHLY: '月', YEARLY: '年',
+};
+const DAY_LABELS: Record<string, string> = {
+  MO: '周一', TU: '周二', WE: '周三', TH: '周四', FR: '周五', SA: '周六', SU: '周日',
+};
+
+function humanizeRrule(rrule: string): string {
+  try {
+    const parts = rrule.split(';');
+    const map: Record<string, string> = {};
+    for (const p of parts) {
+      const [k, v] = p.split('=');
+      if (k && v) map[k] = v;
+    }
+    const freq = FREQ_LABELS[map.FREQ] || map.FREQ || '';
+    const interval = map.INTERVAL ? parseInt(map.INTERVAL) : 1;
+    const intervalText = interval > 1 ? `每${interval}${freq}` : `每${freq}`;
+
+    if (map.BYDAY) {
+      const days = map.BYDAY.split(',').map((d) => DAY_LABELS[d] || d).join('、');
+      return `${intervalText}的${days}`;
+    }
+    return intervalText;
+  } catch {
+    return rrule;
+  }
 }

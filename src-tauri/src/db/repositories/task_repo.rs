@@ -14,6 +14,7 @@ pub struct Task {
     pub deadline: Option<String>,
     pub completed_at: Option<String>,
     pub xp_earned: i32,
+    pub glow_reward: i32,
     pub estimated_minutes: i32,
     pub notes: Option<String>,
     pub tags: Option<String>,
@@ -22,7 +23,7 @@ pub struct Task {
     pub updated_at: String,
 }
 
-const TASK_COLUMNS: &str = "id, parent_id, title, description, status, priority, scheduled_at, deadline, completed_at, xp_earned, estimated_minutes, notes, tags, sort_order, created_at, updated_at";
+const TASK_COLUMNS: &str = "id, parent_id, title, description, status, priority, scheduled_at, deadline, completed_at, xp_earned, glow_reward, estimated_minutes, notes, tags, sort_order, created_at, updated_at";
 
 fn task_from_row(row: &Row) -> rusqlite::Result<Task> {
     Ok(Task {
@@ -36,6 +37,7 @@ fn task_from_row(row: &Row) -> rusqlite::Result<Task> {
         deadline: row.get("deadline")?,
         completed_at: row.get("completed_at")?,
         xp_earned: row.get("xp_earned")?,
+        glow_reward: row.get("glow_reward").unwrap_or(0),
         estimated_minutes: row.get("estimated_minutes")?,
         notes: row.get("notes")?,
         tags: row.get("tags")?,
@@ -64,14 +66,15 @@ pub fn create_task(
     deadline: Option<&str>,
     estimated_minutes: i32,
     tags: Option<&str>,
+    glow_reward: i32,
 ) -> Result<Task, String> {
     let id = gen_id();
     let time = now();
 
     conn.execute(
-        "INSERT INTO tasks (id, parent_id, title, description, status, priority, scheduled_at, deadline, estimated_minutes, tags, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, 'pending', ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-        params![id, parent_id, title, description, priority, scheduled_at, deadline, estimated_minutes, tags, time, time],
+        "INSERT INTO tasks (id, parent_id, title, description, status, priority, scheduled_at, deadline, estimated_minutes, tags, glow_reward, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, 'pending', ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        params![id, parent_id, title, description, priority, scheduled_at, deadline, estimated_minutes, tags, glow_reward, time, time],
     )
     .map_err(|e| format!("Failed to create task: {}", e))?;
 
@@ -289,22 +292,26 @@ pub fn complete_task(conn: &mut Connection, id: &str) -> Result<CompleteResult, 
         .map_err(|e| format!("Failed to start transaction: {}", e))?;
 
     // 获取任务信息（用于计算萤火奖励）
-    let task_info: (Option<i32>, i32) = tx
+    let task_info: (Option<i32>, i32, i32) = tx
         .query_row(
-            "SELECT estimated_minutes, xp_earned FROM tasks WHERE id = ?1",
+            "SELECT estimated_minutes, xp_earned, glow_reward FROM tasks WHERE id = ?1",
             params![id],
-            |row| Ok((row.get::<_, Option<i32>>(0)?, row.get::<_, i32>(1)?)),
+            |row| Ok((row.get::<_, Option<i32>>(0)?, row.get::<_, i32>(1)?, row.get::<_, i32>(2).unwrap_or(0))),
         )
         .map_err(|e| format!("Failed to get task info: {}", e))?;
 
     let estimated_minutes = task_info.0.unwrap_or(25);
     let current_xp_earned = task_info.1;
+    let task_glow_reward = task_info.2;
 
     // 如果已经获得过XP（表示之前已完成过），不再重复奖励
     let glow_reward = if current_xp_earned == 0 {
-        // 计算萤火奖励：每估计分钟数 = 1 萤火，最少 5 萤火
-        let glow = (estimated_minutes as i32).max(5);
-        glow
+        // 优先使用任务设定的萤火值，否则自动计算（最少 5）
+        if task_glow_reward > 0 {
+            task_glow_reward
+        } else {
+            (estimated_minutes as i32).max(5)
+        }
     } else {
         0
     };
@@ -380,6 +387,20 @@ pub fn complete_task(conn: &mut Connection, id: &str) -> Result<CompleteResult, 
             params![glow_reward, time],
         )
         .map_err(|e| format!("Failed to add glow reward: {}", e))?;
+
+        // 记录萤火账本
+        let balance_after: i32 = tx
+            .query_row("SELECT glow_amount FROM glow_balances WHERE id = 'user'", [], |row| row.get(0))
+            .unwrap_or(0);
+        let task_title: String = tx
+            .query_row("SELECT title FROM tasks WHERE id = ?1", params![id], |row| row.get(0))
+            .unwrap_or_default();
+        let ledger_id = gen_id();
+        let _ = tx.execute(
+            "INSERT INTO glow_ledger (id, asset_type, change_amount, balance_after, reason, source_desc, related_id, created_at)
+             VALUES (?1, 'glow', ?2, ?3, 'task_complete', ?4, ?5, ?6)",
+            params![ledger_id, glow_reward, balance_after, format!("完成任务「{}」", task_title), id, time],
+        );
     }
 
     tx.commit()

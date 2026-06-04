@@ -1,19 +1,27 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useSkillStore } from '@/stores/skillStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useAppTheme } from '@/stores/themeStore';
+import { CREATIVITY_COLOR } from '@/styles/theme';
 import { DashboardCard } from './DashboardCard';
 
 export function SkillSummary() {
   const appTheme = useAppTheme();
   const { skills, activity, fetchSkills, fetchActivity } = useSkillStore();
   const setActiveSubPage = useUIStore((s) => s.setActiveSubPage);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    fetchSkills();
-    fetchActivity();
-  }, []);
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    Promise.all([fetchSkills(), fetchActivity()])
+      .then(() => setLoading(false))
+      .catch(() => { setError(true); setLoading(false); });
+  }, [fetchSkills, fetchActivity]);
+
+  useEffect(() => { load(); }, [load]);
 
   const today = new Date().toISOString().slice(0, 10);
   const todayXp = activity.find((a) => a.day === today)?.total_xp ?? 0;
@@ -22,8 +30,11 @@ export function SkillSummary() {
     <DashboardCard
       title="成长"
       icon={Sparkles}
-      color="#ff9500"
+      color={CREATIVITY_COLOR}
       onClick={() => setActiveSubPage('skills')}
+      loading={loading}
+      error={error}
+      onRetry={load}
     >
       <div className="flex items-end gap-1">
         <span

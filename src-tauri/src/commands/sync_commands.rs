@@ -3,14 +3,16 @@ use tauri::State;
 
 use crate::db::connection::{AppDataState, DbState};
 use crate::db::repositories::setting_repo;
+use crate::sync::cos_client::CosClient;
 use crate::sync::lan_discovery::{DiscoveredPeer, LanDiscovery};
 use crate::sync::lan_server::{self, LanServerState};
+use crate::sync::oss_client::OssClient;
 use crate::sync::r2_client::R2Client;
 use crate::sync::remote_storage::RemoteStorage;
 use crate::sync::sync_engine::{run_full_sync, SyncResult, SyncState};
 use crate::sync::webdav_client::WebDavClient;
 
-/// 测试连接（支持 WebDAV 和 R2）
+/// 测试连接（支持 WebDAV、R2、COS 和 OSS）
 #[tauri::command]
 pub async fn sync_test_connection(
     storage_type: String,
@@ -21,10 +23,26 @@ pub async fn sync_test_connection(
     r2_access_key: String,
     r2_secret_key: String,
     r2_bucket: String,
+    cos_secret_id: String,
+    cos_secret_key: String,
+    cos_bucket: String,
+    cos_region: String,
+    oss_access_key_id: String,
+    oss_access_key_secret: String,
+    oss_bucket: String,
+    oss_region: String,
 ) -> Result<String, String> {
     match storage_type.as_str() {
         "r2" => {
             let client = R2Client::new(&r2_account_id, &r2_access_key, &r2_secret_key, &r2_bucket)?;
+            client.test_connection().await
+        }
+        "cos" => {
+            let client = CosClient::new(&cos_bucket, &cos_region, &cos_secret_id, &cos_secret_key)?;
+            client.test_connection().await
+        }
+        "oss" => {
+            let client = OssClient::new(&oss_bucket, &oss_region, &oss_access_key_id, &oss_access_key_secret)?;
             client.test_connection().await
         }
         _ => {
@@ -150,6 +168,26 @@ pub async fn sync_get_status(
                 && crate::db::repositories::setting_repo::get_setting(&conn, "sync.r2.secret_key")
                     .ok().flatten().is_some()
                 && crate::db::repositories::setting_repo::get_setting(&conn, "sync.r2.bucket")
+                    .ok().flatten().is_some()
+        }
+        "cos" => {
+            crate::db::repositories::setting_repo::get_setting(&conn, "sync.cos.secret_id")
+                .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.cos.secret_key")
+                    .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.cos.bucket")
+                    .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.cos.region")
+                    .ok().flatten().is_some()
+        }
+        "oss" => {
+            crate::db::repositories::setting_repo::get_setting(&conn, "sync.oss.access_key_id")
+                .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.oss.access_key_secret")
+                    .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.oss.bucket")
+                    .ok().flatten().is_some()
+                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.oss.region")
                     .ok().flatten().is_some()
         }
         "lan" => {

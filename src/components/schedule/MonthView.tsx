@@ -101,43 +101,40 @@ export function MonthView({ year, month, schedules, onEventClick, onDayClick }: 
                 </span>
               </div>
 
-              {/* 事件列表 */}
-              <div className="space-y-0.5">
+              {/* 事件圆点指示器 */}
+              <div className="flex items-center gap-1 flex-wrap px-0.5">
                 {visibleEvents.map((event) => {
-                  const bgColor = event.color || appTheme.primary;
+                  const dotColor = event.color || appTheme.primary;
                   const isTaskSync = event.source_type === 'task_sync';
 
                   return (
-                    <div
+                    <span
                       key={event.id}
-                      className="rounded px-1 py-0.5 text-[10px] break-all cursor-pointer transition-opacity hover:opacity-80"
-                      style={{
-                        backgroundColor: isTaskSync ? 'transparent' : bgColor,
-                        border: isTaskSync ? `1px dashed ${bgColor}` : 'none',
-                        color: isTaskSync ? bgColor : appTheme.onPrimary,
-                        opacity: isTaskSync ? 0.7 : 1,
-                      }}
+                      title={event.title}
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0 cursor-pointer transition-transform hover:scale-150"
+                      style={isTaskSync
+                        ? { backgroundColor: 'transparent', border: `1px dashed ${dotColor}` }
+                        : { backgroundColor: dotColor }
+                      }
                       onClick={(e) => {
                         e.stopPropagation();
                         onEventClick(event);
                       }}
-                    >
-                      {event.title}
-                    </div>
+                    />
                   );
                 })}
 
                 {hiddenCount > 0 && (
-                  <div className="text-[10px] text-center" style={{ color: `${withAlpha(appTheme.ink, 0.5)}` }}>
-                    +{hiddenCount} 更多
-                  </div>
+                  <span className="text-[10px]" style={{ color: `${withAlpha(appTheme.ink, 0.45)}` }}>
+                    +{hiddenCount}
+                  </span>
                 )}
               </div>
             </div>
           );
         })}
       </div>
-      </div>{/* end min-w wrapper */}
+      </div>
     </div>
   );
 }

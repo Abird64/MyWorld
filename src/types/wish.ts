@@ -61,7 +61,7 @@ export interface CreateWishInput {
   title: string;
   description?: string;
   level: WishLevel;
-  cost_glow: number;
+  cost_glow?: number;
   quantity?: number;       // -1 表示无限，默认为1
 }
 
@@ -71,7 +71,7 @@ export interface UpdateWishInput {
   title: string;
   description?: string;
   level: WishLevel;
-  cost_glow: number;
+  cost_glow?: number;
   quantity?: number;
 }
 
@@ -81,6 +81,8 @@ export interface DrawResult {
   wish: Wish | null;
   is_pity: boolean;
   pity_count: number;
+  pity_threshold: number;
+  pity_available: boolean;
   message: string;
 }
 
@@ -88,6 +90,24 @@ export interface DrawResult {
 export interface PityProgress {
   current: number;
   threshold: number;
+}
+
+/** 萤火账本条目 */
+export interface GlowLedgerEntry {
+  id: string;
+  asset_type: 'glow' | 'micro_ticket' | 'shimmer_ticket';
+  change_amount: number;
+  balance_after: number;
+  reason: string;
+  source_desc: string;
+  related_id: string;
+  created_at: string;
+}
+
+/** 账本查询结果 */
+export interface GlowLedgerResult {
+  entries: GlowLedgerEntry[];
+  total: number;
 }
 
 /** 心愿等级配置映射 */

@@ -24,6 +24,15 @@ interface PomodoroState {
   // 绑定的任务信息
   boundTaskTitle: string | null;
 
+  // 最近一次完成的奖励（用于 UI 展示）
+  lastReward: { xp: number; glow: number } | null;
+
+  // 错误信息（用于 UI 展示）
+  lastError: string | null;
+
+  // 计时模式：true=正计时（显示已过时间），false=倒计时（显示剩余时间）
+  countUp: boolean;
+
   // 内部：计时器引用
   _intervalId: number | null;
   _startTimestamp: number;       // Date.now() 当次计时开始时间
@@ -32,6 +41,8 @@ interface PomodoroState {
   // Actions
   fetchSettings: () => Promise<void>;
   saveSettings: (settings: Partial<PomodoroSettings>) => Promise<void>;
+  clearError: () => void;
+  toggleCountUp: () => void;
   fetchStats: () => Promise<void>;
   restoreSession: () => Promise<void>;
 
@@ -54,6 +65,9 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
   settings: DEFAULT_POMODORO_SETTINGS,
   stats: { focus_count: 0, focus_seconds: 0, break_count: 0 },
   boundTaskTitle: null,
+  lastReward: null,
+  lastError: null,
+  countUp: false,
   _intervalId: null,
   _startTimestamp: 0,
   _pausedElapsed: 0,
@@ -102,6 +116,10 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
       console.error('Failed to fetch pomodoro stats:', e);
     }
   },
+
+  clearError: () => set({ lastError: null }),
+
+  toggleCountUp: () => set(s => ({ countUp: !s.countUp })),
 
   restoreSession: async () => {
     try {
@@ -160,6 +178,7 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
       get()._startInterval();
     } catch (e) {
       console.error('Failed to start pomodoro:', e);
+      set({ lastError: '启动番茄钟失败，请重试' });
     }
   },
 
@@ -187,6 +206,7 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
       get()._startInterval();
     } catch (e) {
       console.error('Failed to start break:', e);
+      set({ lastError: '启动休息失败，请重试' });
     }
   },
 
@@ -240,6 +260,7 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
       elapsedSeconds: 0,
       targetSeconds: 0,
       boundTaskTitle: null,
+      lastError: null,
       _intervalId: null,
       _startTimestamp: 0,
       _pausedElapsed: 0,
@@ -263,9 +284,15 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
       await pomodoroService.completePomodoro(state.session.id, actualSeconds);
     } catch (e) {
       console.error('Failed to complete pomodoro:', e);
+      set({ lastError: '完成番茄钟失败，请重试' });
+      return;
     }
 
     const wasBreak = state.phase === 'break';
+
+    // 计算奖励（仅 focus 阶段）
+    const targetMin = Math.round(state.targetSeconds / 60);
+    const reward = !wasBreak ? { xp: targetMin, glow: Math.max(targetMin, 5) } : null;
 
     set({
       session: null,
@@ -274,6 +301,7 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
       elapsedSeconds: 0,
       targetSeconds: 0,
       boundTaskTitle: null,
+      lastReward: reward,
       _intervalId: null,
       _startTimestamp: 0,
       _pausedElapsed: 0,
@@ -301,6 +329,8 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
       await pomodoroService.cancelPomodoro(state.session.id);
     } catch (e) {
       console.error('Failed to skip break:', e);
+      set({ lastError: '跳过休息失败，请重试' });
+      return;
     }
 
     set({
