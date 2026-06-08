@@ -351,8 +351,7 @@ pub fn draw_wish(
     let new_pity = pity_count + 1;
     let pity_available = new_pity >= pity_threshold;
 
-    let message = if has_wish {
-        let w = selected.as_ref().unwrap();
+    let message = if let Some(ref w) = selected {
         format!("抽中了「{}」！", w.title)
     } else {
         "心愿池为空，请先添加心愿".to_string()

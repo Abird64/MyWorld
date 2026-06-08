@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { BookOpen } from 'lucide-react';
 import { Fireflies } from '@/components/ui';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { motion } from 'motion/react';
 
 const MEMORY_POEMS = [
@@ -17,6 +18,7 @@ const MEMORY_POEMS = [
 
 export function EmptyMemories() {
   const appTheme = useAppTheme();
+  const isMobile = useIsMobile();
   const emptyStateRef = useRef<HTMLDivElement>(null);
   const randomPoem = MEMORY_POEMS[Math.floor(Math.random() * MEMORY_POEMS.length)];
 
@@ -36,14 +38,16 @@ export function EmptyMemories() {
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="relative mb-6"
       >
-        {/* 光晕 */}
-        <div
-          className="absolute inset-0 blur-2xl opacity-30"
-          style={{
-            background: `radial-gradient(circle, ${withAlpha('#A8E6CF', 0.4)} 0%, transparent 70%)`,
-            transform: 'scale(1.5)',
-          }}
-        />
+        {/* 光晕 - 移动端不用 blur（Android WebView CPU 渲染导致卡顿） */}
+        {!isMobile && (
+          <div
+            className="absolute inset-0 blur-2xl opacity-30"
+            style={{
+              background: `radial-gradient(circle, ${withAlpha('#A8E6CF', 0.4)} 0%, transparent 70%)`,
+              transform: 'scale(1.5)',
+            }}
+          />
+        )}
         <BookOpen
           size={56}
           className="relative z-10"

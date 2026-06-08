@@ -90,7 +90,7 @@ impl RemoteStorage for WebDavClient {
 
         let resp = self
             .client
-            .request(reqwest::Method::from_bytes(b"PROPFIND").unwrap(), &url)
+            .request(reqwest::Method::from_bytes(b"PROPFIND").expect("invalid HTTP method constant"), &url)
             .header("Authorization", &self.auth_header)
             .header("Depth", "0")
             .header("Content-Type", "application/xml")
@@ -164,7 +164,7 @@ impl RemoteStorage for WebDavClient {
             self.throttle().await;
             let resp = self
                 .client
-                .request(reqwest::Method::from_bytes(b"PROPFIND").unwrap(), &url)
+                .request(reqwest::Method::from_bytes(b"PROPFIND").expect("invalid HTTP method constant"), &url)
                 .header("Authorization", &self.auth_header)
                 .header("Depth", "1")
                 .header("Content-Type", "application/xml")
@@ -288,7 +288,7 @@ impl WebDavClient {
         let url = self.full_url(remote_path);
         let resp = self
             .client
-            .request(reqwest::Method::from_bytes(b"MKCOL").unwrap(), &url)
+            .request(reqwest::Method::from_bytes(b"MKCOL").expect("invalid HTTP method constant"), &url)
             .header("Authorization", &self.auth_header)
             .send()
             .await
@@ -448,7 +448,19 @@ fn parse_propfind_response(xml: &str, request_path: &str, base_url: &str) -> Res
                             href.as_str()
                         };
                         let normalized_href = stripped_href.trim_end_matches('/');
-                        let normalized_request = request_path.trim_end_matches('/');
+                        // request_path 也要去掉 base_url 的路径前缀，保持与 stripped_href 一致
+                        let stripped_request = if let Some(scheme_end) = base_url.find("://") {
+                            let after_scheme = &base_url[scheme_end + 3..];
+                            if let Some(path_start) = after_scheme.find('/') {
+                                let base_path = &after_scheme[path_start..];
+                                request_path.strip_prefix(base_path).unwrap_or(request_path)
+                            } else {
+                                request_path
+                            }
+                        } else {
+                            request_path
+                        };
+                        let normalized_request = stripped_request.trim_end_matches('/');
                         if normalized_href == normalized_request
                             || normalized_href.is_empty()
                             || display_name.is_empty()

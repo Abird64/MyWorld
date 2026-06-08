@@ -1,11 +1,12 @@
 mod ai;
 mod db;
+#[cfg(feature = "gui")]
 mod commands;
 mod sync;
 
+#[cfg(feature = "gui")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    use std::sync::Arc;
     use tauri::Manager;
 
     tauri::Builder::default()
@@ -25,19 +26,6 @@ pub fn run() {
 
             // 初始化同步状态
             app.manage(sync::sync_engine::SyncState::new());
-
-            // 初始化 LAN 同步状态
-            let lan_server_state = Arc::new(sync::lan_server::LanServerState::new());
-            app.manage(lan_server_state);
-            let lan_discovery = Arc::new(
-                sync::lan_discovery::LanDiscovery::new()
-                    .unwrap_or_else(|e| {
-                        log::warn!("mDNS 初始化失败: {}", e);
-                        // 返回一个不会被使用的实例（实际应 panic 或降级处理）
-                        panic!("mDNS 初始化失败: {}", e);
-                    }),
-            );
-            app.manage(lan_discovery);
 
             // 启动后台同步任务
             sync::sync_engine::spawn_background_sync(app.handle().clone());
@@ -125,12 +113,6 @@ pub fn run() {
             commands::sync_commands::sync_set_enabled,
             commands::sync_commands::sync_now,
             commands::sync_commands::sync_get_status,
-            commands::sync_commands::lan_start_server,
-            commands::sync_commands::lan_stop_server,
-            commands::sync_commands::lan_discover_peers,
-            commands::sync_commands::lan_connect_manual,
-            commands::sync_commands::lan_get_local_ip,
-            commands::sync_commands::lan_test_peer,
             commands::pomodoro_commands::start_pomodoro,
             commands::pomodoro_commands::complete_pomodoro,
             commands::pomodoro_commands::cancel_pomodoro,

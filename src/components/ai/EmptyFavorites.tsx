@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { Star } from 'lucide-react';
 import { Fireflies } from '@/components/ui';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { motion } from 'motion/react';
 
 const FAVORITE_POEMS = [
@@ -16,6 +17,7 @@ const FAVORITE_POEMS = [
 
 export function EmptyFavorites() {
   const appTheme = useAppTheme();
+  const isMobile = useIsMobile();
   const emptyStateRef = useRef<HTMLDivElement>(null);
   const randomPoem = FAVORITE_POEMS[Math.floor(Math.random() * FAVORITE_POEMS.length)];
 
@@ -35,14 +37,16 @@ export function EmptyFavorites() {
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="relative mb-6"
       >
-        {/* 光晕 */}
-        <div
-          className="absolute inset-0 blur-2xl opacity-30"
-          style={{
-            background: `radial-gradient(circle, ${withAlpha(appTheme.primary, 0.4)} 0%, transparent 70%)`,
-            transform: 'scale(1.5)',
-          }}
-        />
+        {/* 光晕 - 移动端不用 blur（Android WebView CPU 渲染导致卡顿） */}
+        {!isMobile && (
+          <div
+            className="absolute inset-0 blur-2xl opacity-30"
+            style={{
+              background: `radial-gradient(circle, ${withAlpha(appTheme.primary, 0.4)} 0%, transparent 70%)`,
+              transform: 'scale(1.5)',
+            }}
+          />
+        )}
         <Star
           size={56}
           className="relative z-10"

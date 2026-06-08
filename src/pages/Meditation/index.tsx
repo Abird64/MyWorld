@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Play, Pause, Square } from 'lucide-react';
+import { Play, Pause, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
@@ -29,8 +29,8 @@ export function MeditationPage() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [completed, setCompleted] = useState(false);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const phaseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const phaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 清理定时器
   const clearTimers = useCallback(() => {
@@ -193,17 +193,8 @@ export function MeditationPage() {
     <PageContainer className="flex flex-col">
       <NavBar
         title="冥想"
-        leftAction={
-          <button
-            onClick={() =>
-              isActive ? stopMeditation() : setActiveSubPage(null)
-            }
-            className="p-2 -ml-2 rounded-lg btn-press"
-            aria-label={isActive ? '停止冥想' : '返回'}
-          >
-            <ArrowLeft size={20} style={{ color: appTheme.ink }} />
-          </button>
-        }
+        showBack={!isActive}
+        onBack={stopMeditation}
       />
 
       <div className="flex-1 flex flex-col items-center justify-center px-6">

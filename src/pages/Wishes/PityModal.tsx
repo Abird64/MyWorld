@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
-import type { Wish, WishLevel } from '@/types/wish';
-import { WISH_LEVELS, WISH_LEVEL_NAMES } from '@/types/wish';
+import type { Wish } from '@/types/wish';
+import { WISH_LEVELS } from '@/types/wish';
 import { LEVEL_ICONS } from './config';
 
 interface PityModalProps {
@@ -46,8 +46,8 @@ export function PityModal({ show, onClose, pityType, wishes, claimPityWish, onCl
             </p>
           ) : (
             poolWishes.map((wish) => {
-              const levelConfig = WISH_LEVELS[wish.level as WishLevel];
-              const Icon = LEVEL_ICONS[wish.level as WishLevel];
+              const levelConfig = WISH_LEVELS[wish.level];
+              const Icon = LEVEL_ICONS[wish.level];
               return (
                 <button
                   key={wish.id}

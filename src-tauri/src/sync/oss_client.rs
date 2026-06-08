@@ -123,7 +123,8 @@ impl OssClient {
         let amz_date = timestamp.format("%Y%m%dT%H%M%SZ").to_string();
 
         // Step 1: Canonical Request
-        let parsed = reqwest::Url::parse(url).unwrap();
+        let parsed = reqwest::Url::parse(url)
+            .expect("sign_request received an invalid URL — this is a programming bug");
 
         // 1a: Canonical URI (OSS V4 要求包含 bucket 名，虚拟托管式 URL 的 path 不含 bucket，需手动拼接)
         let path = parsed.path();
@@ -206,6 +207,7 @@ impl OssClient {
             additional_headers_str,
             "UNSIGNED-PAYLOAD"
         );
+        let canonical_hash = hex_encode(&sha256(canonical_request.as_bytes()));
 
         // Step 2: String to Sign
         let scope = format!(
@@ -216,12 +218,29 @@ impl OssClient {
             "OSS4-HMAC-SHA256\n{}\n{}\n{}",
             amz_date,
             scope,
-            hex_encode(&sha256(canonical_request.as_bytes()))
+            canonical_hash
         );
 
         // Step 3: Signing Key + Signature
         let signing_key = self.get_signing_key(&datestamp);
         let signature = hex_encode(&hmac_sha256(&signing_key, string_to_sign.as_bytes()));
+
+        log::debug!(
+            "[OSS] sign: region={} bucket={} date={} scope={}",
+            self.region, self.bucket, datestamp, scope
+        );
+        log::debug!(
+            "[OSS] canonical_request_bytes: {:02X?}",
+            canonical_request.as_bytes()
+        );
+        log::debug!(
+            "[OSS] string_to_sign:\n{}",
+            string_to_sign
+        );
+        log::debug!(
+            "[OSS] signing_key={} signature={}",
+            hex_encode(&signing_key), signature
+        );
 
         // Authorization header
         let authorization = if additional_headers_str.is_empty() {
@@ -279,7 +298,7 @@ impl OssClient {
         } else {
             format!("{}?{}", url, query)
         };
-        let mut req = self.client.request(method, &full_url);
+        let mut req = self.client.request(method.clone(), &full_url);
         for (k, v) in &sig_headers {
             req = req.header(k.as_str(), v.as_str());
         }
@@ -289,6 +308,12 @@ impl OssClient {
         if let Some(data) = body {
             req = req.body(data);
         }
+
+        log::debug!(
+            "[OSS] {} {} | region={} bucket={} access_key_id_prefix={}",
+            method, full_url, self.region, self.bucket,
+            &self.access_key_id.chars().take(6).collect::<String>()
+        );
 
         req.send().await.map_err(|e| format!("请求失败: {}", e))
     }
@@ -301,6 +326,139 @@ impl OssClient {
         }
         format!("{}/", p)
     }
+}
+
+/// 解析 ListObjectsV2 XML 响应（S3/OSS 通用）
+pub(crate) fn parse_list_objects_response(xml: &str, prefix: &str) -> Result<Vec<RemoteFile>, String> {
+    use quick_xml::events::Event;
+    use quick_xml::Reader;
+
+    let mut reader = Reader::from_str(xml);
+    let mut files = Vec::new();
+
+    // 解析 Contents（文件）
+    let mut in_contents = false;
+    let mut in_common_prefixes = false;
+    let mut current_key = String::new();
+    let mut current_last_modified = String::new();
+    let mut current_size = String::new();
+    let mut current_tag = String::new();
+    let mut current_text = String::new();
+
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) => {
+                let tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let local = tag.rsplit(':').next().unwrap_or(&tag).to_string();
+                match local.as_str() {
+                    "Contents" => {
+                        in_contents = true;
+                        current_key.clear();
+                        current_last_modified.clear();
+                        current_size.clear();
+                    }
+                    "CommonPrefixes" => {
+                        in_common_prefixes = true;
+                        current_key.clear();
+                    }
+                    "Key" | "LastModified" | "Size" | "Prefix" => {
+                        current_tag = local;
+                        current_text.clear();
+                    }
+                    _ => {}
+                }
+            }
+            Ok(Event::Text(e)) => {
+                current_text = e.unescape().unwrap_or_default().to_string();
+            }
+            Ok(Event::End(e)) => {
+                let tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let local = tag.rsplit(':').next().unwrap_or(&tag);
+                match local {
+                    "Key" => {
+                        if current_tag == "Key" {
+                            current_key = current_text.clone();
+                        }
+                    }
+                    "LastModified" => {
+                        if current_tag == "LastModified" {
+                            current_last_modified = current_text.clone();
+                        }
+                    }
+                    "Size" => {
+                        if current_tag == "Size" {
+                            current_size = current_text.clone();
+                        }
+                    }
+                    "Prefix" => {
+                        if current_tag == "Prefix" {
+                            current_key = current_text.clone();
+                        }
+                    }
+                    "Contents" => {
+                        if in_contents && !current_key.is_empty() {
+                            // 跳过目录占位符（以 / 结尾的 key）
+                            if !current_key.ends_with('/') {
+                                let display_name = current_key
+                                    .rsplit('/')
+                                    .next()
+                                    .unwrap_or(&current_key)
+                                    .to_string();
+
+                                let last_modified = if !current_last_modified.is_empty() {
+                                    DateTime::parse_from_rfc3339(&current_last_modified)
+                                        .ok()
+                                        .map(|dt| dt.with_timezone(&Utc))
+                                } else {
+                                    None
+                                };
+
+                                let content_length = current_size.parse::<u64>().ok();
+
+                                // href 就是 key（用于 download）
+                                files.push(RemoteFile {
+                                    href: current_key.clone(),
+                                    display_name,
+                                    last_modified,
+                                    content_length,
+                                    is_collection: false,
+                                });
+                            }
+                        }
+                        in_contents = false;
+                    }
+                    "CommonPrefixes" => {
+                        if in_common_prefixes && !current_key.is_empty() {
+                            // 目录：去掉 prefix 和尾部 / 得到 display_name
+                            let dir_key = current_key.trim_end_matches('/');
+                            let display_name = dir_key
+                                .trim_start_matches(prefix.trim_end_matches('/'))
+                                .trim_start_matches('/')
+                                .to_string();
+
+                            if !display_name.is_empty() {
+                                files.push(RemoteFile {
+                                    href: current_key.clone(),
+                                    display_name,
+                                    last_modified: None,
+                                    content_length: None,
+                                    is_collection: true,
+                                });
+                            }
+                        }
+                        in_common_prefixes = false;
+                    }
+                    _ => {}
+                }
+                current_tag.clear();
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(format!("XML 解析错误: {}", e)),
+            _ => {}
+        }
+    }
+
+    Ok(files)
 }
 
 // ===== RemoteStorage trait =====
@@ -356,7 +514,7 @@ impl RemoteStorage for OssClient {
         }
 
         let xml = resp.text().await.map_err(|e| e.to_string())?;
-        super::r2_client::parse_list_objects_response(&xml, &prefix)
+        parse_list_objects_response(&xml, &prefix)
     }
 
     async fn download(&self, remote_path: &str) -> Result<Vec<u8>, String> {
@@ -388,10 +546,11 @@ impl RemoteStorage for OssClient {
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
             let body = resp.text().await.unwrap_or_default();
+            log::error!("[OSS] PUT {} 失败 ({}): {}", remote_path, status, body);
             return Err(format!(
                 "PUT 返回 {}: {}",
                 status,
-                body.chars().take(200).collect::<String>()
+                body.chars().take(600).collect::<String>()
             ));
         }
 

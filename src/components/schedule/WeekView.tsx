@@ -2,7 +2,6 @@ import type { Schedule } from '@/types/schedule';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { EventBlock, getContrastColor } from './EventBlock';
 import {
-  HOUR_START,
   HOUR_END,
   hourToPercent,
   layoutOverlappingEvents,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface TypewriterTextProps {
   texts: string[];
@@ -20,13 +20,23 @@ export function TypewriterText({
   const [textIndex, setTextIndex] = useState(() => Math.floor(Math.random() * texts.length));
   const [charIndex, setCharIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const visibleRef = useRef(true);
+
+  useEffect(() => {
+    const onVis = () => { visibleRef.current = document.visibilityState === 'visible'; };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
   const currentText = texts[textIndex] || '';
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
 
-    if (!isDeleting && charIndex < currentText.length) {
+    if (!visibleRef.current) {
+      // 页面隐藏时用短间隔轮询，恢复可见后继续
+      timer = setTimeout(() => setCharIndex((c) => c), 200);
+    } else if (!isDeleting && charIndex < currentText.length) {
       timer = setTimeout(() => setCharIndex((c) => c + 1), typingSpeed);
     } else if (!isDeleting && charIndex === currentText.length) {
       timer = setTimeout(() => setIsDeleting(true), pauseDuration);

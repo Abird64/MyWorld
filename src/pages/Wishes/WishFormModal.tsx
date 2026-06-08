@@ -1,6 +1,6 @@
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import type { Wish, WishLevel } from '@/types/wish';
-import { WISH_LEVELS } from '@/types/wish';
+import { WISH_LEVELS, WISH_LEVEL_VALUES } from '@/types/wish';
 
 export interface WishFormData {
   title: string;
@@ -65,8 +65,8 @@ export function WishFormModal({ show, editingWish, formData, setFormData, onSubm
               等级
             </label>
             <div className="grid grid-cols-4 gap-2">
-              {[1, 2, 3, 4].map((level) => {
-                const config = WISH_LEVELS[level as WishLevel];
+              {WISH_LEVEL_VALUES.map((level) => {
+                const config = WISH_LEVELS[level];
                 const isSelected = formData.level === level;
                 return (
                   <button
@@ -75,7 +75,7 @@ export function WishFormModal({ show, editingWish, formData, setFormData, onSubm
                     onClick={() => {
                       setFormData({
                         ...formData,
-                        level: level as WishLevel,
+                        level,
                       });
                     }}
                     className="flex flex-col items-center gap-1 p-2 rounded-xl transition-all"

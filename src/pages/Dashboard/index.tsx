@@ -21,7 +21,7 @@ export function DashboardPage() {
   const tasks = useTaskStore((s) => s.tasks);
   const fetchTasks = useTaskStore((s) => s.fetchTasks);
   const [tasksReady, setTasksReady] = useState(false);
-  const [tasksError, setTasksError] = useState(false);
+  const [, setTasksError] = useState(false);
 
   const loadTasks = useCallback(() => {
     setTasksReady(false);

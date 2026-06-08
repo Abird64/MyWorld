@@ -19,7 +19,7 @@ import * as scheduleService from '@/services/scheduleService';
 
 import { addExdate } from '@/services/scheduleService';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
-import { Plus, Upload, X, Clock, Settings, MoreHorizontal } from 'lucide-react';
+import { Plus, Upload, X, Settings, MoreHorizontal } from 'lucide-react';
 import type { Schedule, CreateScheduleInput, UpdateScheduleInput } from '@/types/schedule';
 import type { ParsedIcsEvent } from '@/utils/icsParser';
 
@@ -80,13 +80,14 @@ export function SchedulePage() {
       ? (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d; })().toISOString()
       : (() => { const d = new Date(weekMonday); d.setDate(d.getDate() + 7); return d; })().toISOString();
 
-  // 初始化加载日历表
+  // 加载数据：先日历后日程，确保 visibleCalendarIds 就绪后再过滤日程
+  // 每次页面挂载 + 视图/日期变化都重新加载
   useEffect(() => {
-    fetchCalendars();
-  }, []);
-
-  useEffect(() => {
-    fetchSchedules(rangeStart, rangeEnd);
+    const load = async () => {
+      await fetchCalendars();
+      await fetchSchedules(rangeStart, rangeEnd);
+    };
+    load();
   }, [weekMonday.getTime(), viewMode, selectedDay.getTime()]);
 
   // 按日历可见性筛选

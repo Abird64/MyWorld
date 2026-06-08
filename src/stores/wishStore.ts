@@ -43,14 +43,6 @@ interface WishState {
   clearError: () => void;
 }
 
-const defaultBalance: GlowBalance = {
-  id: 'user',
-  glow_amount: 0,
-  micro_tickets: 0,
-  shimmer_tickets: 0,
-  updated_at: new Date().toISOString(),
-};
-
 export const useWishStore = create<WishState>((set, get) => ({
   // Initial state
   wishes: [],

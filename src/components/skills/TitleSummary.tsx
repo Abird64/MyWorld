@@ -1,6 +1,7 @@
 import type { Skill } from '@/types/skill';
 import { SKILL_COLORS, SKILL_ORDER } from '@/styles/theme';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface TitleSummaryProps {
   skills: Skill[];
@@ -15,6 +16,7 @@ const LEVEL_TITLES: Record<number, string> = {
 
 export function TitleSummary({ skills }: TitleSummaryProps) {
   const appTheme = useAppTheme();
+  const isMobile = useIsMobile();
   const totalLevel = skills.reduce((sum, s) => sum + s.level, 0);
   const totalXp = skills.reduce((sum, s) => sum + s.total_xp, 0);
 
@@ -27,7 +29,7 @@ export function TitleSummary({ skills }: TitleSummaryProps) {
 
   return (
     <div
-      className="backdrop-blur-sm rounded-2xl p-6 text-center"
+      className={`rounded-2xl p-6 text-center ${isMobile ? '' : 'backdrop-blur-sm'}`}
       style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.05)}` }}
     >
       <div className="flex items-center justify-center gap-6 mb-4">

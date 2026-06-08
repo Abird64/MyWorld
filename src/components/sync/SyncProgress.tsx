@@ -2,7 +2,7 @@
  * 同步进度显示组件
  * 显示同步的详细进度、上传/下载统计、冲突信息
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Loader2, CheckCircle, AlertCircle, ArrowUp, ArrowDown, FileText, Database } from 'lucide-react';
 import type { SyncResult } from '@/services/syncService';
 

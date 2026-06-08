@@ -219,9 +219,9 @@ pub async fn chat_completion(
         return Err(msg);
     }
 
-    if use_stream {
+    if let Some(callback) = on_token {
         // 流式模式：逐 chunk 解析 SSE
-        handle_stream_response(resp, on_token.unwrap()).await
+        handle_stream_response(resp, callback).await
     } else {
         // 非流式模式：解析完整 JSON
         handle_normal_response(resp).await

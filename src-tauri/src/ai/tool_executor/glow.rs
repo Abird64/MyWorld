@@ -468,8 +468,7 @@ pub fn execute_draw_wish(conn: &Connection, arguments: &str) -> Result<String, S
         format!("保底进度：{}/{}", new_pity, pity_threshold)
     };
 
-    if has_wish {
-        let w = selected.unwrap();
+    if let Some(w) = selected {
         let level_names = ["", "微小心愿", "光影心愿", "流光心愿", "极光心愿"];
         let level_name = level_names.get(w.level as usize).unwrap_or(&"心愿");
         Ok(format!(

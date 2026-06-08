@@ -51,6 +51,10 @@ export const useSyncStore = create<SyncState>((set, _get) => ({
   },
 
   syncNow: async () => {
+    if (_syncingLock) {
+      return { success: false, db_action: 'skipped', journals_uploaded: 0, journals_downloaded: 0, errors: [], message: '同步正在进行中，跳过重复请求', bytes_uploaded: 0, bytes_downloaded: 0 };
+    }
+    _syncingLock = true;
     set({ isSyncing: true, error: null, lastResult: null });
     try {
       const result = await syncService.syncNow();
@@ -59,13 +63,15 @@ export const useSyncStore = create<SyncState>((set, _get) => ({
       set({ status });
       // 同步成功后刷新所有数据 store，让 UI 显示最新数据
       if (result.success) {
-        refreshAllStores().catch(() => {});
+        refreshAllStores().catch((e) => console.error('[syncStore] refresh after sync failed:', e));
       }
       return result;
     } catch (e) {
       const msg = String(e);
       set({ isSyncing: false, error: msg });
       throw e;
+    } finally {
+      _syncingLock = false;
     }
   },
 
@@ -75,17 +81,18 @@ export const useSyncStore = create<SyncState>((set, _get) => ({
 // ========== 防抖自动同步 ==========
 // 写操作后调用 triggerSync()，3 秒内多次写操作只触发一次同步
 let _syncTimer: ReturnType<typeof setTimeout> | null = null;
+let _syncingLock = false;
 
 export function triggerSync() {
   if (_syncTimer) clearTimeout(_syncTimer);
   _syncTimer = setTimeout(async () => {
     _syncTimer = null;
+    // 双重检查：store 状态 + 模块级锁，防止并发同步
+    if (_syncingLock || useSyncStore.getState().isSyncing) return;
     try {
-      const { isSyncing } = useSyncStore.getState();
-      if (isSyncing) return;
       await useSyncStore.getState().syncNow();
-    } catch {
-      // 静默失败，不打断用户操作
+    } catch (e) {
+      console.error('[syncStore] triggerSync failed:', e);
     }
   }, 3000);
 }

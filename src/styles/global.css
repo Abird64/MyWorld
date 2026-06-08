@@ -341,6 +341,15 @@ select.custom-select option {
   animation: fireflyBreath 4s ease-in-out infinite;
 }
 
+/* 移动端禁用 box-shadow 动画（Android WebView 触发 paint 循环导致发热卡顿） */
+@media (hover: none) and (pointer: coarse) {
+  .firefly-glow,
+  .firefly-breath {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .firefly-glow,
   .firefly-breath {

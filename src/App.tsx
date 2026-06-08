@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense, lazy } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { usePomodoroStore } from '@/stores/pomodoroStore';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -6,22 +6,30 @@ import { useKeyboardAware } from '@/hooks/useKeyboardAware';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { PomodoroBar } from '@/components/pomodoro/PomodoroBar';
 import { PomodoroTimer } from '@/components/pomodoro/PomodoroTimer';
-import {
-  HomePage,
-  TasksPage,
-  SchedulePage,
-  DiaryPage,
-  RelationsPage,
-  HabitsPage,
-  SkillsPage,
-  SettingsPage,
-  DashboardPage,
-  MemoriesPage,
-  MeditationPage,
-  WishesPage,
-} from '@/pages';
-import { MinePage } from '@/pages/Mine';
+
+const HomePage = lazy(() => import('@/pages/Home').then(m => ({ default: m.HomePage })));
+const TasksPage = lazy(() => import('@/pages/Tasks').then(m => ({ default: m.TasksPage })));
+const SchedulePage = lazy(() => import('@/pages/Schedule').then(m => ({ default: m.SchedulePage })));
+const DiaryPage = lazy(() => import('@/pages/Diary').then(m => ({ default: m.DiaryPage })));
+const RelationsPage = lazy(() => import('@/pages/Relations').then(m => ({ default: m.RelationsPage })));
+const HabitsPage = lazy(() => import('@/pages/Habits').then(m => ({ default: m.HabitsPage })));
+const SkillsPage = lazy(() => import('@/pages/Skills').then(m => ({ default: m.SkillsPage })));
+const SettingsPage = lazy(() => import('@/pages/Settings').then(m => ({ default: m.SettingsPage })));
+const DashboardPage = lazy(() => import('@/pages/Dashboard').then(m => ({ default: m.DashboardPage })));
+const MemoriesPage = lazy(() => import('@/pages/Memories').then(m => ({ default: m.MemoriesPage })));
+const MeditationPage = lazy(() => import('@/pages/Meditation').then(m => ({ default: m.MeditationPage })));
+const WishesPage = lazy(() => import('@/pages/Wishes').then(m => ({ default: m.WishesPage })));
+const MinePage = lazy(() => import('@/pages/Mine').then(m => ({ default: m.MinePage })));
+
 import '@/styles/global.css';
+
+const PageFallback = () => (
+  <div className="h-full flex items-center justify-center" style={{ opacity: 0.3 }}>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+      <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="12" />
+    </svg>
+  </div>
+);
 
 function App() {
   const { activeTab, activeSubPage, goBack } = useUIStore();
@@ -95,7 +103,9 @@ function App() {
     <div className="h-full flex flex-col overflow-hidden">
       {!isMobile && <PomodoroBar onClick={() => setShowTimer(true)} />}
       <div className="flex-1 overflow-hidden">
-        {renderPage()}
+        <Suspense fallback={<PageFallback />}>
+          {renderPage()}
+        </Suspense>
       </div>
       <BottomTabBar onPomodoroClick={() => setShowTimer(true)} />
       <PomodoroTimer open={showTimer} onClose={() => setShowTimer(false)} />

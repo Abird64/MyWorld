@@ -180,10 +180,12 @@ export function ChatView({
           <div ref={emptyStateRef} className="h-full flex flex-col items-center justify-center relative">
             <Fireflies count={7} mouseTarget={emptyStateRef} />
             <div className="relative w-[200px] h-[240px] flex items-center justify-center mb-6">
-              <div
-                className="absolute inset-0 blur-3xl opacity-40 rounded-full scale-110"
-                style={{ backgroundColor: `${withAlpha(t.accent, 0.2)}` }}
-              />
+              {!isMobile && (
+                <div
+                  className="absolute inset-0 blur-3xl opacity-40 rounded-full scale-110"
+                  style={{ backgroundColor: `${withAlpha(t.accent, 0.2)}` }}
+                />
+              )}
               <LanternSvg accentColor={t.accent} isDark={t.isDark} />
             </div>
             <TypewriterText
@@ -451,8 +453,11 @@ export function ChatView({
         </div>
       )}
 
-      {/* 底部输入区 */}
-      <div className="px-6 pb-6 pt-3 flex-shrink-0">
+      {/* 底部输入区 — 通过 CSS 变量响应键盘高度 */}
+      <div
+        className="px-6 pt-3 flex-shrink-0"
+        style={{ paddingBottom: `calc(1.5rem + var(--keyboard-height, 0px))` }}
+      >
         {/* 锦囊胶囊 — 聚焦时浮现 */}
         <div
           className="max-w-[640px] mx-auto overflow-hidden transition-all duration-300 ease-out"
@@ -486,14 +491,16 @@ export function ChatView({
             }
           }}
         >
-          {/* 玻璃态背景 */}
-          <div
-            className="absolute inset-0 rounded-3xl pointer-events-none"
-            style={{
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-            }}
-          />
+          {/* 玻璃态背景 - 移动端不用 backdrop-filter（Android WebView CPU 渲染导致卡顿） */}
+          {!isMobile && (
+            <div
+              className="absolute inset-0 rounded-3xl pointer-events-none"
+              style={{
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+              }}
+            />
+          )}
 
           <div className="relative flex items-end">
             <textarea

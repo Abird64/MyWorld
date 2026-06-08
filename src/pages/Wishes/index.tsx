@@ -5,7 +5,7 @@ import { PageContainer } from '@/components/layout';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useWishStore } from '@/stores/wishStore';
 import type { Wish, WishLevel } from '@/types/wish';
-import { WISH_LEVELS } from '@/types/wish';
+import { WISH_LEVELS, WISH_LEVEL_VALUES } from '@/types/wish';
 import { Card } from '@/components/ui/Card';
 import { LEVEL_ICONS, LEVEL_COLORS } from './config';
 import { LedgerView } from './LedgerView';
@@ -56,7 +56,7 @@ export function WishesPage() {
 
   // Draw animation states
   const [isDrawing, setIsDrawing] = useState(false);
-  const [drawType, setDrawType] = useState<'micro' | 'shimmer' | null>(null);
+  const [, setDrawType] = useState<'micro' | 'shimmer' | null>(null);
   const [drawResult, setDrawResult] = useState<{
     success: boolean;
     wish: Wish | null;
@@ -70,6 +70,7 @@ export function WishesPage() {
   const [showShopModal, setShowShopModal] = useState(false);
   const [showPityModal, setShowPityModal] = useState(false);
   const [pityType, setPityType] = useState<'micro' | 'shimmer'>('micro');
+  const [deletingWish, setDeletingWish] = useState<Wish | null>(null);
 
   useEffect(() => {
     fetchWishes();
@@ -126,7 +127,7 @@ export function WishesPage() {
     setFormData({
       title: wish.title,
       description: wish.description || '',
-      level: wish.level as WishLevel,
+      level: wish.level,
       quantity: wish.quantity === -1 ? 1 : wish.quantity,
       isInfinite: wish.quantity === -1,
     });
@@ -431,14 +432,14 @@ export function WishesPage() {
             >
               全部
             </button>
-            {[1, 2, 3, 4].map((level) => {
-              const config = WISH_LEVELS[level as WishLevel];
-              const Icon = LEVEL_ICONS[level as WishLevel];
+            {WISH_LEVEL_VALUES.map((level) => {
+              const config = WISH_LEVELS[level];
+              const Icon = LEVEL_ICONS[level];
               const isSelected = selectedLevel === level;
               return (
                 <button
                   key={level}
-                  onClick={() => setSelectedLevel(level as WishLevel)}
+                  onClick={() => setSelectedLevel(level)}
                   className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all"
                   style={{
                     backgroundColor: isSelected ? `${withAlpha(config.color, 0.15)}` : 'transparent',
@@ -481,13 +482,13 @@ export function WishesPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {[1, 2, 3, 4].map((level) => {
-                const levelWishes = wishesByLevel[level as WishLevel] ?? [];
+              {WISH_LEVEL_VALUES.map((level) => {
+                const levelWishes = wishesByLevel[level] ?? [];
                 if (levelWishes.length === 0 && selectedLevel !== null && selectedLevel !== level) return null;
                 if (selectedLevel !== null && selectedLevel !== level) return null;
 
-                const config = WISH_LEVELS[level as WishLevel];
-                const Icon = LEVEL_ICONS[level as WishLevel];
+                const config = WISH_LEVELS[level];
+                const Icon = LEVEL_ICONS[level];
 
                 return (
                   <div key={level}>
@@ -506,7 +507,7 @@ export function WishesPage() {
                         {levelWishes.length} 个心愿
                       </span>
                       <button
-                        onClick={() => openAdd(level as WishLevel)}
+                        onClick={() => openAdd(level)}
                         className="ml-auto flex items-center gap-1 text-xs px-2 py-1 rounded-full transition-colors"
                         style={{ color: config.color, backgroundColor: `${withAlpha(config.color, 0.08)}` }}
                       >
@@ -564,7 +565,7 @@ export function WishesPage() {
                               </svg>
                             </button>
                             <button
-                              onClick={() => deleteWish(wish.id)}
+                              onClick={() => setDeletingWish(wish)}
                               className="p-1.5 rounded-lg transition-colors"
                               style={{ color: appTheme.inkMuted48 }}
                               title="删除"
@@ -626,6 +627,42 @@ export function WishesPage() {
         isLoading={isLoading}
         buyTickets={buyTickets}
       />
+
+      {/* 删除确认弹窗 */}
+      {deletingWish && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <div
+            className="mx-4 p-6 rounded-2xl max-w-[320px] w-full"
+            style={{ backgroundColor: appTheme.canvas }}
+          >
+            <h3 className="text-lg font-medium mb-2" style={{ color: appTheme.ink }}>
+              确认删除
+            </h3>
+            <p className="text-sm mb-6" style={{ color: appTheme.inkMuted48 }}>
+              确定要删除心愿「{deletingWish.title}」吗？此操作不可撤销。
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeletingWish(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                style={{ backgroundColor: appTheme.surfacePearl, color: appTheme.ink }}
+              >
+                取消
+              </button>
+              <button
+                onClick={async () => {
+                  await deleteWish(deletingWish.id);
+                  setDeletingWish(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                style={{ backgroundColor: '#E65C5C', color: '#fff' }}
+              >
+                确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </PageContainer>
   );

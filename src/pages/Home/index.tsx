@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, MessageSquare, Bookmark, BookOpen, ArrowLeft, ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, Bookmark, BookOpen, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { PageContainer } from '@/components/layout';
 import { NavBar } from '@/components/ui';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useKeyboardShortcuts, getShortcutLabel } from '@/hooks/useKeyboardShortcuts';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { ChatView } from '@/components/ai/ChatView';
 import { EmptyFavorites } from '@/components/ai/EmptyFavorites';
 import { EmptyMemories } from '@/components/ai/EmptyMemories';

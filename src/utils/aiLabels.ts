@@ -48,6 +48,16 @@ export const TOOL_LABELS: Record<string, { group: string; label: string; color: 
   // 专注
   start_pomodoro:    { group: '执行', label: '开始专注', color: '#7CB342' },
   get_pomodoro_stats:{ group: '查询', label: '专注统计', color: '#6B9BD2' },
+  // 心愿系统
+  create_wish:       { group: '创建', label: '创建心愿', color: '#58A968' },
+  update_wish:       { group: '修改', label: '修改心愿', color: '#E8B959' },
+  delete_wish:       { group: '删除', label: '删除心愿', color: '#E65C5C' },
+  list_draws:        { group: '查询', label: '抽奖记录', color: '#6B9BD2' },
+  draw_wish:         { group: '执行', label: '抽奖', color: '#7CB342' },
+  redeem_wish:       { group: '执行', label: '兑换心愿', color: '#7CB342' },
+  buy_tickets:       { group: '执行', label: '购买奖券', color: '#7CB342' },
+  claim_pity_wish:   { group: '执行', label: '保底自选', color: '#7CB342' },
+  list_glow_ledger:  { group: '查询', label: '萤火账本', color: '#6B9BD2' },
 };
 
 /** 状态中文映射 */

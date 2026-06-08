@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface FireflyData {
   el: HTMLDivElement;
@@ -24,11 +25,21 @@ interface FirefliesProps {
 }
 
 export function Fireflies({ count = 7, className = '', mouseTarget }: FirefliesProps) {
+  const isMobile = useIsMobile();
+  const actualCount = isMobile ? Math.min(count, 3) : count;
   const containerRef = useRef<HTMLDivElement>(null);
   const firefliesRef = useRef<FireflyData[]>([]);
   const mouseRef = useRef({ x: -1000, y: -1000 });
   const rafRef = useRef<number>(0);
   const timeRef = useRef(0);
+  const pageVisibleRef = useRef(true);
+
+  // 监听页面可见性，隐藏时暂停动画
+  useEffect(() => {
+    const onVis = () => { pageVisibleRef.current = document.visibilityState === 'visible'; };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
   const initFireflies = useCallback(() => {
     const container = containerRef.current;
@@ -41,7 +52,7 @@ export function Fireflies({ count = 7, className = '', mouseTarget }: FirefliesP
     const cx = rect.width / 2;
     const cy = rect.height * 0.42;
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < actualCount; i++) {
       const el = document.createElement('div');
       el.className = 'firefly-dot';
 
@@ -75,7 +86,7 @@ export function Fireflies({ count = 7, className = '', mouseTarget }: FirefliesP
         farWanderInterval: 25000 + Math.random() * 35000,
       });
     }
-  }, [count]);
+  }, [actualCount]);
 
   useEffect(() => {
     initFireflies();
@@ -88,7 +99,9 @@ export function Fireflies({ count = 7, className = '', mouseTarget }: FirefliesP
     };
   }, [initFireflies]);
 
+  // 移动端不需要鼠标追踪
   useEffect(() => {
+    if (isMobile) return;
     const target = mouseTarget?.current || containerRef.current;
     if (!target) return;
 
@@ -100,13 +113,13 @@ export function Fireflies({ count = 7, className = '', mouseTarget }: FirefliesP
       mouseRef.current = { x: -1000, y: -1000 };
     };
 
-    target.addEventListener('mousemove', onMouseMove);
+    target.addEventListener('mousemove', onMouseMove, { passive: true });
     target.addEventListener('mouseleave', onMouseLeave);
     return () => {
       target.removeEventListener('mousemove', onMouseMove);
       target.removeEventListener('mouseleave', onMouseLeave);
     };
-  }, [mouseTarget]);
+  }, [mouseTarget, isMobile]);
 
   // 简单的平滑噪声：用 sin 近似，产生连续的曲线值
   const noise = (t: number, seed: number) => {
@@ -116,9 +129,19 @@ export function Fireflies({ count = 7, className = '', mouseTarget }: FirefliesP
   };
 
   useEffect(() => {
+    // 移动端跳过 rAF 循环，只使用 CSS 呼吸动画（省 CPU/GPU）
+    if (isMobile) return;
+
     let lastTime = performance.now();
 
     const tick = (now: number) => {
+      // 页面隐藏时暂停更新，但仍请求下一帧以便恢复
+      if (!pageVisibleRef.current) {
+        lastTime = now;
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
       const dt = Math.min(now - lastTime, 50);
       lastTime = now;
       timeRef.current += dt / 1000;
@@ -211,11 +234,22 @@ export function Fireflies({ count = 7, className = '', mouseTarget }: FirefliesP
 
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+  }, [isMobile]);
 
   return (
     <>
-      <style>{`
+      <style>{isMobile ? `
+        .firefly-dot {
+          position: absolute;
+          width: 3px;
+          height: 3px;
+          border-radius: 50%;
+          background: #A8E6CF;
+          box-shadow: 0 0 6px 3px rgba(168, 230, 207, 0.3);
+          pointer-events: none;
+          opacity: 0.5;
+        }
+      ` : `
         .firefly-dot {
           position: absolute;
           width: 3px;
@@ -226,7 +260,6 @@ export function Fireflies({ count = 7, className = '', mouseTarget }: FirefliesP
                       0 0 12px 6px rgba(168, 230, 207, 0.15);
           pointer-events: none;
           animation: fireflyBreathe 4s ease-in-out infinite;
-          will-change: left, top;
         }
 
         @keyframes fireflyBreathe {

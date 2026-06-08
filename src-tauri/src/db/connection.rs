@@ -1,6 +1,7 @@
 use rusqlite::Connection;
 use std::path::PathBuf;
 use std::sync::Mutex;
+#[cfg(feature = "gui")]
 use tauri::Manager;
 
 use super::repositories::skill_repo;
@@ -14,6 +15,7 @@ pub struct AppDataState {
     pub dir: PathBuf,
 }
 
+#[cfg(feature = "gui")]
 pub fn init_db(app_handle: &tauri::AppHandle) -> Result<(DbState, AppDataState), String> {
     let mut db_path = app_handle
         .path()

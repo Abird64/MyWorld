@@ -3,7 +3,7 @@
  * 当同步检测到数据冲突时显示，让用户选择保留哪个版本
  */
 import { useState } from 'react';
-import { AlertTriangle, FileText, Clock, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
+import { AlertTriangle, FileText, Clock, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 
 export interface ConflictItem {
   id: string;
@@ -153,7 +153,6 @@ export function ConflictResolver({
               style={{
                 backgroundColor: theme.overlay(0.06),
                 border: `1px solid ${resolutions[current.id] === 'local' ? theme.accent : theme.cardBorder}`,
-                ringColor: theme.accent,
               }}
             >
               <div className="flex items-center gap-2 mb-2">
@@ -188,7 +187,6 @@ export function ConflictResolver({
               style={{
                 backgroundColor: theme.overlay(0.06),
                 border: `1px solid ${resolutions[current.id] === 'remote' ? theme.accent : theme.cardBorder}`,
-                ringColor: theme.accent,
               }}
             >
               <div className="flex items-center gap-2 mb-2">

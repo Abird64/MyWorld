@@ -3,6 +3,7 @@ import { Plus, X, Search, ArrowUpDown, ListChecks } from 'lucide-react';
 import { CapsuleTabs, NavBar } from '@/components/ui';
 import { PageContainer } from '@/components/layout';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useTaskStore } from '@/stores/taskStore';
 import { useSkillStore } from '@/stores/skillStore';
 import * as skillService from '@/services/skillService';
@@ -82,6 +83,7 @@ function filterTasks(tasks: Task[], tabId: string, searchQuery: string): Task[] 
 
 export function TasksPage() {
   const appTheme = useAppTheme();
+  const isMobile = useIsMobile();
   const txt = appTheme.ink;
   const txtLight = withAlpha(txt, 0.3);
   const txtMid = withAlpha(txt, 0.5);
@@ -319,7 +321,7 @@ export function TasksPage() {
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: txtLight }} />
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索任务..."
-              className="w-full backdrop-blur-sm rounded-full pl-11 pr-4 py-3 text-base focus:outline-none task-search-input transition-all"
+              className={`w-full rounded-full pl-11 pr-4 py-3 text-base focus:outline-none task-search-input transition-all ${isMobile ? '' : 'backdrop-blur-sm'}`}
               style={{ backgroundColor: withAlpha(appTheme.canvas, 0.6), color: txt }} />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
@@ -332,7 +334,7 @@ export function TasksPage() {
           </div>
           <div className="relative">
             <button onClick={() => setShowSortMenu(!showSortMenu)}
-              className="w-11 h-11 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors"
+              className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${isMobile ? '' : 'backdrop-blur-sm'}`}
               style={{ backgroundColor: withAlpha(appTheme.canvas, 0.6), color: txtMeta }}
               onMouseEnter={(e) => (e.currentTarget.style.color = txtMid)}
               onMouseLeave={(e) => (e.currentTarget.style.color = txtMeta)}

@@ -13,7 +13,7 @@ interface RecommendCardProps {
   onRetry?: () => void;
 }
 
-export function RecommendCard({ recommendation, state, onRetry }: RecommendCardProps) {
+export function RecommendCard({ recommendation, state }: RecommendCardProps) {
   const appTheme = useAppTheme();
   const setActiveSubPage = useUIStore((s) => s.setActiveSubPage);
   const startFocus = usePomodoroStore((s) => s.startFocus);
@@ -64,7 +64,7 @@ export function RecommendCard({ recommendation, state, onRetry }: RecommendCardP
         style={{ backgroundColor: appTheme.canvas, border: `0.5px solid ${appTheme.hairline}` }}
       >
         <Sparkles size={14} style={{ color: warmColor, flexShrink: 0 }} aria-hidden="true" />
-        <span className="text-sm" style={{ color: appTheme.inkMuted60 }}>
+        <span className="text-sm" style={{ color: appTheme.inkMuted48 }}>
           今天的事都做完了。坐下来，喝杯水。
         </span>
       </div>

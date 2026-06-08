@@ -1,54 +1,30 @@
-use std::sync::Arc;
 use tauri::State;
 
 use crate::db::connection::{AppDataState, DbState};
 use crate::db::repositories::setting_repo;
-use crate::sync::cos_client::CosClient;
-use crate::sync::lan_discovery::{DiscoveredPeer, LanDiscovery};
-use crate::sync::lan_server::{self, LanServerState};
 use crate::sync::oss_client::OssClient;
-use crate::sync::r2_client::R2Client;
 use crate::sync::remote_storage::RemoteStorage;
 use crate::sync::sync_engine::{run_full_sync, SyncResult, SyncState};
 use crate::sync::webdav_client::WebDavClient;
 
-/// 测试连接（支持 WebDAV、R2、COS 和 OSS）
+/// 测试连接（支持 OSS 和 WebDAV）
 #[tauri::command]
 pub async fn sync_test_connection(
     storage_type: String,
     url: String,
     username: String,
     password: String,
-    r2_account_id: String,
-    r2_access_key: String,
-    r2_secret_key: String,
-    r2_bucket: String,
-    cos_secret_id: String,
-    cos_secret_key: String,
-    cos_bucket: String,
-    cos_region: String,
     oss_access_key_id: String,
     oss_access_key_secret: String,
     oss_bucket: String,
     oss_region: String,
 ) -> Result<String, String> {
-    match storage_type.as_str() {
-        "r2" => {
-            let client = R2Client::new(&r2_account_id, &r2_access_key, &r2_secret_key, &r2_bucket)?;
-            client.test_connection().await
-        }
-        "cos" => {
-            let client = CosClient::new(&cos_bucket, &cos_region, &cos_secret_id, &cos_secret_key)?;
-            client.test_connection().await
-        }
-        "oss" => {
-            let client = OssClient::new(&oss_bucket, &oss_region, &oss_access_key_id, &oss_access_key_secret)?;
-            client.test_connection().await
-        }
-        _ => {
-            let client = WebDavClient::new(&url, &username, &password)?;
-            client.test_connection().await
-        }
+    if storage_type == "oss" {
+        let client = OssClient::new(&oss_bucket, &oss_region, &oss_access_key_id, &oss_access_key_secret)?;
+        client.test_connection().await
+    } else {
+        let client = WebDavClient::new(&url, &username, &password)?;
+        client.test_connection().await
     }
 }
 
@@ -160,26 +136,6 @@ pub async fn sync_get_status(
         .unwrap_or_else(|| "webdav".to_string());
 
     let configured = match storage_type.as_str() {
-        "r2" => {
-            crate::db::repositories::setting_repo::get_setting(&conn, "sync.r2.account_id")
-                .ok().flatten().is_some()
-                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.r2.access_key")
-                    .ok().flatten().is_some()
-                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.r2.secret_key")
-                    .ok().flatten().is_some()
-                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.r2.bucket")
-                    .ok().flatten().is_some()
-        }
-        "cos" => {
-            crate::db::repositories::setting_repo::get_setting(&conn, "sync.cos.secret_id")
-                .ok().flatten().is_some()
-                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.cos.secret_key")
-                    .ok().flatten().is_some()
-                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.cos.bucket")
-                    .ok().flatten().is_some()
-                && crate::db::repositories::setting_repo::get_setting(&conn, "sync.cos.region")
-                    .ok().flatten().is_some()
-        }
         "oss" => {
             crate::db::repositories::setting_repo::get_setting(&conn, "sync.oss.access_key_id")
                 .ok().flatten().is_some()
@@ -189,10 +145,6 @@ pub async fn sync_get_status(
                     .ok().flatten().is_some()
                 && crate::db::repositories::setting_repo::get_setting(&conn, "sync.oss.region")
                     .ok().flatten().is_some()
-        }
-        "lan" => {
-            crate::db::repositories::setting_repo::get_setting(&conn, "sync.lan.peer_ip")
-                .ok().flatten().is_some()
         }
         _ => {
             crate::db::repositories::setting_repo::get_setting(&conn, "sync.url")
@@ -220,111 +172,4 @@ pub struct SyncStatus {
     pub in_progress: bool,
     pub last_sync_time: Option<String>,
     pub storage_type: String,
-}
-
-// ============= LAN 同步命令 =============
-
-/// 启动 LAN 同步服务器 + mDNS 广播
-#[tauri::command]
-pub async fn lan_start_server(
-    db_state: State<'_, DbState>,
-    app_data: State<'_, AppDataState>,
-    lan_server: State<'_, Arc<LanServerState>>,
-    lan_discovery: State<'_, Arc<LanDiscovery>>,
-    port: Option<u16>,
-) -> Result<serde_json::Value, String> {
-    let (sync_dir, device_name, site_id, preferred_port) = {
-        let conn = db_state.conn.lock().map_err(|e| e.to_string())?;
-        let sync_dir = app_data.dir.clone();
-
-        let device_name = setting_repo::get_setting(&conn, "sync.lan.device_name")
-            .ok()
-            .flatten()
-            .map(|s| s.value)
-            .unwrap_or_else(|| {
-                std::env::var("COMPUTERNAME")
-                    .or_else(|_| std::env::var("HOSTNAME"))
-                    .unwrap_or_else(|_| "未知设备".to_string())
-            });
-
-        let site_id = setting_repo::get_setting(&conn, "sync.site_id")
-            .ok()
-            .flatten()
-            .map(|s| s.value)
-            .unwrap_or_default();
-
-        let preferred_port = port.unwrap_or_else(|| {
-            setting_repo::get_setting(&conn, "sync.lan.server_port")
-                .ok()
-                .flatten()
-                .map(|s| s.value.parse().unwrap_or(9821))
-                .unwrap_or(9821)
-        });
-
-        (sync_dir, device_name, site_id, preferred_port)
-    };
-
-    let actual_port =
-        lan_server::start_lan_server(lan_server.inner().clone(), sync_dir, device_name.clone(), site_id, preferred_port)
-            .await?;
-
-    // 启动 mDNS 广播
-    if let Err(e) = lan_discovery.advertise(&device_name, "", actual_port).await {
-        log::warn!("mDNS 广播启动失败: {}", e);
-    }
-    if let Err(e) = lan_discovery.start_browse().await {
-        log::warn!("mDNS 浏览启动失败: {}", e);
-    }
-
-    let ip = lan_server::get_local_ip();
-
-    Ok(serde_json::json!({
-        "port": actual_port,
-        "ip": ip,
-    }))
-}
-
-/// 停止 LAN 同步服务器
-#[tauri::command]
-pub async fn lan_stop_server(
-    lan_server: State<'_, Arc<LanServerState>>,
-    lan_discovery: State<'_, Arc<LanDiscovery>>,
-) -> Result<(), String> {
-    lan_server.stop().await;
-    lan_discovery.unregister().await;
-    Ok(())
-}
-
-/// 获取已发现的 LAN 设备列表
-#[tauri::command]
-pub async fn lan_discover_peers(
-    lan_discovery: State<'_, Arc<LanDiscovery>>,
-) -> Result<Vec<DiscoveredPeer>, String> {
-    Ok(lan_discovery.get_peers().await)
-}
-
-/// 手动连接 LAN 设备
-#[tauri::command]
-pub async fn lan_connect_manual(
-    lan_discovery: State<'_, Arc<LanDiscovery>>,
-    host: String,
-    port: u16,
-) -> Result<DiscoveredPeer, String> {
-    lan_discovery.connect_manual(&host, port).await
-}
-
-/// 获取本机局域网 IP
-#[tauri::command]
-pub fn lan_get_local_ip() -> String {
-    lan_server::get_local_ip()
-}
-
-/// 测试连接指定 LAN 设备
-#[tauri::command]
-pub async fn lan_test_peer(
-    lan_discovery: State<'_, Arc<LanDiscovery>>,
-    host: String,
-    port: u16,
-) -> Result<String, String> {
-    lan_discovery.test_peer(&host, port).await
 }

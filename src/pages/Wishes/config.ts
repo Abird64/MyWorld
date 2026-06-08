@@ -1,13 +1,14 @@
 import { Sparkles, Gift, Crown, Star, Plus, Sparkle, Shuffle, TrendingUp, CheckCircle, Edit3, Timer, ShoppingBag } from 'lucide-react';
+import type { WishLevel } from '@/types/wish';
 
-export const LEVEL_ICONS = {
+export const LEVEL_ICONS: Record<WishLevel, typeof Sparkles> = {
   1: Sparkles,
   2: Gift,
   3: Crown,
   4: Star,
 };
 
-export const LEVEL_COLORS = {
+export const LEVEL_COLORS: Record<WishLevel, string> = {
   1: '#7EB8A2',
   2: '#5A9A9E',
   3: '#C49A6C',

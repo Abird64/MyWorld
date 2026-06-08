@@ -80,7 +80,7 @@ export function TaskDetailPanel({
       const xpMap: Record<string, number> = {};
       ts.forEach((s) => { xpMap[s.skill_id] = s.xp_amount; });
       setSkillXps(xpMap);
-    }).catch(() => {});
+    }).catch((e) => console.error('[TaskDetailPanel] Failed to load task skills:', e));
   }, [task.id]);
 
   // 首次加载标记：task 切换时重置，等数据同步完再开启自动保存

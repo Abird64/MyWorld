@@ -596,7 +596,7 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
         "schedules", "contacts", "diary_contacts", "task_contacts",
         "settings", "ai_conversations", "ai_messages", "calendars",
         "contact_methods", "ai_favorites", "ai_memories", "habits", "habit_records",
-        "pomodoro_sessions",
+        "pomodoro_sessions", "wishes", "wish_draws", "glow_balances", "glow_ledger",
     ];
     for table in &sync_tables {
         let _ = conn.execute(
@@ -608,7 +608,8 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
     // === 增量迁移：给缺 updated_at 的表添加列 ===
     let now = "datetime('now')";
     for table in &["task_skills", "skill_events", "diary_contacts", "task_contacts",
-                     "ai_messages", "contact_methods", "ai_favorites", "habit_records"] {
+                     "ai_messages", "contact_methods", "ai_favorites", "habit_records",
+                     "glow_ledger"] {
         let _ = conn.execute(
             &format!("ALTER TABLE {} ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''", table),
             [],
@@ -732,6 +733,14 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
         "CREATE INDEX IF NOT EXISTS idx_glow_ledger_created ON glow_ledger(created_at)",
         [],
     );
+
+    // 清理回退：将 keychain 占位符恢复为空字符串（OS 密钥链方案已回退）
+    for key in &["sync.password", "ai.api_key", "sync.oss.access_key_secret"] {
+        let _ = conn.execute(
+            "UPDATE settings SET value = '' WHERE key = ?1 AND value = '[keychain]'",
+            rusqlite::params![key],
+        );
+    }
 
     log::info!("Database migrations completed");
     Ok(())

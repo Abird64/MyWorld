@@ -110,6 +110,9 @@ export interface GlowLedgerResult {
   total: number;
 }
 
+/** 心愿等级列表（类型安全遍历） */
+export const WISH_LEVEL_VALUES: readonly WishLevel[] = [1, 2, 3, 4];
+
 /** 心愿等级配置映射 */
 export const WISH_LEVELS: Record<WishLevel, WishLevelConfig> = {
   1: {
