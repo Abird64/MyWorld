@@ -16,12 +16,14 @@ interface AiState {
   isSending: boolean;
   isExecuting: boolean;
   error: string | null;
-  /** 当前 AI 处理状态文本（如"正在思量..."） */
+  /** 当前 AI 处理状态文本（如"正在理解..."、"正在输入中..."） */
   aiStatus: string;
   /** 流式接收中的内容 */
   streamingContent: string;
   /** 是否正在流式接收 token */
   isStreaming: boolean;
+  /** 待发送的图片列表（base64 data URIs） */
+  pendingImages: string[];
 
   fetchConversations: () => Promise<void>;
   createConversation: (title?: string) => Promise<string>;
@@ -29,6 +31,9 @@ interface AiState {
   deleteConversation: (id: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   stopGeneration: () => void;
+  addPendingImages: (images: string[]) => void;
+  removePendingImage: (index: number) => void;
+  clearPendingImages: () => void;
   executeToolCalls: (messageId: string) => Promise<void>;
   executeSingleToolCall: (messageId: string, toolCallId: string) => Promise<void>;
   cancelToolCalls: (messageId: string, toolCallId?: string) => Promise<void>;
@@ -47,6 +52,7 @@ export const useAiStore = create<AiState>((set, get) => ({
   aiStatus: '',
   streamingContent: '',
   isStreaming: false,
+  pendingImages: [],
 
   fetchConversations: async () => {
     try {
@@ -95,13 +101,18 @@ export const useAiStore = create<AiState>((set, get) => ({
   },
 
   sendMessage: async (content: string) => {
-    const { currentConversation } = get();
+    const { currentConversation, pendingImages } = get();
     if (!currentConversation) return;
+    if (!content.trim() && pendingImages.length === 0) return;
 
     // 中断之前的请求（如果有）
     sendAbortController?.abort();
     sendAbortController = new AbortController();
     const thisController = sendAbortController;
+
+    // 取出待发送的图片并清空
+    const imagesToSend = pendingImages.length > 0 ? [...pendingImages] : undefined;
+    set({ pendingImages: [] });
 
     // 乐观更新：立即显示用户消息
     const userMsg: AiMessage = {
@@ -111,6 +122,7 @@ export const useAiStore = create<AiState>((set, get) => ({
       content,
       tool_calls: null,
       tool_call_id: null,
+      images: imagesToSend ? JSON.stringify(imagesToSend) : null,
       created_at: new Date().toISOString(),
     };
     set((state) => ({
@@ -142,7 +154,7 @@ export const useAiStore = create<AiState>((set, get) => ({
     });
 
     try {
-      const aiReply = await aiService.sendMessage(currentConversation, content);
+      const aiReply = await aiService.sendMessage(currentConversation, content, imagesToSend);
 
       // 用户中断了，忽略结果
       if (thisController.signal.aborted) return;
@@ -173,6 +185,18 @@ export const useAiStore = create<AiState>((set, get) => ({
   stopGeneration: () => {
     sendAbortController?.abort();
     set({ isSending: false, isStreaming: false, streamingContent: '', aiStatus: '' });
+  },
+
+  addPendingImages: (images: string[]) => {
+    set((state) => ({ pendingImages: [...state.pendingImages, ...images] }));
+  },
+
+  removePendingImage: (index: number) => {
+    set((state) => ({ pendingImages: state.pendingImages.filter((_, i) => i !== index) }));
+  },
+
+  clearPendingImages: () => {
+    set({ pendingImages: [] });
   },
 
   executeToolCalls: async (messageId: string) => {

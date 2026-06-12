@@ -15,9 +15,29 @@ mod habit;
 mod glow;
 mod pomodoro;
 mod guide;
+pub mod aihot;
+
+/// 判断工具是否需要在 async 上下文中处理（如需要 HTTP 请求的工具）
+/// 这些工具不能在同步的 execute_tool 中执行，需要在 async 调用方特殊处理
+pub fn is_async_tool(name: &str) -> bool {
+    matches!(name, "search_ai_news")
+}
+
+/// 执行不需要数据库连接的同步工具
+pub fn execute_tool_without_conn(name: &str, arguments: &str) -> Result<String, String> {
+    match name {
+        _ => Err(format!("工具 {} 不是无连接工具", name)),
+    }
+}
+
+/// 判断工具是否需要数据库连接
+pub fn needs_conn(name: &str) -> bool {
+    !matches!(name, "search_ai_news")
+}
 
 /// 根据工具名和参数执行对应的数据库操作，返回结果描述文本
 /// `app_data_dir` 仅日记工具需要，其他工具可传 None
+/// 注意：search_ai_news 等 async 工具不在此函数中处理
 pub fn execute_tool(
     conn: &mut Connection,
     app_data_dir: Option<&Path>,
@@ -84,6 +104,8 @@ pub fn execute_tool(
         // 专注 (2)
         "start_pomodoro" => pomodoro::execute_start_pomodoro(conn, arguments),
         "get_pomodoro_stats" => pomodoro::execute_get_pomodoro_stats(conn),
+        // AI 资讯 — 由 async 调用方通过 spawn_blocking 处理，不在此执行
+        "search_ai_news" => Err("search_ai_news 应由 async 上下文处理".to_string()),
         _ => Err(format!("未知工具: {}", name)),
     }
 }

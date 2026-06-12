@@ -4,7 +4,7 @@ use serde::Deserialize;
 use tauri::State;
 
 use crate::db::connection::DbState;
-use crate::db::repositories::wish_repo::{Wish, WishDraw, GlowBalance, WishRepository};
+use crate::db::repositories::wish_repo::{Wish, WishDraw, GlowBalance, InventoryItem, WishRepository};
 
 // === Wish Commands ===
 
@@ -256,6 +256,25 @@ pub fn draw_wish(
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let repo = WishRepository::new(&conn);
 
+    // Level probability
+    let (level_weights, pity_threshold): (Vec<(i32, f64)>, i32) = if ticket_type == "micro" {
+        (vec![(1, 0.6), (2, 0.4)], 30)
+    } else {
+        (vec![(3, 0.8), (4, 0.2)], 80)
+    };
+
+    // 先检查心愿池是否有可用心愿，再扣奖券
+    let mut has_any_wish = false;
+    for (level, _) in &level_weights {
+        if !repo.get_wishes_by_level(*level).map_err(|e| e.to_string())?.is_empty() {
+            has_any_wish = true;
+            break;
+        }
+    }
+    if !has_any_wish {
+        return Err("心愿池为空，请先添加心愿".to_string());
+    }
+
     // Check and consume ticket
     if !repo.consume_ticket(&ticket_type).map_err(|e| e.to_string())? {
         return Err("奖券不足，请先购买或获取奖券".to_string());
@@ -277,13 +296,6 @@ pub fn draw_wish(
             rusqlite::params![ledger_id, asset_type, balance_after, format!("消耗{}抽奖", ticket_label), now],
         );
     }
-
-    // Level probability: Micro → L1 80% / L2 20%, Shimmer → L3 90% / L4 10%
-    let (level_weights, pity_threshold): (Vec<(i32, f64)>, i32) = if ticket_type == "micro" {
-        (vec![(1, 0.8), (2, 0.2)], 30)
-    } else {
-        (vec![(3, 0.9), (4, 0.1)], 80)
-    };
 
     // Get current pity count
     let pity_count: i32 = conn
@@ -334,11 +346,13 @@ pub fn draw_wish(
         result_wish_id: selected.as_ref().map(|w| w.id.clone()),
         result_type: if has_wish { "wish".to_string() } else { "none".to_string() },
         pity_count: pity_count + 1,
+        redeemed_at: None,
         created_at: Utc::now().to_rfc3339(),
     };
     repo.create_draw(&draw).map_err(|e| e.to_string())?;
 
-    // 抽中后自动完成心愿，不再需要额外花萤火兑换
+    // 抽中后立即增加 achieved_count（减少可抽数量），但不标记为已核销
+    // 核销时不再重复增加
     if let Some(ref wish) = selected {
         drop(repo);
         let now = Utc::now().to_rfc3339();
@@ -381,10 +395,13 @@ pub fn claim_pity_wish(
 
     let pity_threshold = if ticket_type == "micro" { 30 } else { 80 };
 
-    // Check pity progress
+    // Check pity progress — 只计最近一次保底之后的抽奖
     let pity_count: i32 = conn
         .query_row(
-            "SELECT COUNT(*) FROM wish_draws WHERE ticket_type = ?1 AND result_type != 'pity' AND created_at > datetime('now', '-30 days')",
+            "SELECT COUNT(*) FROM wish_draws WHERE ticket_type = ?1 AND result_type != 'pity' AND created_at > COALESCE(
+                (SELECT created_at FROM wish_draws WHERE ticket_type = ?1 AND result_type = 'pity' ORDER BY created_at DESC LIMIT 1),
+                '1970-01-01'
+            )",
             [&ticket_type],
             |row| row.get(0),
         )
@@ -414,7 +431,7 @@ pub fn claim_pity_wish(
 
     drop(repo);  // release immutable borrow
 
-    // Mark wish as achieved
+    // 保底抽中后增加 achieved_count（减少可抽数量），放入仓库等待核销
     let now = Utc::now().to_rfc3339();
     conn.execute(
         "UPDATE wishes SET achieved_count = achieved_count + 1, updated_at = ?1 WHERE id = ?2",
@@ -431,6 +448,7 @@ pub fn claim_pity_wish(
         result_wish_id: Some(wish_id.clone()),
         result_type: "pity".to_string(),
         pity_count: pity_count + 1,
+        redeemed_at: None,
         created_at: now,
     };
     repo.create_draw(&draw).map_err(|e| e.to_string())?;
@@ -458,10 +476,13 @@ pub fn get_pity_progress(
 
     let pity_threshold = if ticket_type == "micro" { 30 } else { 80 };
 
-    // Get current pity count
+    // Get current pity count — 只计最近一次保底之后的抽奖
     let pity_count: i32 = conn
         .query_row(
-            "SELECT COUNT(*) FROM wish_draws WHERE ticket_type = ?1 AND result_type != 'pity' AND created_at > datetime('now', '-30 days')",
+            "SELECT COUNT(*) FROM wish_draws WHERE ticket_type = ?1 AND result_type != 'pity' AND created_at > COALESCE(
+                (SELECT created_at FROM wish_draws WHERE ticket_type = ?1 AND result_type = 'pity' ORDER BY created_at DESC LIMIT 1),
+                '1970-01-01'
+            )",
             [&ticket_type],
             |row| row.get(0),
         )
@@ -654,4 +675,71 @@ pub fn redeem_wish(
     repo.get_wish(&wish_id)
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "兑换失败，请重试".to_string())
+}
+
+// === 仓库 Commands ===
+
+/// 查询仓库：未核销的中奖记录
+#[tauri::command]
+pub fn list_inventory(
+    state: State<'_, DbState>,
+) -> Result<Vec<InventoryItem>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let repo = WishRepository::new(&conn);
+    repo.list_inventory().map_err(|e| e.to_string())
+}
+
+/// 核销仓库物品：标记为已核销
+/// achieved_count 在抽奖时已增加，核销不再重复
+#[tauri::command]
+pub fn redeem_draw(
+    state: State<'_, DbState>,
+    draw_id: String,
+) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let repo = WishRepository::new(&conn);
+    repo.redeem_draw(&draw_id).map_err(|e| e.to_string())
+}
+
+/// 获取待核销数量
+#[tauri::command]
+pub fn get_inventory_count(
+    state: State<'_, DbState>,
+) -> Result<i32, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let repo = WishRepository::new(&conn);
+    repo.get_inventory_count().map_err(|e| e.to_string())
+}
+
+/// 调整心愿剩余库存（通过 achieved_count 实现）
+/// delta: +1 = 减少剩余（achieved_count+1），-1 = 增加剩余（achieved_count-1）
+#[tauri::command]
+pub fn adjust_wish_stock(
+    state: State<'_, DbState>,
+    wish_id: String,
+    delta: i32,
+) -> Result<Wish, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let repo = WishRepository::new(&conn);
+
+    let existing = repo.get_wish(&wish_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "心愿不存在".to_string())?;
+
+    // 无限数量不能调整
+    if existing.quantity == -1 {
+        return Err("无限数量的心愿无需调整库存".to_string());
+    }
+
+    // achieved_count 范围: 0 ~ quantity
+    let new_achieved = (existing.achieved_count + delta).max(0).min(existing.quantity);
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE wishes SET achieved_count = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![new_achieved, now, wish_id],
+    ).map_err(|e| e.to_string())?;
+
+    repo.get_wish(&wish_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "更新失败".to_string())
 }

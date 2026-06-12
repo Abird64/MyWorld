@@ -2,7 +2,7 @@
  * 日记服务 - 封装所有日记相关的 Tauri 命令调用
  */
 import { tauriInvoke } from './tauri';
-import type { Journal, JournalEntry, AiDiary, ExtractedContact } from '@/types/journal';
+import type { Journal, JournalEntry, AiDiary, ExtractedContact, JournalImage } from '@/types/journal';
 import type { CompleteResult } from '@/types/task';
 
 /** 获取或创建指定日期的日记 */
@@ -76,4 +76,31 @@ export async function dailyReflection(date: string): Promise<DailyReflectionResu
   return tauriInvoke<DailyReflectionResult>('daily_reflection', {
     input: { date },
   });
+}
+
+// ========== 日记图片 ==========
+
+/** 上传图片到日记 */
+export async function uploadJournalImage(
+  date: string,
+  fileName: string,
+  mimeType: string,
+  data: number[],
+): Promise<JournalImage> {
+  return tauriInvoke<JournalImage>('upload_journal_image', { date, fileName, mimeType, data });
+}
+
+/** 获取日记的所有图片 */
+export async function getJournalImages(journalId: string): Promise<JournalImage[]> {
+  return tauriInvoke<JournalImage[]>('get_journal_images', { journalId });
+}
+
+/** 删除日记图片 */
+export async function deleteJournalImage(imageId: string): Promise<void> {
+  return tauriInvoke<void>('delete_journal_image', { imageId });
+}
+
+/** 读取图片文件返回 base64 data URI */
+export async function getJournalImageData(filePath: string): Promise<string> {
+  return tauriInvoke<string>('get_journal_image_data', { filePath });
 }

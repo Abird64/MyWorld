@@ -165,6 +165,8 @@ struct SyncConfig {
     oss_bucket: String,
     oss_region: String,
     remote_path: String,
+    sync_journal_images: bool,
+    sync_chat_images: bool,
 }
 
 /// 从设置中读取同步配置
@@ -200,6 +202,11 @@ fn read_config(conn: &rusqlite::Connection) -> Result<SyncConfig, String> {
         .map(|s| s.value)
         .unwrap_or_else(|| "/lantern/".to_string());
 
+    let sync_journal_images = setting_repo::get_setting(conn, "sync.journal_images")
+        .ok().flatten().map(|s| s.value == "true").unwrap_or(true);
+    let sync_chat_images = setting_repo::get_setting(conn, "sync.chat_images")
+        .ok().flatten().map(|s| s.value == "true").unwrap_or(false);
+
     Ok(SyncConfig {
         storage_type,
         url,
@@ -210,6 +217,8 @@ fn read_config(conn: &rusqlite::Connection) -> Result<SyncConfig, String> {
         oss_bucket,
         oss_region,
         remote_path,
+        sync_journal_images,
+        sync_chat_images,
     })
 }
 
@@ -285,9 +294,9 @@ pub async fn run_full_sync(db_state: &DbState, app_data: &AppDataState) -> SyncR
 
     // 始终执行日记同步：sync_journals 内部已做增量比对，无变更时上传/下载均为 0，不浪费请求
     // 之前 has_journal_changes_since 只看本地变更，会导致新设备无本地日记时跳过远端日记下载
-    log::info!("[SYNC] 开始同步日记...");
+    log::info!("[SYNC] 开始同步日记... (journal_images={}, chat_images={})", config.sync_journal_images, config.sync_chat_images);
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-    match journal_sync::sync_journals(&*client, &journals_local, &journals_remote).await {
+    match journal_sync::sync_journals(&*client, &journals_local, &journals_remote, config.sync_journal_images, false).await {
         Ok((uploaded, downloaded, up_bytes, down_bytes, errs)) => {
             result.journals_uploaded = uploaded;
             result.journals_downloaded = downloaded;
@@ -297,6 +306,26 @@ pub async fn run_full_sync(db_state: &DbState, app_data: &AppDataState) -> SyncR
         }
         Err(e) => {
             result.errors.push(format!("日记同步失败: {}", e));
+        }
+    }
+
+    // === 2b. 同步聊天图片（独立目录，由开关控制） ===
+    if config.sync_chat_images {
+        let chat_images_local = app_data.dir.join("chat_images");
+        let chat_images_remote = format!("{}/chat_images", remote_path);
+        log::info!("[SYNC] 开始同步聊天图片...");
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        match journal_sync::sync_journals(&*client, &chat_images_local, &chat_images_remote, false, true).await {
+            Ok((uploaded, downloaded, up_bytes, down_bytes, errs)) => {
+                result.journals_uploaded += uploaded;
+                result.journals_downloaded += downloaded;
+                bytes_uploaded += up_bytes;
+                bytes_downloaded += down_bytes;
+                result.errors.extend(errs);
+            }
+            Err(e) => {
+                result.errors.push(format!("聊天图片同步失败: {}", e));
+            }
         }
     }
 

@@ -1,6 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Users, Settings, ChevronRight, Brain, Heart } from 'lucide-react';
-import { useUIStore, type SubPage } from '@/stores/uiStore';
+import type { LucideIcon } from 'lucide-react';
+import { useUIStore } from '@/stores/uiStore';
+import { usePluginStore } from '@/stores/pluginStore';
+import { useSettingStore } from '@/stores/settingStore';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useSkillStore } from '@/stores/skillStore';
 import { NavBar } from '@/components/ui';
@@ -9,15 +12,15 @@ import { LEVEL_TITLES } from '@/utils/dateFormat';
 import { Card } from '@/components/ui/Card';
 
 interface MenuItem {
-  id: SubPage;
+  id: string;
   label: string;
   desc: string;
-  icon: typeof Users;
+  icon: LucideIcon;
   iconBg: string;
   iconColor: string;
 }
 
-const menuGroups: { title: string; items: MenuItem[] }[] = [
+const builtinMenuGroups: { title: string; items: MenuItem[] }[] = [
   {
     title: '功能',
     items: [
@@ -38,6 +41,8 @@ const menuGroups: { title: string; items: MenuItem[] }[] = [
 export function MinePage() {
   const appTheme = useAppTheme();
   const setActiveSubPage = useUIStore((s) => s.setActiveSubPage);
+  const settings = useSettingStore();
+  const plugins = usePluginStore((s) => s.plugins);
 
   const { skills, fetchSkills } = useSkillStore();
 
@@ -54,6 +59,27 @@ export function MinePage() {
   const nextLevelXp = 100 * avgLevel;
   const currentLevelXp = totalXp - (100 * avgLevel * (avgLevel - 1) / 2);
   const xpProgress = nextLevelXp > 0 ? Math.min(currentLevelXp / (nextLevelXp * skills.length || 1), 1) : 0;
+
+  // 动态菜单：内置 + 已启用的插件
+  const menuGroups = useMemo(() => {
+    const pluginItems: MenuItem[] = Object.values(plugins)
+      .filter((p) => settings.get(`plugin.${p.id}.enabled`, 'true') !== 'false')
+      .map((p) => ({
+        id: p.id,
+        label: p.name,
+        desc: p.description,
+        icon: p.icon,
+        iconBg: p.iconBg,
+        iconColor: p.iconColor,
+      }));
+
+    const groups = [...builtinMenuGroups];
+    if (pluginItems.length > 0) {
+      // 插件入口插在"功能"组之后、"更多"组之前
+      groups.splice(1, 0, { title: '插件', items: pluginItems });
+    }
+    return groups;
+  }, [plugins, settings]);
 
   return (
     <PageContainer className="flex flex-col" bgColor={appTheme.canvasParchment}>

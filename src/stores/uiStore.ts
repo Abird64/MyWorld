@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 
 export type MainTab = 'chat' | 'dashboard' | 'schedule' | 'mine';
-export type SubPage = 'tasks' | 'diary' | 'habits' | 'skills' | 'settings' | 'relations' | 'memories' | 'meditation' | 'wishes' | null;
+/** 内置子页面 + 插件子页面（插件 id 作为 SubPage 值） */
+export type SubPage = string | null;
 
 interface UIState {
   activeTab: MainTab;

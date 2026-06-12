@@ -1,4 +1,6 @@
 pub mod ai_commands;
+pub mod ai_tool_helper;
+pub mod aihot_commands;
 pub mod calendar_commands;
 pub mod config_commands;
 pub mod contact_commands;

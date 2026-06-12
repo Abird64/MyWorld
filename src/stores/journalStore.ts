@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Journal, ExtractedContact } from '@/types/journal';
+import type { Journal, ExtractedContact, JournalImage } from '@/types/journal';
 import type { CompleteResult } from '@/types/task';
 import * as journalService from '@/services/journalService';
 import * as contactService from '@/services/contactService';
@@ -31,6 +31,10 @@ interface JournalState {
   reflectionMood: string | null;
   reflectionTags: string | null;
 
+  // 日记图片
+  images: JournalImage[];
+  imageDataCache: Record<string, string>;
+
   // 状态
   isLoading: boolean;
   isSaving: boolean;
@@ -61,6 +65,12 @@ interface JournalState {
   removeContact: (index: number) => void;
   confirmAllContacts: () => void;
   setShowReflectionPanel: (show: boolean) => void;
+
+  // 日记图片
+  loadImages: () => Promise<void>;
+  uploadImage: (file: File) => Promise<void>;
+  deleteImage: (imageId: string) => Promise<void>;
+  loadImageData: (imageId: string, filePath: string) => Promise<string>;
 }
 
 function getToday(): string {
@@ -98,6 +108,7 @@ export const useJournalStore = create<JournalState>((set, get) => {
     contacts: [],
     reflectionMood: null,
     reflectionTags: null,
+    images: [],
     isLoading: false,
     isSaving: false,
     isReflecting: false,
@@ -112,7 +123,7 @@ export const useJournalStore = create<JournalState>((set, get) => {
         _saveTimer = null;
       }
 
-      set({ isLoading: true, currentDate: date, error: null });
+      set({ isLoading: true, currentDate: date, error: null, images: [] });
       try {
         const entry = await journalService.getJournalByDate(date);
         const [y, m] = getYearMonth(date);
@@ -123,6 +134,8 @@ export const useJournalStore = create<JournalState>((set, get) => {
           timelineYear: y,
           timelineMonth: m,
         });
+        // 加载图片
+        get().loadImages();
       } catch (e) {
         set({ error: String(e), isLoading: false, content: '', journal: null });
       }
@@ -280,6 +293,67 @@ export const useJournalStore = create<JournalState>((set, get) => {
 
     setShowReflectionPanel: (show: boolean) => {
       set({ showReflectionPanel: show });
+    },
+
+    loadImages: async () => {
+      const { journal } = get();
+      if (!journal) return;
+      try {
+        const images = await journalService.getJournalImages(journal.id);
+        set({ images });
+      } catch (e) {
+        // 图片加载失败不影响日记功能
+        console.error('Failed to load journal images:', e);
+      }
+    },
+
+    uploadImage: async (file: File) => {
+      const { currentDate, journal } = get();
+      if (!journal) return;
+
+      set({ error: null });
+      try {
+        // 读取文件为 Uint8Array
+        const buffer = await file.arrayBuffer();
+        const data = Array.from(new Uint8Array(buffer));
+
+        const image = await journalService.uploadJournalImage(
+          currentDate,
+          file.name,
+          file.type,
+          data,
+        );
+
+        set((state) => ({ images: [...state.images, image] }));
+        triggerSync();
+      } catch (e) {
+        set({ error: String(e) });
+      }
+    },
+
+    // 图片 data URI 缓存（不进持久化）
+    imageDataCache: {} as Record<string, string>,
+    loadImageData: async (imageId: string, filePath: string) => {
+      const { imageDataCache } = get();
+      if (imageDataCache[imageId]) return imageDataCache[imageId];
+      try {
+        const dataUri = await journalService.getJournalImageData(filePath);
+        set((state) => ({ imageDataCache: { ...state.imageDataCache, [imageId]: dataUri } }));
+        return dataUri;
+      } catch (e) {
+        console.error('Failed to load image data:', e);
+        return '';
+      }
+    },
+
+    deleteImage: async (imageId: string) => {
+      try {
+        await journalService.deleteJournalImage(imageId);
+        set((state) => ({ images: state.images.filter((img) => img.id !== imageId) }));
+        triggerSync();
+      } catch (e) {
+        set({ error: String(e) });
+      }
     },
   };
 });

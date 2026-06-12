@@ -18,9 +18,11 @@ export function PityModal({ show, onClose, pityType, wishes, claimPityWish, onCl
 
   if (!show) return null;
 
-  const poolWishes = wishes.filter((w) =>
-    pityType === 'micro' ? (w.level === 1 || w.level === 2) : (w.level === 3 || w.level === 4)
-  );
+  const poolWishes = wishes.filter((w) => {
+    const inPool = pityType === 'micro' ? (w.level === 1 || w.level === 2) : (w.level === 3 || w.level === 4);
+    const hasStock = w.quantity === -1 || w.achieved_count < w.quantity;
+    return inPool && hasStock;
+  });
 
   return (
     <div

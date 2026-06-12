@@ -1,6 +1,9 @@
-import { useEffect, useState, Suspense, lazy } from 'react';
+import { useEffect, useState, Suspense, lazy, createElement } from 'react';
 import { useUIStore } from '@/stores/uiStore';
+import { usePluginStore } from '@/stores/pluginStore';
+import { useSettingStore } from '@/stores/settingStore';
 import { usePomodoroStore } from '@/stores/pomodoroStore';
+import { aihotPlugin } from '@/plugins/aihot';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useKeyboardAware } from '@/hooks/useKeyboardAware';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
@@ -38,6 +41,14 @@ function App() {
 
   useKeyboardAware();
   const [showTimer, setShowTimer] = useState(false);
+  const registerPlugin = usePluginStore((s) => s.register);
+  const loadSettings = useSettingStore((s) => s.loadAll);
+
+  // 注册插件 + 加载设置
+  useEffect(() => {
+    registerPlugin(aihotPlugin);
+    loadSettings();
+  }, [registerPlugin, loadSettings]);
 
   // 恢复番茄钟会话 + 加载设置
   useEffect(() => {
@@ -71,7 +82,10 @@ function App() {
     return () => { unlisten?.(); };
   }, [activeSubPage, goBack]);
 
+  const plugins = usePluginStore((s) => s.plugins);
+
   const renderSubPage = () => {
+    // 内置页面
     switch (activeSubPage) {
       case 'tasks': return <TasksPage />;
       case 'diary': return <DiaryPage />;
@@ -82,8 +96,13 @@ function App() {
       case 'meditation': return <MeditationPage />;
       case 'wishes': return <WishesPage />;
       case 'settings': return <SettingsPage />;
-      default: return null;
+      default: break;
     }
+    // 插件页面
+    if (activeSubPage && plugins[activeSubPage]) {
+      return createElement(plugins[activeSubPage].page);
+    }
+    return null;
   };
 
   const renderPage = () => {
@@ -100,7 +119,7 @@ function App() {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="app-root flex flex-col overflow-hidden">
       {!isMobile && <PomodoroBar onClick={() => setShowTimer(true)} />}
       <div className="flex-1 overflow-hidden">
         <Suspense fallback={<PageFallback />}>

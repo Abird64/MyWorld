@@ -30,3 +30,15 @@ export interface ExtractedContact {
   existing_contact_name: string | null;
   is_new: boolean;
 }
+
+/** 日记图片 */
+export interface JournalImage {
+  id: string;
+  journal_id: string;
+  file_path: string;
+  file_name: string;
+  mime_type: string | null;
+  file_size: number | null;
+  sort_order: number;
+  created_at: string;
+}

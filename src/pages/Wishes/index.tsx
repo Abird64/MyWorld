@@ -14,6 +14,8 @@ import { ShopModal } from './ShopModal';
 import { PityModal } from './PityModal';
 import { WishFormModal } from './WishFormModal';
 import { DrawResultModal } from './DrawResultModal';
+import { InventoryView } from './InventoryView';
+import { Toast } from '@/components/ui/Toast';
 
 export function WishesPage() {
   const appTheme = useAppTheme();
@@ -24,6 +26,8 @@ export function WishesPage() {
     pityProgress,
     ledger,
     ledgerTotal,
+    inventory,
+    inventoryCount,
     isLoading,
     selectedLevel,
     showAddModal,
@@ -34,12 +38,15 @@ export function WishesPage() {
     fetchDraws,
     fetchPityProgress,
     fetchLedger,
+    fetchInventory,
     createWish,
     updateWish,
     deleteWish,
     draw,
     claimPityWish,
     buyTickets,
+    redeemDraw,
+    adjustStock,
     setSelectedLevel,
     setShowAddModal,
     setEditingWish,
@@ -71,6 +78,7 @@ export function WishesPage() {
   const [showPityModal, setShowPityModal] = useState(false);
   const [pityType, setPityType] = useState<'micro' | 'shimmer'>('micro');
   const [deletingWish, setDeletingWish] = useState<Wish | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetchWishes();
@@ -79,7 +87,8 @@ export function WishesPage() {
     fetchPityProgress('micro');
     fetchPityProgress('shimmer');
     fetchLedger();
-  }, [fetchWishes, fetchBalance, fetchDraws, fetchPityProgress, fetchLedger]);
+    fetchInventory();
+  }, [fetchWishes, fetchBalance, fetchDraws, fetchPityProgress, fetchLedger, fetchInventory]);
 
   // Filter wishes by selected level
   const filteredWishes = selectedLevel
@@ -185,6 +194,7 @@ export function WishesPage() {
   };
 
   return (
+    <>
     <PageContainer>
       <NavBar title="心愿夹" />
 
@@ -195,7 +205,8 @@ export function WishesPage() {
           style={{ backgroundColor: appTheme.surfacePearl }}
         >
           {([
-            ['wishes', '心愿仓库'],
+            ['wishes', '商店'],
+            ['inventory', `仓库${inventoryCount > 0 ? `(${inventoryCount})` : ''}`],
             ['history', '抽奖记录'],
             ['ledger', '收支明细'],
           ] as const).map(([key, label]) => (
@@ -226,6 +237,8 @@ export function WishesPage() {
           setLedgerFilter={setLedgerFilter}
           fetchLedger={fetchLedger}
         />
+      ) : activeTab === 'inventory' ? (
+        <InventoryView items={inventory} onRedeem={redeemDraw} />
       ) : activeTab === 'history' ? (
         <HistoryView draws={draws} />
       ) : (
@@ -251,43 +264,6 @@ export function WishesPage() {
                     {balance?.glow_amount.toLocaleString() ?? 0}
                   </div>
                   <p className="text-xs" style={{ color: appTheme.inkMuted48 }}>萤火余额</p>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="grid grid-cols-2"
-              style={{ borderTop: `0.5px solid ${appTheme.hairline}` }}
-            >
-              {/* 微光奖券 */}
-              <div className="flex items-center gap-3 px-5 py-3" style={{ borderRight: `0.5px solid ${appTheme.divider}` }}>
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: `${withAlpha('#E8B959', 0.15)}` }}
-                >
-                  <Ticket size={18} style={{ color: '#E8B959' }} />
-                </div>
-                <div>
-                  <div className="text-lg font-semibold" style={{ color: appTheme.ink }}>
-                    {balance?.micro_tickets ?? 0}
-                  </div>
-                  <p className="text-xs" style={{ color: appTheme.inkMuted48 }}>微光奖券</p>
-                </div>
-              </div>
-
-              {/* 拾光奖券 */}
-              <div className="flex items-center gap-3 px-5 py-3">
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: `${withAlpha('#C49A6C', 0.15)}` }}
-                >
-                  <Ticket size={18} style={{ color: '#C49A6C' }} />
-                </div>
-                <div>
-                  <div className="text-lg font-semibold" style={{ color: appTheme.ink }}>
-                    {balance?.shimmer_tickets ?? 0}
-                  </div>
-                  <p className="text-xs" style={{ color: appTheme.inkMuted48 }}>拾光奖券</p>
                 </div>
               </div>
             </div>
@@ -538,21 +514,44 @@ export function WishesPage() {
                               </p>
                             )}
                             <div className="flex items-center gap-3 mt-2">
-                              <span
-                                className="text-xs px-2 py-0.5 rounded-full"
-                                style={{
-                                  backgroundColor: appTheme.surfacePearl,
-                                  color: appTheme.inkMuted48,
-                                }}
-                              >
-                                {wish.quantity === -1
-                                  ? '无限'
-                                  : `${wish.quantity - wish.achieved_count}/${wish.quantity} 剩余`
-                                }
-                              </span>
+                              {wish.quantity === -1 ? (
+                                <span
+                                  className="text-xs px-2 py-0.5 rounded-full"
+                                  style={{ backgroundColor: appTheme.surfacePearl, color: appTheme.inkMuted48 }}
+                                >
+                                  无限
+                                </span>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => adjustStock(wish.id, 1)}
+                                    disabled={wish.achieved_count >= wish.quantity}
+                                    className="w-6 h-6 rounded-md flex items-center justify-center text-xs transition-colors disabled:opacity-30"
+                                    style={{ backgroundColor: appTheme.surfacePearl, color: appTheme.ink }}
+                                    title="减少剩余"
+                                  >
+                                    −
+                                  </button>
+                                  <span
+                                    className="text-xs px-2 py-0.5 rounded-full min-w-[60px] text-center"
+                                    style={{ backgroundColor: appTheme.surfacePearl, color: appTheme.inkMuted48 }}
+                                  >
+                                    {wish.quantity - wish.achieved_count}/{wish.quantity}
+                                  </span>
+                                  <button
+                                    onClick={() => adjustStock(wish.id, -1)}
+                                    disabled={wish.achieved_count <= 0}
+                                    className="w-6 h-6 rounded-md flex items-center justify-center text-xs transition-colors disabled:opacity-30"
+                                    style={{ backgroundColor: appTheme.surfacePearl, color: appTheme.ink }}
+                                    title="增加剩余"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex flex-col gap-1">
                             <button
                               onClick={() => openEdit(wish)}
                               className="p-1.5 rounded-lg transition-colors"
@@ -625,7 +624,11 @@ export function WishesPage() {
         onClose={() => setShowShopModal(false)}
         balance={balance}
         isLoading={isLoading}
-        buyTickets={buyTickets}
+        buyTickets={async (type, count) => {
+          await buyTickets(type, count);
+          const label = type === 'micro' ? '微光' : '拾光';
+          setToastMsg(`成功购买 ${count} 张${label}奖券`);
+        }}
       />
 
       {/* 删除确认弹窗 */}
@@ -665,5 +668,12 @@ export function WishesPage() {
       )}
 
     </PageContainer>
+
+    <Toast
+      message={toastMsg ?? ''}
+      visible={!!toastMsg}
+      onClose={() => setToastMsg(null)}
+    />
+    </>
   );
 }

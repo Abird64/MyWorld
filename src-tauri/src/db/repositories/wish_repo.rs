@@ -27,7 +27,22 @@ pub struct WishDraw {
     pub result_wish_id: Option<String>,
     pub result_type: String,
     pub pity_count: i32,
+    pub redeemed_at: Option<String>,
     pub created_at: String,
+}
+
+/// 仓库物品：抽奖记录 + 关联心愿信息
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InventoryItem {
+    pub draw_id: String,
+    pub draw_type: String,
+    pub result_type: String,
+    pub pity_count: i32,
+    pub created_at: String,
+    pub wish_id: String,
+    pub wish_title: String,
+    pub wish_description: Option<String>,
+    pub wish_level: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -234,7 +249,7 @@ impl<'a> WishRepository<'a> {
 
     pub fn list_draws(&self, limit: i32) -> SqliteResult<Vec<WishDraw>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, draw_type, ticket_type, cost, result_wish_id, result_type, pity_count, created_at
+            "SELECT id, draw_type, ticket_type, cost, result_wish_id, result_type, pity_count, redeemed_at, created_at
              FROM wish_draws ORDER BY created_at DESC LIMIT ?1"
         )?;
 
@@ -248,11 +263,69 @@ impl<'a> WishRepository<'a> {
                 result_wish_id: wish_id.filter(|s| !s.is_empty()),
                 result_type: row.get(5)?,
                 pity_count: row.get(6)?,
-                created_at: row.get(7)?,
+                redeemed_at: row.get(7)?,
+                created_at: row.get(8)?,
             })
         })?;
 
         draws.collect()
+    }
+
+    /// 查询仓库：未核销的中奖记录
+    pub fn list_inventory(&self) -> SqliteResult<Vec<InventoryItem>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT d.id, d.draw_type, d.result_type, d.pity_count, d.created_at,
+                    w.id, w.title, w.description, w.level
+             FROM wish_draws d
+             JOIN wishes w ON d.result_wish_id = w.id
+               AND w.deleted_at IS NULL
+             WHERE d.redeemed_at IS NULL
+               AND d.result_type IN ('wish', 'pity')
+               AND d.deleted_at IS NULL
+             ORDER BY d.created_at DESC"
+        )?;
+
+        let items = stmt.query_map([], |row| {
+            Ok(InventoryItem {
+                draw_id: row.get(0)?,
+                draw_type: row.get(1)?,
+                result_type: row.get(2)?,
+                pity_count: row.get(3)?,
+                created_at: row.get(4)?,
+                wish_id: row.get(5)?,
+                wish_title: row.get(6)?,
+                wish_description: row.get(7)?,
+                wish_level: row.get(8)?,
+            })
+        })?;
+
+        items.collect()
+    }
+
+    /// 核销仓库物品：标记 draw 为已核销
+    /// achieved_count 在抽奖时已增加，核销不再重复
+    pub fn redeem_draw(&self, draw_id: &str) -> SqliteResult<()> {
+        let now = Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE wish_draws SET redeemed_at = ?2, updated_at = ?2 WHERE id = ?1 AND redeemed_at IS NULL AND deleted_at IS NULL",
+            [draw_id, &now],
+        )?;
+        Ok(())
+    }
+
+    /// 查询待核销数量
+    pub fn get_inventory_count(&self) -> SqliteResult<i32> {
+        let count: i32 = self.conn.query_row(
+            "SELECT COUNT(*) FROM wish_draws d
+             JOIN wishes w ON d.result_wish_id = w.id
+               AND w.deleted_at IS NULL
+             WHERE d.redeemed_at IS NULL
+               AND d.result_type IN ('wish', 'pity')
+               AND d.deleted_at IS NULL",
+            [],
+            |row| row.get(0),
+        )?;
+        Ok(count)
     }
 
     // === 萤火余额 ===

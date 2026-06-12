@@ -382,6 +382,25 @@ pub fn execute_draw_wish(conn: &Connection, arguments: &str) -> Result<String, S
 
     let repo = wish_repo::WishRepository::new(conn);
 
+    // Level probability
+    let (level_weights, pity_threshold): (Vec<(i32, f64)>, i32) = if args.ticket_type == "micro" {
+        (vec![(1, 0.6), (2, 0.4)], 30)
+    } else {
+        (vec![(3, 0.8), (4, 0.2)], 80)
+    };
+
+    // 先检查心愿池是否有可用心愿，再扣奖券
+    let mut has_any_wish = false;
+    for (level, _) in &level_weights {
+        if !repo.get_wishes_by_level(*level).map_err(|e| format!("查询心愿失败: {}", e))?.is_empty() {
+            has_any_wish = true;
+            break;
+        }
+    }
+    if !has_any_wish {
+        return Err("心愿池为空，请先添加心愿".to_string());
+    }
+
     // Check and consume ticket
     if !repo.consume_ticket(&args.ticket_type)
         .map_err(|e| format!("消费奖券失败: {}", e))? {
@@ -401,13 +420,6 @@ pub fn execute_draw_wish(conn: &Connection, arguments: &str) -> Result<String, S
         let _ = glow_ledger_repo::record_entry(conn, asset_type, -1, balance_after, "draw_consume",
             &format!("消耗{}抽奖", ticket_label), "");
     }
-
-    // Level probability
-    let (level_weights, pity_threshold): (Vec<(i32, f64)>, i32) = if args.ticket_type == "micro" {
-        (vec![(1, 0.8), (2, 0.2)], 30)
-    } else {
-        (vec![(3, 0.9), (4, 0.1)], 80)
-    };
 
     // Get pity count
     let pity_count: i32 = conn
@@ -457,6 +469,7 @@ pub fn execute_draw_wish(conn: &Connection, arguments: &str) -> Result<String, S
         result_wish_id: selected.as_ref().map(|w| w.id.clone()),
         result_type: if has_wish { "wish".to_string() } else { "none".to_string() },
         pity_count: pity_count + 1,
+        redeemed_at: None,
         created_at: chrono::Utc::now().to_rfc3339(),
     };
     repo.create_draw(&draw).map_err(|e| format!("记录抽奖失败: {}", e))?;
@@ -472,7 +485,7 @@ pub fn execute_draw_wish(conn: &Connection, arguments: &str) -> Result<String, S
         let level_names = ["", "微小心愿", "光影心愿", "流光心愿", "极光心愿"];
         let level_name = level_names.get(w.level as usize).unwrap_or(&"心愿");
         Ok(format!(
-            "🎉 抽中了「{}」（{}·Lv.{}）！\n{}\n心愿已自动达成，去心愿清单看看吧",
+            "🎉 抽中了「{}」（{}·Lv.{}）！\n{}\n已放入仓库，去心愿仓库核销吧",
             w.title, level_name, w.level, pity_info
         ))
     } else {

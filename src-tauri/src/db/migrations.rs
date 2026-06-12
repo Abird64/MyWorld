@@ -734,11 +734,64 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
         [],
     );
 
+    // 增量迁移：ai_messages 加 images 列（支持图片消息）
+    let _ = conn.execute(
+        "ALTER TABLE ai_messages ADD COLUMN images TEXT",
+        [],
+    );
+
+    // 增量迁移：日记图片表
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS journal_images (
+            id          TEXT PRIMARY KEY,
+            journal_id  TEXT NOT NULL,
+            file_path   TEXT NOT NULL,
+            file_name   TEXT NOT NULL,
+            mime_type   TEXT,
+            file_size   INTEGER,
+            sort_order  INTEGER DEFAULT 0,
+            created_at  TEXT NOT NULL,
+            FOREIGN KEY (journal_id) REFERENCES journals(id) ON DELETE CASCADE
+        )",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_journal_images_journal ON journal_images(journal_id)",
+        [],
+    );
+
     // 清理回退：将 keychain 占位符恢复为空字符串（OS 密钥链方案已回退）
     for key in &["sync.password", "ai.api_key", "sync.oss.access_key_secret"] {
         let _ = conn.execute(
             "UPDATE settings SET value = '' WHERE key = ?1 AND value = '[keychain]'",
             rusqlite::params![key],
+        );
+    }
+
+    // === 增量迁移：心愿仓库 — wish_draws 增加 redeemed_at ===
+    // ALTER TABLE ADD COLUMN 在列已存在时会静默失败，所以安全
+    let _ = conn.execute(
+        "ALTER TABLE wish_draws ADD COLUMN redeemed_at TEXT",
+        [],
+    );
+    // 一次性修复：旧迁移 bug 误将所有 draw 标记为已核销
+    // 用 settings 表做标记，只执行一次
+    let fix_done: bool = conn
+        .query_row(
+            "SELECT COUNT(*) > 0 FROM settings WHERE key = '_migration_fix_redeemed_at'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(false);
+    if !fix_done {
+        log::warn!("[migration] 修复 wish_draws 误标记的 redeemed_at");
+        let _ = conn.execute(
+            "UPDATE wish_draws SET redeemed_at = NULL WHERE redeemed_at IS NOT NULL",
+            [],
+        );
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('_migration_fix_redeemed_at', '1', datetime('now'))",
+            [],
         );
     }
 

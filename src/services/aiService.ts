@@ -29,9 +29,9 @@ export async function listMessages(conversationId: string): Promise<AiMessage[]>
   return tauriInvoke<AiMessage[]>('list_messages', { conversationId });
 }
 
-/** 发送消息（自动调用 AI 并返回 AI 回复） */
-export async function sendMessage(conversationId: string, content: string): Promise<AiMessage> {
-  return tauriInvoke<AiMessage>('send_message', { conversationId, content });
+/** 发送消息（自动调用 AI 并返回 AI 回复）。images 为 base64 图片数据数组 */
+export async function sendMessage(conversationId: string, content: string, images?: string[]): Promise<AiMessage> {
+  return tauriInvoke<AiMessage>('send_message', { conversationId, content, images: images ?? null });
 }
 
 /** 确认执行工具调用 → 后端执行 + AI 跟进 */
@@ -77,4 +77,14 @@ export async function executeSingleToolCall(
 /** 所有工具执行完毕后，触发 AI 跟进回复 */
 export async function finalizeToolCalls(conversationId: string): Promise<AiMessage[]> {
   return tauriInvoke<AiMessage[]>('finalize_tool_calls', { conversationId });
+}
+
+/** 测试 AI API 连通性 */
+export async function testConnection(apiUrl: string, apiKey: string, model: string): Promise<string> {
+  return tauriInvoke<string>('test_ai_connection', { apiUrl, apiKey, model });
+}
+
+/** 读取聊天图片文件返回 base64 data URI */
+export async function getChatImageData(filePath: string): Promise<string> {
+  return tauriInvoke<string>('get_chat_image_data', { filePath });
 }

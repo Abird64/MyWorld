@@ -4,10 +4,13 @@ use std::path::Path;
 use super::remote_storage::{RemoteFile, RemoteStorage};
 
 /// 同步日记文件（逐文件比较）
+/// sync_images: 是否同步图片文件（由设置控制）
 pub(crate) async fn sync_journals(
     client: &dyn RemoteStorage,
     local_dir: &Path,
     remote_dir: &str,
+    sync_journal_images: bool,
+    sync_chat_images: bool,
 ) -> Result<(u32, u32, u64, u64, Vec<String>), String> {
     let mut uploaded: u32 = 0;
     let mut downloaded: u32 = 0;
@@ -18,6 +21,39 @@ pub(crate) async fn sync_journals(
     let local_files = collect_local_md_files(local_dir)?;
     let remote_files = list_remote_recursive(client, remote_dir).await?;
 
+    // 根据设置过滤文件
+    let should_sync_file = |name: &str| -> bool {
+        if name.ends_with(".md") {
+            return true;
+        }
+        let lower = name.to_lowercase();
+        let is_image = lower.ends_with(".jpg") || lower.ends_with(".jpeg")
+            || lower.ends_with(".png") || lower.ends_with(".gif") || lower.ends_with(".webp");
+        if !is_image {
+            return false;
+        }
+        // 根据路径判断是日记图片还是聊天图片
+        // 日记图片在 journals/ 下，聊天图片在 chat_images/ 下
+        // 这里通过 name 前缀判断不太可靠，改用路径判断
+        true // 先全部通过，下面按路径过滤
+    };
+
+    let local_files: Vec<_> = local_files.into_iter().filter(|(path, _)| {
+        let name = path.rsplit('/').next().unwrap_or(path);
+        if !should_sync_file(name) {
+            return false;
+        }
+        let is_chat = path.starts_with("chat_images/");
+        let is_journal_image = !is_chat && !path.ends_with(".md");
+        if is_chat && !sync_chat_images {
+            return false;
+        }
+        if is_journal_image && !sync_journal_images {
+            return false;
+        }
+        true
+    }).collect();
+
     log::info!(
         "[SYNC] journals: local_dir={:?}, remote_dir={}, local_count={}",
         local_dir, remote_dir, local_files.len()
@@ -25,7 +61,15 @@ pub(crate) async fn sync_journals(
 
     let remote_map: std::collections::HashMap<String, &RemoteFile> = remote_files
         .iter()
-        .filter(|f| !f.is_collection && f.display_name.ends_with(".md"))
+        .filter(|f| {
+            if f.is_collection { return false; }
+            if !is_syncable_file(&f.display_name) { return false; }
+            let is_chat = f.href.contains("chat_images/");
+            let is_image = !f.display_name.ends_with(".md");
+            if is_chat && !sync_chat_images { return false; }
+            if is_image && !is_chat && !sync_journal_images { return false; }
+            true
+        })
         .filter_map(|f| {
             let norm_remote = remote_dir.trim_end_matches('/');
             let relative = if let Some(pos) = f.href.find(norm_remote) {
@@ -181,6 +225,18 @@ fn fs_mtime(path: &Path) -> Result<Option<DateTime<Utc>>, String> {
 }
 
 /// 递归收集本地 .md 文件（返回相对路径 → mtime）
+fn is_syncable_file(name: &str) -> bool {
+    if name.ends_with(".md") {
+        return true;
+    }
+    let lower = name.to_lowercase();
+    lower.ends_with(".jpg")
+        || lower.ends_with(".jpeg")
+        || lower.ends_with(".png")
+        || lower.ends_with(".gif")
+        || lower.ends_with(".webp")
+}
+
 fn collect_local_md_files(dir: &Path) -> Result<Vec<(String, Option<DateTime<Utc>>)>, String> {
     let mut files = Vec::new();
     if !dir.exists() {
@@ -201,7 +257,7 @@ fn collect_md_recursive(
         if path.is_dir() {
             collect_md_recursive(base, &path, files)?;
         } else if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-            if name.ends_with(".md") {
+            if is_syncable_file(name) {
                 let relative = path
                     .strip_prefix(base)
                     .unwrap_or(&path)

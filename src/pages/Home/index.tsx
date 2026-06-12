@@ -57,6 +57,7 @@ export function HomePage() {
     conversations,
     currentConversation,
     isSending,
+    pendingImages,
     fetchConversations,
     createConversation,
     selectConversation,
@@ -109,12 +110,13 @@ export function HomePage() {
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || isSending) return;
+    if ((!text && pendingImages.length === 0) || isSending) return;
     setInput('');
 
     let convId = currentConversation;
     if (!convId) {
-      convId = await createConversation(text.slice(0, 20));
+      const title = text ? text.slice(0, 20) : '图片对话';
+      convId = await createConversation(title);
     }
 
     await sendMessage(text);

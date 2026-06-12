@@ -44,7 +44,21 @@ export interface WishDraw {
   result_wish_id: string | null;
   result_type: 'wish' | 'none' | 'pity';
   pity_count: number;
+  redeemed_at: string | null;
   created_at: string;
+}
+
+/** 仓库物品（待核销的中奖记录） */
+export interface InventoryItem {
+  draw_id: string;
+  draw_type: 'micro' | 'shimmer';
+  result_type: 'wish' | 'pity';
+  pity_count: number;
+  created_at: string;
+  wish_id: string;
+  wish_title: string;
+  wish_description: string | null;
+  wish_level: WishLevel;
 }
 
 /** 萤火余额 */

@@ -193,8 +193,13 @@ export function MeditationPage() {
     <PageContainer className="flex flex-col">
       <NavBar
         title="冥想"
-        showBack={!isActive}
-        onBack={stopMeditation}
+        showBack
+        onBack={() => {
+          if (isActive) {
+            clearTimers();
+          }
+          setActiveSubPage(null);
+        }}
       />
 
       <div className="flex-1 flex flex-col items-center justify-center px-6">

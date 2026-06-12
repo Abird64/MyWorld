@@ -2,7 +2,7 @@
  * 心愿服务 - 封装所有心愿系统的 Tauri 命令调用
  */
 import { tauriInvoke } from './tauri';
-import type { Wish, WishDraw, GlowBalance, CreateWishInput, UpdateWishInput, DrawResult, PityProgress, GlowLedgerResult } from '@/types/wish';
+import type { Wish, WishDraw, GlowBalance, CreateWishInput, UpdateWishInput, DrawResult, PityProgress, GlowLedgerResult, InventoryItem } from '@/types/wish';
 
 /** 获取心愿列表 */
 export async function listWishes(status?: string): Promise<Wish[]> {
@@ -92,4 +92,24 @@ export async function listGlowLedger(params?: {
     limit: params?.limit,
     offset: params?.offset,
   });
+}
+
+/** 查询仓库：未核销的中奖记录 */
+export async function listInventory(): Promise<InventoryItem[]> {
+  return tauriInvoke<InventoryItem[]>('list_inventory');
+}
+
+/** 核销仓库物品 */
+export async function redeemDraw(drawId: string): Promise<void> {
+  return tauriInvoke<void>('redeem_draw', { drawId });
+}
+
+/** 获取待核销数量 */
+export async function getInventoryCount(): Promise<number> {
+  return tauriInvoke<number>('get_inventory_count');
+}
+
+/** 调整心愿剩余库存 */
+export async function adjustWishStock(wishId: string, delta: number): Promise<Wish> {
+  return tauriInvoke<Wish>('adjust_wish_stock', { wishId, delta });
 }

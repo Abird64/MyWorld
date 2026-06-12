@@ -1,39 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
-import { Card, NavBar } from '@/components/ui';
+import { useEffect, useState } from 'react';
+import { NavBar } from '@/components/ui';
 import { useSettingStore } from '@/stores/settingStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { useAppTheme, useThemeMode, useThemeHelpers, withAlpha } from '@/stores/themeStore';
 import { PageContainer } from '@/components/layout';
 import { BUILTIN_PROMPTS } from '@/utils/builtinPrompts';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
-import { Plus, Pencil, Trash2, X, Check, Download, AlertTriangle, Cloud, Loader2, RefreshCw, Wifi, WifiOff, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, Download, AlertTriangle, Cloud, Loader2, RefreshCw, Wifi, WifiOff, Cpu, Zap } from 'lucide-react';
 import * as scheduleService from '@/services/scheduleService';
+import * as aiService from '@/services/aiService';
 import { useSyncStore } from '@/stores/syncStore';
 import { invoke } from '@tauri-apps/api/core';
 import * as syncService from '@/services/syncService';
 import { SyncProgress } from '@/components/sync';
 import { Select } from '@/components/ui/Select';
-
-const AI_PROVIDERS = [
-  { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1' },
-  { id: 'anthropic', name: 'Anthropic', defaultUrl: 'https://api.anthropic.com' },
-  { id: 'deepseek', name: 'DeepSeek', defaultUrl: 'https://api.deepseek.com' },
-  { id: 'ollama', name: 'Ollama', defaultUrl: 'http://localhost:11434' },
-];
-
-interface SettingsStyles {
-  card: string;
-  cardBorder: string;
-  text: string;
-  textSub: string;
-  accent: string;
-  accentDim: string;
-  danger: string;
-  dangerDim: string;
-  inputBg: string;
-  inputBorder: string;
-  overlay: (opacity: number) => string;
-}
+import { Section, ToggleRow, InputRow, SelectRow, PluginSection, formatBytes, type SettingsStyles } from './components';
 
 export function SettingsPage() {
   const appTheme = useAppTheme();
@@ -97,6 +78,15 @@ export function SettingsPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [addForm, setAddForm] = useState({ title: '', prompt: '' });
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  // AI 供应商管理
+  interface AiProvider { id: string; name: string; url: string; key: string; }
+  const [providers, setProviders] = useState<AiProvider[]>([]);
+  const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
+  const [providerForm, setProviderForm] = useState({ name: '', url: '', key: '' });
+  const [isAddingProvider, setIsAddingProvider] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [testingProvider, setTestingProvider] = useState(false);
 
   const handleTestConnection = async () => {
     if (syncStorageType === 'oss') {
@@ -241,6 +231,56 @@ export function SettingsPage() {
       setOssRegion(settings.get('sync.oss.region', ''));
     }
   }, [settings.loaded]);
+
+  // AI 供应商从 settings 加载
+  useEffect(() => {
+    if (settings.loaded) {
+      try {
+        const raw = settings.get('ai.providers', '[]');
+        const list: AiProvider[] = JSON.parse(raw);
+        setProviders(list);
+      } catch { setProviders([]); }
+    }
+  }, [settings.loaded]);
+
+  const saveProviders = async (list: AiProvider[]) => {
+    setProviders(list);
+    await settings.set('ai.providers', JSON.stringify(list));
+  };
+
+  const handleTestAiConnection = async (url: string, key: string, model: string) => {
+    if (!url.trim() || !model.trim()) {
+      setTestResult({ ok: false, msg: '请填写 API 地址和模型名称' });
+      return;
+    }
+    setTestingProvider(true);
+    setTestResult(null);
+    try {
+      const msg = await aiService.testConnection(url.trim(), key.trim(), model.trim());
+      setTestResult({ ok: true, msg });
+    } catch (e) {
+      setTestResult({ ok: false, msg: String(e) });
+    } finally {
+      setTestingProvider(false);
+    }
+  };
+
+  /** 根据供应商 id 解析出 URL/Key，写入后端使用的 ai.api_url / ai.api_key */
+  const resolveAndSaveProviderKeys = async (providerId: string, model: string, prefix: 'ai' | 'ai.vision') => {
+    const p = providers.find(p => p.id === providerId);
+    if (prefix === 'ai') {
+      await settings.set('ai.api_url', p?.url || '');
+      await settings.set('ai.api_key', p?.key || '');
+      await settings.set('ai.model', model);
+      await settings.set('ai.primary_provider', providerId);
+    } else {
+      // 视觉模型的 URL/Key 也写入 ai.vision_api_url / ai.vision_api_key
+      await settings.set('ai.vision_api_url', p?.url || '');
+      await settings.set('ai.vision_api_key', p?.key || '');
+      await settings.set('ai.vision_model', model);
+      await settings.set('ai.vision_provider', providerId);
+    }
+  };
 
   const get = (key: string, fallback = '') => settings.get(key, fallback);
   const set = (key: string, value: string) => settings.set(key, value);
@@ -396,47 +436,326 @@ export function SettingsPage() {
 
           {/* ===== AI 助手设置 ===== */}
           <Section sectionKey="ai" title="AI 助手设置" styles={s} expanded={openSections.has('ai')} onToggle={() => toggleSection('ai')}>
-            {/* Provider 选择 */}
-            <div className="mb-4">
-              <label className="text-sm mb-1.5 block" style={{ color: s.textSub }}>AI 服务提供商</label>
-              <Select
-                value={get('ai.provider', 'deepseek')}
-                onChange={(v) => {
-                  const p = AI_PROVIDERS.find(p => p.id === v);
-                  set('ai.provider', v);
-                  if (p) set('ai.api_url', p.defaultUrl);
-                }}
-                options={AI_PROVIDERS.map((p) => ({ value: p.id, label: p.name }))}
-              />
+
+            {/* ── 供应商管理 ── */}
+            <div className="mb-2">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium" style={{ color: s.text }}>API 供应商</label>
+                {!isAddingProvider && (
+                  <button
+                    onClick={() => {
+                      setIsAddingProvider(true);
+                      setProviderForm({ name: '', url: '', key: '' });
+                    }}
+                    className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors"
+                    style={{ color: s.accent }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = s.accentDim; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                  >
+                    <Plus size={14} /> 添加
+                  </button>
+                )}
+              </div>
+
+              {/* 供应商列表 */}
+              {providers.length === 0 && !isAddingProvider && (
+                <p className="text-xs py-3 text-center" style={{ color: s.overlay(0.38) }}>
+                  还没有配置供应商，点击"添加"开始
+                </p>
+              )}
+
+              <div className="space-y-2">
+                {providers.map((p) => (
+                  <div
+                    key={p.id}
+                    className="px-3 py-2.5 rounded-lg"
+                    style={{ backgroundColor: s.inputBg, border: `1px solid ${s.inputBorder}` }}
+                  >
+                    {editingProviderId === p.id ? (
+                      /* 编辑模式 */
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={providerForm.name}
+                          onChange={(e) => setProviderForm({ ...providerForm, name: e.target.value })}
+                          placeholder="名称（如 DeepSeek）"
+                          className="w-full px-2 py-1.5 rounded text-sm outline-none"
+                          style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
+                        />
+                        <input
+                          type="text"
+                          value={providerForm.url}
+                          onChange={(e) => setProviderForm({ ...providerForm, url: e.target.value })}
+                          placeholder="API 地址"
+                          className="w-full px-2 py-1.5 rounded text-sm outline-none"
+                          style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
+                        />
+                        <input
+                          type="password"
+                          value={providerForm.key}
+                          onChange={(e) => setProviderForm({ ...providerForm, key: e.target.value })}
+                          placeholder="API Key"
+                          className="w-full px-2 py-1.5 rounded text-sm outline-none"
+                          style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
+                        />
+                        <div className="flex items-center gap-2 justify-end">
+                          <button
+                            onClick={() => setEditingProviderId(null)}
+                            className="p-1.5 rounded-lg"
+                            style={{ color: s.overlay(0.5) }}
+                          >
+                            <X size={16} />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              const updated = providers.map(x =>
+                                x.id === p.id ? { ...x, name: providerForm.name, url: providerForm.url, key: providerForm.key } : x
+                              );
+                              await saveProviders(updated);
+                              // 如果正在被主模型或视觉模型使用，同步更新
+                              if (get('ai.primary_provider') === p.id) {
+                                await resolveAndSaveProviderKeys(p.id, get('ai.model', ''), 'ai');
+                              }
+                              if (get('ai.vision_provider') === p.id) {
+                                await resolveAndSaveProviderKeys(p.id, get('ai.vision_model', ''), 'ai.vision');
+                              }
+                              setEditingProviderId(null);
+                            }}
+                            className="p-1.5 rounded-lg"
+                            style={{ color: s.accent }}
+                          >
+                            <Check size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* 展示模式 */
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate" style={{ color: s.text }}>{p.name}</div>
+                          <div className="text-xs truncate" style={{ color: s.overlay(0.4) }}>{p.url}</div>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          <button
+                            onClick={() => {
+                              setEditingProviderId(p.id);
+                              setProviderForm({ name: p.name, url: p.url, key: p.key });
+                            }}
+                            className="p-1.5 rounded-lg transition-colors"
+                            style={{ color: s.overlay(0.4) }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = s.text; e.currentTarget.style.backgroundColor = s.overlay(0.08); }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = s.overlay(0.4); e.currentTarget.style.backgroundColor = 'transparent'; }}
+                            title="编辑"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await saveProviders(providers.filter(x => x.id !== p.id));
+                            }}
+                            className="p-1.5 rounded-lg transition-colors"
+                            style={{ color: s.overlay(0.4) }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = s.danger; e.currentTarget.style.backgroundColor = s.dangerDim; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = s.overlay(0.4); e.currentTarget.style.backgroundColor = 'transparent'; }}
+                            title="删除"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* 新增供应商表单 */}
+                {isAddingProvider && (
+                  <div
+                    className="px-3 py-2.5 rounded-lg space-y-2"
+                    style={{ backgroundColor: s.inputBg, border: `1px solid ${s.accent}` }}
+                  >
+                    <input
+                      type="text"
+                      value={providerForm.name}
+                      onChange={(e) => setProviderForm({ ...providerForm, name: e.target.value })}
+                      placeholder="名称（如 DeepSeek、OpenAI）"
+                      className="w-full px-2 py-1.5 rounded text-sm outline-none"
+                      style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
+                      autoFocus
+                    />
+                    <input
+                      type="text"
+                      value={providerForm.url}
+                      onChange={(e) => setProviderForm({ ...providerForm, url: e.target.value })}
+                      placeholder="API 地址（如 https://api.deepseek.com）"
+                      className="w-full px-2 py-1.5 rounded text-sm outline-none"
+                      style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
+                    />
+                    <input
+                      type="password"
+                      value={providerForm.key}
+                      onChange={(e) => setProviderForm({ ...providerForm, key: e.target.value })}
+                      placeholder="API Key"
+                      className="w-full px-2 py-1.5 rounded text-sm outline-none"
+                      style={{ backgroundColor: s.card, border: `1px solid ${s.inputBorder}`, color: s.text }}
+                    />
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        onClick={() => setIsAddingProvider(false)}
+                        className="p-1.5 rounded-lg"
+                        style={{ color: s.overlay(0.5) }}
+                      >
+                        <X size={16} />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!providerForm.name.trim()) return;
+                          const newProvider: AiProvider = {
+                            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                            name: providerForm.name.trim(),
+                            url: providerForm.url.trim(),
+                            key: providerForm.key.trim(),
+                          };
+                          await saveProviders([...providers, newProvider]);
+                          setIsAddingProvider(false);
+                        }}
+                        className="p-1.5 rounded-lg"
+                        style={{ color: s.accent }}
+                      >
+                        <Check size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* API 地址 */}
-            <InputRow
-              label="API 地址"
-              value={get('ai.api_url')}
-              placeholder="https://api.deepseek.com"
-              onChange={(v) => set('ai.api_url', v)}
-              styles={s}
-            />
+            {/* ── 模型选择 ── */}
+            <div
+              className="mt-5 pt-4"
+              style={{ borderTop: `1px solid ${s.inputBorder}` }}
+            >
+              <label className="text-sm font-medium mb-3 block" style={{ color: s.text }}>
+                <Cpu size={14} className="inline mr-1.5 -mt-0.5" />
+                模型选择
+              </label>
 
-            {/* API Key */}
-            <InputRow
-              label="API Key"
-              value={get('ai.api_key')}
-              type="password"
-              placeholder="sk-..."
-              onChange={(v) => set('ai.api_key', v)}
-              styles={s}
-            />
+              {/* 对话模型 */}
+              <div className="mb-4">
+                <label className="text-xs mb-1.5 block" style={{ color: s.textSub }}>对话模型</label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Select
+                      value={get('ai.primary_provider', '')}
+                      onChange={async (v) => {
+                        const model = get('ai.model', '');
+                        await resolveAndSaveProviderKeys(v, model, 'ai');
+                      }}
+                      options={[
+                        { value: '', label: '选择供应商...' },
+                        ...providers.map((p) => ({ value: p.id, label: p.name })),
+                      ]}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={get('ai.model')}
+                    onChange={async (e) => {
+                      const model = e.target.value;
+                      await settings.set('ai.model', model);
+                      const pid = get('ai.primary_provider', '');
+                      if (pid) await resolveAndSaveProviderKeys(pid, model, 'ai');
+                    }}
+                    placeholder="模型名称"
+                    className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
+                    style={{ backgroundColor: s.inputBg, border: `1px solid ${s.inputBorder}`, color: s.text }}
+                  />
+                  <button
+                    onClick={() => {
+                      const pid = get('ai.primary_provider', '');
+                      const p = providers.find(x => x.id === pid);
+                      if (p) handleTestAiConnection(p.url, p.key, get('ai.model', ''));
+                    }}
+                    disabled={testingProvider || !get('ai.primary_provider') || !get('ai.model')}
+                    className="flex-shrink-0 px-2.5 py-2 rounded-lg text-xs transition-colors disabled:opacity-30"
+                    style={{ color: s.accent, backgroundColor: s.accentDim }}
+                    title="测试连接"
+                  >
+                    {testingProvider ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                  </button>
+                </div>
+              </div>
 
-            {/* 模型名称 */}
-            <InputRow
-              label="模型名称"
-              value={get('ai.model', 'deepseek-v4-flash')}
-              placeholder="deepseek-v4-flash"
-              onChange={(v) => set('ai.model', v)}
-              styles={s}
-            />
+              {/* 视觉辅助模型 */}
+              <div>
+                <label className="text-xs mb-1.5 block" style={{ color: s.textSub }}>
+                  视觉辅助模型
+                  <span className="ml-1.5 font-normal" style={{ color: s.overlay(0.38) }}>（可选，发图片时自动使用）</span>
+                </label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Select
+                      value={get('ai.vision_provider', '')}
+                      onChange={async (v) => {
+                        const model = get('ai.vision_model', '');
+                        if (v) {
+                          await resolveAndSaveProviderKeys(v, model, 'ai.vision');
+                        } else {
+                          await settings.set('ai.vision_provider', '');
+                          await settings.set('ai.vision_model', '');
+                          await settings.set('ai.vision_api_url', '');
+                          await settings.set('ai.vision_api_key', '');
+                        }
+                      }}
+                      options={[
+                        { value: '', label: '不使用' },
+                        ...providers.map((p) => ({ value: p.id, label: p.name })),
+                      ]}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={get('ai.vision_model')}
+                    onChange={async (e) => {
+                      const model = e.target.value;
+                      await settings.set('ai.vision_model', model);
+                      const pid = get('ai.vision_provider', '');
+                      if (pid) await resolveAndSaveProviderKeys(pid, model, 'ai.vision');
+                    }}
+                    placeholder="模型名称"
+                    disabled={!get('ai.vision_provider')}
+                    className="flex-1 px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-40"
+                    style={{ backgroundColor: s.inputBg, border: `1px solid ${s.inputBorder}`, color: s.text }}
+                  />
+                  <button
+                    onClick={() => {
+                      const pid = get('ai.vision_provider', '');
+                      const p = providers.find(x => x.id === pid);
+                      if (p) handleTestAiConnection(p.url, p.key, get('ai.vision_model', ''));
+                    }}
+                    disabled={testingProvider || !get('ai.vision_provider') || !get('ai.vision_model')}
+                    className="flex-shrink-0 px-2.5 py-2 rounded-lg text-xs transition-colors disabled:opacity-30"
+                    style={{ color: s.accent, backgroundColor: s.accentDim }}
+                    title="测试连接"
+                  >
+                    {testingProvider ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* 测试结果 */}
+              {testResult && (
+                <div
+                  className="mt-3 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs"
+                  style={{
+                    backgroundColor: testResult.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    color: testResult.ok ? '#22c55e' : '#ef4444',
+                  }}
+                >
+                  {testResult.ok ? <Check size={12} /> : <AlertTriangle size={12} />}
+                  {testResult.msg}
+                </div>
+              )}
+            </div>
 
           </Section>
 
@@ -691,6 +1010,26 @@ export function SettingsPage() {
               styles={s}
             />
 
+            {/* 图片同步选项 */}
+            <div className="pt-2 space-y-2" style={{ borderTop: `1px solid ${s.inputBorder}` }}>
+              <label className="text-xs" style={{ color: s.textSub }}>图片同步</label>
+              <ToggleRow
+                label="同步日记图片"
+                checked={settings.get('sync.journal_images', 'true') === 'true'}
+                onChange={(v) => settings.set('sync.journal_images', String(v))}
+                styles={s}
+              />
+              <ToggleRow
+                label="同步 AI 对话图片"
+                checked={settings.get('sync.chat_images', 'false') === 'true'}
+                onChange={(v) => settings.set('sync.chat_images', String(v))}
+                styles={s}
+              />
+              <p className="text-xs" style={{ color: s.overlay(0.38) }}>
+                关闭可节省同步空间，图片仅保留在本地
+              </p>
+            </div>
+
             {/* 按钮行 */}
             <div className="flex gap-2 pt-1">
               <button
@@ -814,6 +1153,11 @@ export function SettingsPage() {
             >
               清除数据
             </button>
+          </Section>
+
+          {/* ===== 插件管理 ===== */}
+          <Section sectionKey="plugins" title="插件" styles={s} expanded={openSections.has('plugins')} onToggle={() => toggleSection('plugins')}>
+            <PluginSection styles={s} />
           </Section>
 
           {/* 版本信息 */}
@@ -1032,166 +1376,6 @@ export function SettingsPage() {
         </div>
       )}
     </PageContainer>
-  );
-}
-
-/* ========== 子组件 ========== */
-
-function Section({ sectionKey: _sectionKey, title, children, styles, expanded, onToggle }: {
-  sectionKey: string;
-  title: string;
-  children: React.ReactNode;
-  styles: SettingsStyles;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Card
-      className="w-full p-5"
-      style={{ backgroundColor: styles.card, border: `0.5px solid ${styles.cardBorder}` }}
-    >
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between mb-4 text-left"
-        aria-expanded={expanded}
-      >
-        <h3 className="text-xl font-medium" style={{ color: styles.text }}>
-          {title}
-        </h3>
-        <ChevronDown
-          size={18}
-          style={{
-            color: styles.textSub,
-            transform: expanded ? 'rotate(180deg)' : 'none',
-            transition: 'transform 0.2s ease',
-          }}
-        />
-      </button>
-      {expanded && (
-        <div className="space-y-4">
-          {children}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function ToggleRow({ label, checked, onChange, styles, disabled = false }: {
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  styles: SettingsStyles;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-base" style={{ color: styles.textSub }}>{label}</span>
-      <button
-        onClick={() => !disabled && onChange(!checked)}
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        className="relative w-11 h-6 rounded-full transition-colors"
-        style={{
-          backgroundColor: checked ? styles.accent : styles.overlay(0.2),
-          opacity: disabled ? 0.5 : 1,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-        }}
-      >
-        <div
-          className="absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform"
-          style={{ left: checked ? '22px' : '2px' }}
-        />
-      </button>
-    </div>
-  );
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-function InputRow({ label, value, onChange, styles, type = 'text', placeholder = '' }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  styles: SettingsStyles;
-  type?: string;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="text-sm mb-1.5 block" style={{ color: styles.textSub }}>{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-        style={{ backgroundColor: styles.inputBg, border: `1px solid ${styles.inputBorder}`, color: styles.text }}
-      />
-    </div>
-  );
-}
-
-function SelectRow({ label, value, options, onChange, styles }: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (v: string) => void;
-  styles: SettingsStyles;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const selected = options.find(o => o.value === value);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  return (
-    <div className="relative" ref={ref}>
-      <label className="text-sm mb-1.5 block" style={{ color: styles.textSub }}>{label}</label>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full px-3 py-2 rounded-lg text-sm text-left flex items-center justify-between"
-        style={{ backgroundColor: styles.inputBg, border: `1px solid ${styles.inputBorder}`, color: styles.text }}
-      >
-        <span>{selected?.label ?? value}</span>
-        <ChevronDown size={14} style={{ color: styles.textSub, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-      </button>
-      {open && (
-        <div
-          className="absolute z-50 w-full mt-1 rounded-lg overflow-hidden shadow-lg"
-          style={{ backgroundColor: styles.card, border: `1px solid ${styles.inputBorder}` }}
-        >
-          {options.map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              className="w-full px-3 py-2 text-sm text-left transition-colors"
-              style={{
-                color: opt.value === value ? styles.accent : styles.text,
-                backgroundColor: opt.value === value ? styles.accentDim : 'transparent',
-              }}
-              onMouseEnter={e => { if (opt.value !== value) (e.currentTarget.style.backgroundColor = styles.overlay(0.06)); }}
-              onMouseLeave={e => { if (opt.value !== value) (e.currentTarget.style.backgroundColor = 'transparent'); }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 

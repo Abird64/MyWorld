@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use super::client::{self, AiConfig, ChatMessage};
+use serde_json::Value;
+
+use super::client::{self, AiConfig, text_message};
 
 /// 第一阶段意图分析结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,22 +57,8 @@ const ANALYSIS_PROMPT: &str = r#"分析用户消息，提取搜索关键词和�
 /// 超时或失败时返回 None，调用方应降级为现有逻辑。
 pub async fn analyze_user_intent(config: &AiConfig, user_message: &str) -> Option<IntentAnalysis> {
     let messages = vec![
-        ChatMessage {
-            role: "system".to_string(),
-            content: Some(ANALYSIS_PROMPT.to_string()),
-            tool_calls: None,
-            tool_call_id: None,
-            name: None,
-            reasoning_content: None,
-        },
-        ChatMessage {
-            role: "user".to_string(),
-            content: Some(user_message.to_string()),
-            tool_calls: None,
-            tool_call_id: None,
-            name: None,
-            reasoning_content: None,
-        },
+        text_message("system", ANALYSIS_PROMPT),
+        text_message("user", user_message),
     ];
 
     // 用 tokio::time::timeout 限制 5 秒
@@ -82,7 +70,9 @@ pub async fn analyze_user_intent(config: &AiConfig, user_message: &str) -> Optio
 
     match result {
         Ok(Ok(reply)) => {
-            let text = reply.content.unwrap_or_default();
+            let text = reply.content
+                .map(|v| match v { Value::String(s) => s, other => other.to_string() })
+                .unwrap_or_default();
             parse_intent_response(&text)
         }
         _ => None, // 超时或错误 → 降级

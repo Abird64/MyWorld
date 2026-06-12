@@ -61,10 +61,6 @@ export function DiarySummary() {
               {wordCount}
             </span>
             <span className="text-xs" style={{ color: appTheme.inkMuted48 }}>字</span>
-            <span
-              className="firefly-glow inline-block w-1.5 h-1.5 rounded-full ml-1 mb-1"
-              style={{ backgroundColor: appTheme.primary }}
-            />
           </div>
           <p className="text-xs" style={{ color: hasAiSummary ? appTheme.primary : appTheme.inkMuted48 }}>
             {hasAiSummary ? '萤火已点亮' : '待总结'}

@@ -8,8 +8,9 @@ use super::tools::ToolDefinition;
 #[derive(Debug, Serialize, Clone)]
 pub struct ChatMessage {
     pub role: String,
+    /// 纯文本时为 String，带图片时为 ContentPart 数组（OpenAI multimodal 格式）
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub content: Option<String>,
+    pub content: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -19,6 +20,43 @@ pub struct ChatMessage {
     /// DeepSeek thinking 模式返回的推理链，后续请求必须原样带回
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning_content: Option<String>,
+}
+
+/// 构造纯文本 ChatMessage
+pub fn text_message(role: &str, text: &str) -> ChatMessage {
+    ChatMessage {
+        role: role.to_string(),
+        content: Some(Value::String(text.to_string())),
+        tool_calls: None,
+        tool_call_id: None,
+        name: None,
+        reasoning_content: None,
+    }
+}
+
+/// 构造带图片的 ChatMessage（OpenAI multimodal 格式）
+pub fn multimodal_message(role: &str, text: &str, image_base64_list: &[String]) -> ChatMessage {
+    let mut parts = vec![serde_json::json!({"type": "text", "text": text})];
+    for img in image_base64_list {
+        // img 可能已经是完整的 data:image/...;base64,xxx 格式，也可能是纯 base64
+        let url = if img.starts_with("data:") {
+            img.clone()
+        } else {
+            format!("data:image/jpeg;base64,{}", img)
+        };
+        parts.push(serde_json::json!({
+            "type": "image_url",
+            "image_url": {"url": url}
+        }));
+    }
+    ChatMessage {
+        role: role.to_string(),
+        content: Some(Value::Array(parts)),
+        tool_calls: None,
+        tool_call_id: None,
+        name: None,
+        reasoning_content: None,
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -119,28 +157,15 @@ pub struct AiConfig {
 /// 用 AI 根据首条用户消息生成对话标题（10 字以内）
 pub async fn generate_title(config: &AiConfig, user_message: &str) -> Result<String, String> {
     let messages = vec![
-        ChatMessage {
-            role: "system".to_string(),
-            content: Some(
-                "你是标题生成器。把用户输入总结成10字以内标题，只返回标题文本，不加引号、标点、解释。".into(),
-            ),
-            tool_calls: None,
-            tool_call_id: None,
-            name: None,
-            reasoning_content: None,
-        },
-        ChatMessage {
-            role: "user".to_string(),
-            content: Some(format!("为以下对话起标题：{}", user_message)),
-            tool_calls: None,
-            tool_call_id: None,
-            name: None,
-            reasoning_content: None,
-        },
+        text_message("system", "你是标题生成器。把用户输入总结成10字以内标题，只返回标题文本，不加引号、标点、解释。"),
+        text_message("user", &format!("为以下对话起标题：{}", user_message)),
     ];
 
     let reply = chat_completion(config, messages, None, None).await?;
-    let title = reply.content.unwrap_or_default().trim().to_string();
+    let title = reply.content
+        .map(|v| match v { Value::String(s) => s, other => other.to_string() })
+        .unwrap_or_default()
+        .trim().to_string();
     // 限制长度，去掉可能残留的引号
     let title = title.trim_matches(|c| c == '"' || c == '"' || c == '"' || c == '\'');
     if title.is_empty() {
@@ -243,9 +268,16 @@ async fn handle_normal_response(resp: reqwest::Response) -> Result<ChatMessage, 
 
     let tool_calls_value = convert_tool_calls(msg.message.tool_calls);
 
+    // 兜底：API 要求 assistant 消息必须有 content 或 tool_calls
+    let content = if msg.message.content.is_none() && tool_calls_value.is_none() {
+        Some(Value::String("...".to_string()))
+    } else {
+        msg.message.content.map(|s| Value::String(s))
+    };
+
     Ok(ChatMessage {
         role: "assistant".to_string(),
-        content: msg.message.content,
+        content,
         tool_calls: tool_calls_value,
         tool_call_id: None,
         name: None,
@@ -339,9 +371,18 @@ async fn handle_stream_response(
             .collect())
     };
 
+    let content = if full_content.is_empty() { None } else { Some(Value::String(full_content)) };
+
+    // 兜底：API 要求 assistant 消息必须有 content 或 tool_calls
+    let content = if content.is_none() && tool_calls_value.is_none() {
+        Some(Value::String("...".to_string()))
+    } else {
+        content
+    };
+
     Ok(ChatMessage {
         role: "assistant".to_string(),
-        content: if full_content.is_empty() { None } else { Some(full_content) },
+        content,
         tool_calls: tool_calls_value,
         tool_call_id: None,
         name: None,

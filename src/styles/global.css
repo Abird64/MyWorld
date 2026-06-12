@@ -154,6 +154,17 @@ input, textarea, [contenteditable="true"] {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+/* 键盘弹出时隐藏底部 TabBar，释放空间给输入区 */
+body.keyboard-open nav.safe-bottom {
+  display: none;
+}
+
+/* App 根容器：100dvh 跟随键盘动态调整，100vh 作为旧浏览器 fallback */
+.app-root {
+  height: 100vh;
+  height: 100dvh;
+}
+
 /* ========== 移动端覆盖 ========== */
 @media (max-width: 767px) {
   /* 根字体根据屏幕宽度缩放，让所有 rem 单位自适应 */

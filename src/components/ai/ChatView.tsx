@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Copy, StopCircle, Check, Star, ArrowUp } from 'lucide-react';
+import { Copy, StopCircle, Check, Star, ArrowUp, ImagePlus, X, Loader2 } from 'lucide-react';
 import Markdown from 'react-markdown';
+import { compressImageForApi } from '@/utils/imageCompress';
+import * as aiService from '@/services/aiService';
 import remarkGfm from 'remark-gfm';
-import { LanternSvg, ShiningText, Fireflies } from '@/components/ui';
+import { LanternSvg, ShiningText, Fireflies, ImageViewer } from '@/components/ui';
 import { TypewriterText } from '@/components/ui/TypewriterText';
 import { ToolCallCard } from '@/components/ai/ToolCallCard';
 import { PromptPouch } from '@/components/ai/PromptPouch';
@@ -117,7 +119,11 @@ export function ChatView({
   const appTheme = useAppTheme();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
   const emptyStateRef = useRef<HTMLDivElement>(null);
+  // 图片 data URI 缓存：file_path → data_uri
+  const imageDataCache = useRef<Map<string, string>>(new Map());
+  const [, forceUpdate] = useState(0);
 
   // 加载锦囊（localStorage 为单一来源，首次已由设置页播种默认值）
   const allPrompts = useMemo(() => {
@@ -143,7 +149,11 @@ export function ChatView({
     aiStatus,
     streamingContent,
     isStreaming,
+    pendingImages,
     stopGeneration,
+    addPendingImages,
+    removePendingImage,
+    clearPendingImages,
     executeToolCalls,
     executeSingleToolCall,
     cancelToolCalls,
@@ -152,6 +162,34 @@ export function ChatView({
   } = useAiStore();
 
   const { toggleFavorite, isFavorited } = useFavoriteStore();
+
+  // ── 图片处理 ──
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /** 处理图片文件选择（自动压缩） */
+  const handleImageFiles = useCallback(async (files: FileList | File[]) => {
+    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+    const compressed = await Promise.all(imageFiles.map(f => compressImageForApi(f)));
+    addPendingImages(compressed);
+  }, [addPendingImages]);
+
+  /** 粘贴事件：检测图片并添加到待发送列表 */
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageFiles: File[] = [];
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      handleImageFiles(imageFiles);
+    }
+  }, [handleImageFiles]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -244,7 +282,44 @@ export function ChatView({
                             {msg.content}
                           </div>
                         ) : (
-                          msg.content || ''
+                          <>
+                            {/* 用户消息中的图片 */}
+                            {isUser && msg.images && (() => {
+                              try {
+                                const filePaths: string[] = JSON.parse(msg.images);
+                                return filePaths.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                    {filePaths.map((fp, idx) => {
+                                      const cached = imageDataCache.current.get(fp);
+                                      if (!cached) {
+                                        // 懒加载图片数据
+                                        aiService.getChatImageData(fp).then((dataUri) => {
+                                          imageDataCache.current.set(fp, dataUri);
+                                          forceUpdate((n) => n + 1);
+                                        });
+                                        return (
+                                          <div key={idx} className="w-20 h-20 rounded-lg flex items-center justify-center" style={{ backgroundColor: withAlpha(appTheme.ink, 0.05) }}>
+                                            <Loader2 size={16} className="animate-spin" style={{ color: withAlpha(appTheme.ink, 0.2) }} />
+                                          </div>
+                                        );
+                                      }
+                                      return (
+                                        <img
+                                          key={idx}
+                                          src={cached}
+                                          alt={`图片 ${idx + 1}`}
+                                          className="max-w-[180px] max-h-[120px] rounded-lg object-cover cursor-pointer"
+                                          style={{ border: `1px solid ${withAlpha(appTheme.ink, 0.1)}` }}
+                                          onClick={() => setViewingImage(cached)}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                ) : null;
+                              } catch { return null; }
+                            })()}
+                            {msg.content || ''}
+                          </>
                         )}
                       </div>
 
@@ -431,7 +506,7 @@ export function ChatView({
                     borderBottomLeftRadius: '4px',
                   }}
                 >
-                  <ShiningText text={aiStatus || "思考中..."} />
+                  <ShiningText text={aiStatus || "输入中..."} />
                 </div>
               </div>
             )}
@@ -453,10 +528,9 @@ export function ChatView({
         </div>
       )}
 
-      {/* 底部输入区 — 通过 CSS 变量响应键盘高度 */}
+      {/* 底部输入区 — adjustResize 下 flex 布局自动跟随键盘 */}
       <div
-        className="px-6 pt-3 flex-shrink-0"
-        style={{ paddingBottom: `calc(1.5rem + var(--keyboard-height, 0px))` }}
+        className="px-6 pt-3 pb-4 flex-shrink-0"
       >
         {/* 锦囊胶囊 — 聚焦时浮现 */}
         <div
@@ -502,7 +576,55 @@ export function ChatView({
             />
           )}
 
-          <div className="relative flex items-end">
+          {/* 图片预览条 */}
+          {pendingImages.length > 0 && (
+            <div className="flex items-center gap-2 px-3 pt-2 pb-1 overflow-x-auto">
+              {pendingImages.map((img, idx) => (
+                <div key={idx} className="relative flex-shrink-0 group/img">
+                  <img
+                    src={img}
+                    alt={`待发送 ${idx + 1}`}
+                    className="w-14 h-14 rounded-lg object-cover"
+                    style={{ border: `1px solid ${withAlpha(appTheme.ink, 0.1)}` }}
+                  />
+                  <button
+                    onClick={() => removePendingImage(idx)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity bg-black/60 text-white"
+                    aria-label="移除图片"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="relative flex items-center">
+            {/* 隐藏的文件选择器 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) handleImageFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            {/* 图片选择按钮 */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isSending}
+              className="flex-shrink-0 m-1.5 h-8 w-8 flex items-center justify-center rounded-full transition-colors disabled:opacity-30"
+              style={{ color: appTheme.inkMuted48 }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = appTheme.ink; e.currentTarget.style.backgroundColor = withAlpha(appTheme.ink, 0.08); }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = appTheme.inkMuted48; e.currentTarget.style.backgroundColor = 'transparent'; }}
+              title="添加图片"
+              aria-label="添加图片"
+            >
+              <ImagePlus size={16} />
+            </button>
             <textarea
               ref={inputRef}
               value={input}
@@ -516,6 +638,7 @@ export function ChatView({
                 ta.style.height = Math.min(ta.scrollHeight, maxHeight) + 'px';
               }}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder={isSending ? '等待回复中...' : '说点什么...'}
               disabled={isSending}
               rows={1}
@@ -553,21 +676,21 @@ export function ChatView({
             ) : (
               <button
                 onClick={handleSend}
-                disabled={!input.trim()}
+                disabled={!input.trim() && pendingImages.length === 0}
                 className="flex-shrink-0 m-1.5 h-8 w-8 flex items-center justify-center rounded-full transition-all"
                 style={{
-                  backgroundColor: input.trim() ? appTheme.primary : `${withAlpha(appTheme.ink, 0.1)}`,
-                  color: input.trim() ? appTheme.onPrimary : appTheme.inkMuted48,
-                  cursor: input.trim() ? 'pointer' : 'not-allowed',
+                  backgroundColor: (input.trim() || pendingImages.length > 0) ? appTheme.primary : `${withAlpha(appTheme.ink, 0.1)}`,
+                  color: (input.trim() || pendingImages.length > 0) ? appTheme.onPrimary : appTheme.inkMuted48,
+                  cursor: (input.trim() || pendingImages.length > 0) ? 'pointer' : 'not-allowed',
                 }}
                 title="发送消息"
                 aria-label="发送消息"
                 onMouseEnter={(e) => {
-                  if (input.trim())
+                  if (input.trim() || pendingImages.length > 0)
                     e.currentTarget.style.backgroundColor = appTheme.primaryFocus;
                 }}
                 onMouseLeave={(e) => {
-                  if (input.trim())
+                  if (input.trim() || pendingImages.length > 0)
                     e.currentTarget.style.backgroundColor = appTheme.primary;
                 }}
               >
@@ -577,6 +700,12 @@ export function ChatView({
           </div>
         </div>
       </div>
+
+      {/* 图片查看大图 */}
+      <ImageViewer
+        src={viewingImage}
+        onClose={() => setViewingImage(null)}
+      />
     </>
   );
 }

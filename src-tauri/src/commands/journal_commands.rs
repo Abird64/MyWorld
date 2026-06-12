@@ -1,8 +1,9 @@
-use crate::ai::client::{self, ChatMessage};
+use crate::ai::client::{self, text_message};
 use crate::ai::{prompts, tools};
 use crate::db::connection::{AppDataState, DbState};
 use crate::db::repositories::{journal_repo, setting_repo, task_repo, schedule_repo, contact_repo};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::path::PathBuf;
 use tauri::State;
 
@@ -84,7 +85,7 @@ pub fn save_journal(
 
     // 写入 .md 文件
     let file_path = PathBuf::from(&journal.file_path);
-    journal_repo::write_md_file(
+    let actual_path = journal_repo::write_md_file(
         &file_path,
         &input.date,
         input.mood.as_deref(),
@@ -93,6 +94,11 @@ pub fn save_journal(
         "user",
         &input.content,
     )?;
+
+    // 如果降级到了新路径，更新 DB
+    if actual_path != file_path {
+        let _ = journal_repo::update_journal_file_path(&conn, &journal.id, &actual_path);
+    }
 
     // 更新 DB 元数据
     let title = if input.content.trim().is_empty() {
@@ -187,7 +193,9 @@ pub fn save_ai_diary(
         word_count,
         "ai",
         &input.content,
-    )
+    )?;
+
+    Ok(())
 }
 
 /// 日记 XP 结算（日省按钮触发）
@@ -337,7 +345,7 @@ pub async fn daily_reflection(
         journal_repo::save_ai_diary_meta(&conn, &app_data.dir, &input.date)?;
         let ai_path = journal_repo::date_to_file_path(&app_data.dir, &input.date, true);
         let word_count = refl_text.chars().count() as i32;
-        journal_repo::write_md_file(&ai_path, &input.date, None, None, word_count, "ai", &refl_text)?;
+        let _ = journal_repo::write_md_file(&ai_path, &input.date, None, None, word_count, "ai", &refl_text);
     }
 
     // 6. 联系人匹配 + mood/tags 提取
@@ -377,7 +385,7 @@ async fn call_xp_ai(
     settle_tool: &tools::ToolDefinition,
 ) -> Result<client::ChatMessage, String> {
     let messages = vec![
-        ChatMessage { role: "system".into(), content: Some(prompt.into()), tool_calls: None, tool_call_id: None, name: None, reasoning_content: None },
+        text_message("system", prompt),
     ];
     client::chat_completion(&config, messages, Some(vec![settle_tool.clone()]), None).await
 }
@@ -387,11 +395,13 @@ async fn call_refl_ai(
     prompt: &str,
 ) -> Result<String, String> {
     let messages = vec![
-        ChatMessage { role: "system".into(), content: Some(prompt.into()), tool_calls: None, tool_call_id: None, name: None, reasoning_content: None },
-        ChatMessage { role: "user".into(), content: Some("请写今天的日记旁白。".into()), tool_calls: None, tool_call_id: None, name: None, reasoning_content: None },
+        text_message("system", prompt),
+        text_message("user", "请写今天的日记旁白。"),
     ];
     let reply = client::chat_completion(&config, messages, None, None).await?;
-    Ok(reply.content.unwrap_or_default())
+    Ok(reply.content
+        .map(|v| match v { Value::String(s) => s, other => other.to_string() })
+        .unwrap_or_default())
 }
 
 async fn call_contact_ai(
@@ -399,11 +409,13 @@ async fn call_contact_ai(
     prompt: &str,
 ) -> Result<String, String> {
     let messages = vec![
-        ChatMessage { role: "system".into(), content: Some(prompt.into()), tool_calls: None, tool_call_id: None, name: None, reasoning_content: None },
-        ChatMessage { role: "user".into(), content: Some("请提取日记中的人物。".into()), tool_calls: None, tool_call_id: None, name: None, reasoning_content: None },
+        text_message("system", prompt),
+        text_message("user", "请提取日记中的人物。"),
     ];
     let reply = client::chat_completion(&config, messages, None, None).await?;
-    Ok(reply.content.unwrap_or_default())
+    Ok(reply.content
+        .map(|v| match v { Value::String(s) => s, other => other.to_string() })
+        .unwrap_or_default())
 }
 
 // ─── XP 结算 ───
@@ -586,4 +598,115 @@ pub fn get_journal_count(db_state: State<'_, DbState>) -> Result<i32, String> {
         .lock()
         .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
     journal_repo::get_journal_count(&conn)
+}
+
+// ========== 日记图片 Commands ==========
+
+/// 上传图片到指定日期的日记目录，返回图片记录
+#[tauri::command]
+pub async fn upload_journal_image(
+    db_state: State<'_, DbState>,
+    app_data: State<'_, AppDataState>,
+    date: String,
+    file_name: String,
+    mime_type: String,
+    data: Vec<u8>,
+) -> Result<journal_repo::JournalImage, String> {
+    // 确保日记存在
+    let app_data_dir = &app_data.dir;
+    let journal_id = {
+        let conn = db_state.conn.lock().map_err(|e| e.to_string())?;
+        let journal = journal_repo::get_or_create_journal(&conn, app_data_dir, &date)?;
+        journal.id
+    };
+    let parts: Vec<&str> = date.split('-').collect();
+    let (year, month) = if parts.len() >= 2 {
+        (parts[0], parts[1])
+    } else {
+        ("unknown", "unknown")
+    };
+
+    // 图片目录: journals/YYYY/MM/YYYY-MM-DD/
+    let img_dir = app_data_dir
+        .join("journals")
+        .join(year)
+        .join(month)
+        .join(&date);
+    std::fs::create_dir_all(&img_dir).map_err(|e| format!("创建图片目录失败: {}", e))?;
+
+    // 生成唯一文件名
+    let ext = file_name.rsplit('.').next().unwrap_or("jpg");
+    let unique_name = format!("img_{}_{}.{}", chrono::Local::now().timestamp_millis(), nanoid::nanoid!(4), ext);
+    let file_path = img_dir.join(&unique_name);
+
+    // 写入文件
+    std::fs::write(&file_path, &data).map_err(|e| format!("写入图片文件失败: {}", e))?;
+
+    // 保存到数据库（相对路径）
+    let relative_path = format!("{}/{}/{}/{}/{}", "journals", year, month, date, unique_name);
+    let file_size = data.len() as i64;
+
+    let conn = db_state.conn.lock().map_err(|e| e.to_string())?;
+    journal_repo::create_journal_image(
+        &conn,
+        &journal_id,
+        &relative_path,
+        &file_name,
+        Some(&mime_type),
+        Some(file_size),
+    )
+}
+
+/// 获取日记的所有图片
+#[tauri::command]
+pub fn get_journal_images(
+    db_state: State<'_, DbState>,
+    journal_id: String,
+) -> Result<Vec<journal_repo::JournalImage>, String> {
+    let conn = db_state.conn.lock().map_err(|e| e.to_string())?;
+    journal_repo::get_journal_images(&conn, &journal_id)
+}
+
+/// 删除日记图片
+#[tauri::command]
+pub async fn delete_journal_image(
+    db_state: State<'_, DbState>,
+    app_data: State<'_, AppDataState>,
+    image_id: String,
+) -> Result<(), String> {
+    let file_path = {
+        let conn = db_state.conn.lock().map_err(|e| e.to_string())?;
+        journal_repo::delete_journal_image(&conn, &image_id)?
+    };
+
+    // 删除物理文件
+    let full_path = app_data.dir.join(&file_path);
+    if full_path.exists() {
+        std::fs::remove_file(&full_path).map_err(|e| format!("删除图片文件失败: {}", e))?;
+    }
+
+    Ok(())
+}
+
+/// 读取图片文件并返回 base64 data URI（用于前端显示）
+#[tauri::command]
+pub async fn get_journal_image_data(
+    app_data: State<'_, AppDataState>,
+    file_path: String,
+) -> Result<String, String> {
+    let full_path = app_data.dir.join(&file_path);
+    let data = std::fs::read(&full_path)
+        .map_err(|e| format!("读取图片失败: {}", e))?;
+
+    // 根据扩展名确定 MIME 类型
+    let mime = match full_path.extension().and_then(|e| e.to_str()) {
+        Some("png") => "image/png",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        _ => "image/jpeg",
+    };
+
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+    Ok(format!("data:{};base64,{}", mime, b64))
 }

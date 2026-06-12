@@ -8,3 +8,4 @@ export { Button } from './Button';
 export { Container, Section } from './Layout';
 export { ShiningText } from './ShiningText';
 export { Fireflies } from './Fireflies';
+export { ImageViewer } from './ImageViewer';

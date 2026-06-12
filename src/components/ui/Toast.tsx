@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 
 interface ToastProps {
@@ -26,19 +27,21 @@ export function Toast({ message, visible, onClose, duration = 2800 }: ToastProps
 
   if (!visible && !show) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 px-5 py-3 rounded-full text-sm transition-all duration-300"
+      className="fixed bottom-24 z-[60] px-5 py-3 rounded-full text-sm transition-all duration-300"
       style={{
+        left: '50%',
         backgroundColor: appTheme.canvas,
         color: appTheme.ink,
         border: `0.5px solid ${appTheme.hairline}`,
         boxShadow: `0 4px 24px ${withAlpha(appTheme.ink, 0.1)}`,
         opacity: show ? 1 : 0,
-        transform: show ? 'translate(-50%, 0)' : 'translate(-50%, 16px)',
+        transform: show ? 'translateX(-50%)' : 'translateX(-50%) translateY(16px)',
       }}
     >
       {text}
-    </div>
+    </div>,
+    document.body
   );
 }

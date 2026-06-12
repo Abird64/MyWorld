@@ -3,6 +3,7 @@ use lunardate::LunarDate;
 use rusqlite::Connection;
 
 use crate::ai::context::ContextBundle;
+use crate::ai::tools::is_plugin_enabled;
 use crate::db::repositories::{contact_repo, habit_repo, memory_repo, schedule_repo, task_repo};
 
 // ========== 通用辅助函数 ==========
@@ -47,11 +48,12 @@ const CORE_RULES: &str = r#"## 通用规则
 - 创建/修改/删除类工具有确认卡片，查询类工具自动执行无卡片
 - 遇到相对日期（下周三、月底、周末等）→ **先调 resolve_date** 得精确日期
 - 搜索用空格分隔多关键词，多条匹配→列给用户选
-- 不确定某个模块的用法时 → 调用 get_guide("模块名") 查阅详细指南"#;
+- 不确定某个模块的用法时 → 调用 get_guide("模块名") 查阅详细指南
+- 涉及实时信息（AI新闻、天气、股价等）→ **必须调用对应工具**，不要用训练数据回答"#;
 
-/// 能力概览（精简，每次必注入）
-const CAPABILITIES: &str = r#"## 你的能力
-提灯有 9 个模块，你有 47 个工具可用：
+/// 能力概览——核心模块
+const CAPABILITIES_BASE: &str = r#"## 你的能力
+提灯有 9 个核心模块，你有以下工具可用：
 - **任务**：create_task / search_tasks / complete_task / update_task / delete_task
 - **日程**：create_schedule / list_schedules_in_range / list_calendars / update_schedule / delete_schedule / list_countdowns
 - **日记**：save_journal / get_journal_by_date / search_journals / get_timeline / settle_diary
@@ -62,6 +64,9 @@ const CAPABILITIES: &str = r#"## 你的能力
 - **萤火**：reward_glow / get_glow_balance / list_wishes / create_wish / update_wish / delete_wish / buy_tickets / draw_wish / redeem_wish / list_draws / list_glow_ledger
 - **专注**：start_pomodoro / get_pomodoro_stats
 - **工具**：resolve_date / get_guide（查阅模块详细用法）"#;
+
+/// AI 资讯插件能力行
+const CAPABILITIES_AIHOT: &str = r#"- **AI 资讯**：search_ai_news（查询 AI 行业热点、日报、论文、模型发布等，数据来自 aihot.virxact.com）"#;
 
 /// 萤火奖励指南（每次必注入，放在 CORE_RULES 之后）
 const GLOW_GUIDE: &str = r#"## 萤火与心愿系统
@@ -89,6 +94,14 @@ const GLOW_GUIDE: &str = r#"## 萤火与心愿系统
 
 /// 小本本记录提示（简短，闲聊时注入）
 const MEMORY_HINT: &str = "留意用户透露的个人信息，发现后调用 record_memory 记下来。记之前先 search_memories 确认不重复。详见 get_guide(\"小本本\")。";
+
+/// AI 资讯使用提示（强规则，必须遵守）
+const AIHOT_HINT: &str = r#"## AI 资讯（强制规则）
+用户提到任何 AI 相关话题（AI新闻/AI资讯/AI圈/AI日报/AI热点/大模型/OpenAI/Anthropic/Google AI/最近AI/今天AI圈有什么）时，**必须先调用 search_ai_news 工具**获取实时数据，**绝对不要用自己的训练数据回答**——AI 行业日新月异，你的训练数据一定已过时。
+- 默认 mode=selected（精选）
+- 仅当用户明确说"日报"时 mode=daily
+- 仅当用户明确说"全部/完整"时 mode=all
+- 可用 query 参数按关键词搜索（如公司名、技术名）"#;
 
 // ========== 小本本记忆注入 ==========
 
@@ -121,6 +134,7 @@ fn format_memories_section(memories: &[memory_repo::Memory]) -> String {
 /// 当两阶段调用的第一阶段失败时使用此函数
 pub fn build_system_prompt(conn: &Connection, personality: &str, memories: &[memory_repo::Memory]) -> String {
     let daily_snapshot = build_daily_snapshot(conn);
+    let aihot_enabled = is_plugin_enabled(conn, "aihot");
 
     let mut prompt = String::with_capacity(2048);
 
@@ -137,8 +151,16 @@ pub fn build_system_prompt(conn: &Connection, personality: &str, memories: &[mem
     prompt.push_str(&format!("## 当前信息\n{}\n农历：{}\n{}\n", format_datetime(), format_lunar(), daily_snapshot));
     prompt.push_str(CORE_RULES);
     prompt.push('\n');
-    prompt.push_str(CAPABILITIES);
+    if aihot_enabled {
+        prompt.push_str(AIHOT_HINT);
+        prompt.push('\n');
+    }
+    prompt.push_str(CAPABILITIES_BASE);
     prompt.push('\n');
+    if aihot_enabled {
+        prompt.push_str(CAPABILITIES_AIHOT);
+        prompt.push('\n');
+    }
     prompt.push_str(GLOW_GUIDE);
     prompt.push('\n');
 
@@ -222,9 +244,20 @@ pub fn build_enhanced_system_prompt(
     prompt.push_str(CORE_RULES);
     prompt.push('\n');
 
-    // 能力概览（工具列表）
-    prompt.push_str(CAPABILITIES);
+    // AI 资讯强制规则（仅插件启用时）
+    let aihot_enabled = is_plugin_enabled(conn, "aihot");
+    if aihot_enabled {
+        prompt.push_str(AIHOT_HINT);
+        prompt.push('\n');
+    }
+
+    // 能力概览（工具列表，动态拼接插件能力）
+    prompt.push_str(CAPABILITIES_BASE);
     prompt.push('\n');
+    if aihot_enabled {
+        prompt.push_str(CAPABILITIES_AIHOT);
+        prompt.push('\n');
+    }
 
     // 萤火奖励指南
     prompt.push_str(GLOW_GUIDE);

@@ -144,7 +144,7 @@ export function DrawResultModal({ isDrawing, drawResult, cardFlipped, showResult
                           color: '#fff',
                         }}
                       >
-                        已获得
+                        已入库
                       </motion.div>
                     </>
                   ) : (

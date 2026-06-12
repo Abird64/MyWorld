@@ -67,6 +67,10 @@ pub fn date_to_file_path(app_data_dir: &Path, date: &str, is_ai: bool) -> PathBu
 }
 
 /// 写入 .md 文件（含 frontmatter）
+///
+/// 在 Android 上 app_data_dir 可能指向只读分区，
+/// 如果写入失败会尝试降级到 cache_dir / temp_dir。
+/// 返回实际写入的路径（可能是原始路径或降级路径）。
 pub fn write_md_file(
     path: &Path,
     date: &str,
@@ -75,16 +79,48 @@ pub fn write_md_file(
     word_count: i32,
     entry_type: &str,
     body: &str,
-) -> Result<(), String> {
-    // 确保父目录存在
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create journal dir: {}", e))?;
+) -> Result<PathBuf, String> {
+    let content = build_md_content(date, mood, tags, word_count, entry_type, body);
+
+    // 尝试写入目标路径
+    if let Err(e) = try_write_file(path, &content) {
+        // Android 上 app_data_dir 可能只读，尝试降级
+        log::warn!("日记写入失败 {:?}: {}，尝试降级路径", path, e);
+
+        if let Some(relative) = extract_journals_relative(path) {
+            let fallback_dirs = [
+                std::path::PathBuf::from("/data/data/com.lantern.app/cache"),
+                std::env::temp_dir(),
+            ];
+            for fallback_dir in &fallback_dirs {
+                let fallback_path = fallback_dir.join("lantern_journals").join(&relative);
+                if try_write_file(&fallback_path, &content).is_ok() {
+                    log::warn!("日记降级写入成功: {:?}", fallback_path);
+                    return Ok(fallback_path);
+                }
+            }
+        }
+
+        return Err(format!(
+            "日记写入失败 (path: {:?}): {}",
+            path, e
+        ));
     }
 
+    Ok(path.to_path_buf())
+}
+
+/// 构建 .md 文件内容（含 frontmatter）
+fn build_md_content(
+    date: &str,
+    mood: Option<&str>,
+    tags: Option<&str>,
+    word_count: i32,
+    entry_type: &str,
+    body: &str,
+) -> String {
     let tags_yaml = match tags {
         Some(t) if !t.is_empty() => {
-            // tags 是 JSON 数组字符串，转成 YAML 列表
             let parsed: Vec<String> =
                 serde_json::from_str(t).unwrap_or_default();
             if parsed.is_empty() {
@@ -108,23 +144,62 @@ pub fn write_md_file(
         None => "null".to_string(),
     };
 
-    let content = format!(
+    format!(
         "---\ndate: \"{}\"\nmood: {}\ntags:{}\nword_count: {}\ntype: \"{}\"\n---\n\n{}",
         date, mood_str, tags_yaml, word_count, entry_type, body
-    );
-
-    std::fs::write(path, content).map_err(|e| format!("Failed to write journal file: {}", e))
+    )
 }
 
-/// 读取 .md 文件，返回 (body内容, frontmatter解析结果)
-/// 如果文件不存在，返回空内容
-pub fn read_md_file(path: &Path) -> Result<String, String> {
-    if !path.exists() {
-        return Ok(String::new());
+/// 尝试创建目录并写入文件
+fn try_write_file(path: &Path, content: &str) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("mkdir {:?}: {}", parent, e))?;
     }
+    std::fs::write(path, content)
+        .map_err(|e| format!("write {:?}: {}", path, e))
+}
+
+/// 从完整路径中提取 journals/ 相对路径部分
+fn extract_journals_relative(path: &Path) -> Option<std::path::PathBuf> {
+    let components: Vec<_> = path.components().collect();
+    let journals_idx = components.iter().position(|c| {
+        c.as_os_str() == "journals"
+    })?;
+    let relative: std::path::PathBuf = components[journals_idx..].iter().collect();
+    Some(relative)
+}
+
+/// 检查降级路径中是否有该文件（用于 read 时降级查找）
+fn find_in_fallback_dirs(original_path: &Path) -> Option<std::path::PathBuf> {
+    let relative = extract_journals_relative(original_path)?;
+    let fallback_dirs = [
+        std::path::PathBuf::from("/data/data/com.lantern.app/cache"),
+        std::env::temp_dir(),
+    ];
+    for dir in &fallback_dirs {
+        let candidate = dir.join("lantern_journals").join(&relative);
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+/// 读取 .md 文件，返回 body 内容（去掉 frontmatter）
+/// 如果文件不存在，尝试降级路径
+pub fn read_md_file(path: &Path) -> Result<String, String> {
+    // 先尝试原始路径
+    let actual_path = if path.exists() {
+        path.to_path_buf()
+    } else if let Some(fallback) = find_in_fallback_dirs(path) {
+        fallback
+    } else {
+        return Ok(String::new());
+    };
 
     let content =
-        std::fs::read_to_string(path).map_err(|e| format!("Failed to read journal file: {}", e))?;
+        std::fs::read_to_string(&actual_path).map_err(|e| format!("Failed to read journal file: {}", e))?;
 
     // 解析 frontmatter：找到第二个 "---" 分隔符
     let body = if content.starts_with("---") {
@@ -170,7 +245,18 @@ pub fn get_or_create_journal(
     .map_err(|e| format!("Failed to create journal: {}", e))?;
 
     // 创建空的 .md 文件
-    write_md_file(&file_path, date, None, None, 0, "user", "")?;
+    let actual_path = write_md_file(&file_path, date, None, None, 0, "user", "")?;
+
+    // 如果写入到了降级路径，更新 DB 中的 file_path
+    if actual_path != file_path {
+        let actual_str = actual_path.to_string_lossy().to_string();
+        log::warn!("[journal] updating file_path from {:?} to {:?}", file_path, actual_path);
+        conn.execute(
+            "UPDATE journals SET file_path = ?1 WHERE id = ?2",
+            params![actual_str, id],
+        )
+        .map_err(|e| format!("Failed to update journal file_path: {}", e))?;
+    }
 
     get_journal_by_date(conn, date)?
         .ok_or_else(|| "Failed to retrieve created journal".to_string())
@@ -198,6 +284,21 @@ pub fn get_journal_by_date(
         )),
         None => Ok(None),
     }
+}
+
+/// 更新日记文件路径（降级写入时使用）
+pub fn update_journal_file_path(
+    conn: &Connection,
+    id: &str,
+    new_path: &Path,
+) -> Result<(), String> {
+    let path_str = new_path.to_string_lossy().to_string();
+    conn.execute(
+        "UPDATE journals SET file_path = ?1 WHERE id = ?2",
+        params![path_str, id],
+    )
+    .map_err(|e| format!("Failed to update journal file_path: {}", e))?;
+    Ok(())
 }
 
 /// 更新日记元数据
@@ -517,9 +618,20 @@ pub fn search_journals(
             if results.len() >= limit { break; }
             if seen_ids.contains(&journal.id) { continue; }
 
-            // 读取文件内容
-            let file_path = app_data_dir.join(&journal.file_path);
-            if let Ok(content) = read_md_file(&file_path) {
+            // 读取文件内容（支持降级路径）
+            let file_path = if std::path::Path::new(&journal.file_path).is_absolute() {
+                std::path::PathBuf::from(&journal.file_path)
+            } else {
+                app_data_dir.join(&journal.file_path)
+            };
+            let actual_path = if file_path.exists() {
+                file_path.clone()
+            } else if let Some(fb) = find_in_fallback_dirs(&file_path) {
+                fb
+            } else {
+                file_path.clone()
+            };
+            if let Ok(content) = read_md_file(&actual_path) {
                 if content.to_lowercase().contains(&query_lower) {
                     let snippet = extract_snippet(&content, query);
                     seen_ids.insert(journal.id.clone());
@@ -571,4 +683,108 @@ pub fn get_journal_count(conn: &Connection) -> Result<i32, String> {
         |row| row.get(0),
     )
     .map_err(|e| format!("Failed to count journals: {}", e))
+}
+
+// ========== 日记图片 CRUD ==========
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct JournalImage {
+    pub id: String,
+    pub journal_id: String,
+    pub file_path: String,
+    pub file_name: String,
+    pub mime_type: Option<String>,
+    pub file_size: Option<i64>,
+    pub sort_order: i32,
+    pub created_at: String,
+}
+
+fn journal_image_from_row(row: &Row) -> rusqlite::Result<JournalImage> {
+    Ok(JournalImage {
+        id: row.get("id")?,
+        journal_id: row.get("journal_id")?,
+        file_path: row.get("file_path")?,
+        file_name: row.get("file_name")?,
+        mime_type: row.get("mime_type")?,
+        file_size: row.get("file_size")?,
+        sort_order: row.get("sort_order")?,
+        created_at: row.get("created_at")?,
+    })
+}
+
+/// 保存图片记录到数据库
+pub fn create_journal_image(
+    conn: &Connection,
+    journal_id: &str,
+    file_path: &str,
+    file_name: &str,
+    mime_type: Option<&str>,
+    file_size: Option<i64>,
+) -> Result<JournalImage, String> {
+    let id = nanoid::nanoid!();
+    let ts = chrono::Local::now().to_rfc3339();
+
+    // 获取当前最大 sort_order
+    let max_order: i32 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(sort_order), -1) FROM journal_images WHERE journal_id = ?1",
+            params![journal_id],
+            |row| row.get(0),
+        )
+        .unwrap_or(-1);
+
+    conn.execute(
+        "INSERT INTO journal_images (id, journal_id, file_path, file_name, mime_type, file_size, sort_order, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![id, journal_id, file_path, file_name, mime_type, file_size, max_order + 1, ts],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(JournalImage {
+        id,
+        journal_id: journal_id.to_string(),
+        file_path: file_path.to_string(),
+        file_name: file_name.to_string(),
+        mime_type: mime_type.map(|s| s.to_string()),
+        file_size,
+        sort_order: max_order + 1,
+        created_at: ts,
+    })
+}
+
+/// 获取日记的所有图片
+pub fn get_journal_images(conn: &Connection, journal_id: &str) -> Result<Vec<JournalImage>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, journal_id, file_path, file_name, mime_type, file_size, sort_order, created_at
+             FROM journal_images WHERE journal_id = ?1 ORDER BY sort_order ASC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map(params![journal_id], journal_image_from_row)
+        .map_err(|e| e.to_string())?;
+
+    let mut images = Vec::new();
+    for row in rows {
+        images.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(images)
+}
+
+/// 删除图片记录
+pub fn delete_journal_image(conn: &Connection, image_id: &str) -> Result<String, String> {
+    // 先获取文件路径，方便调用方删除物理文件
+    let file_path: String = conn
+        .query_row(
+            "SELECT file_path FROM journal_images WHERE id = ?1",
+            params![image_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| format!("Image {} not found: {}", image_id, e))?;
+
+    conn.execute("DELETE FROM journal_images WHERE id = ?1", params![image_id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(file_path)
 }

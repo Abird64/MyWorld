@@ -1,6 +1,6 @@
 [package]
 name = "lantern"
-version = "2.4.5"
+version = "2.5.0"
 description = "提灯 - 拾级而上，提灯而行。A local-first AI-powered life management desktop app."
 authors = ["鹏子"]
 license = "MIT"
@@ -29,7 +29,7 @@ rusqlite = { version = "0.35", features = ["bundled"] }
 nanoid = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 lunardate = "0.2"
-reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "blocking"] }
 futures-util = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 base64 = "0.22"

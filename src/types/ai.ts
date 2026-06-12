@@ -14,6 +14,8 @@ export interface AiMessage {
   content: string | null;
   tool_calls: string | null;
   tool_call_id: string | null;
+  reasoning_content?: string | null;
+  images?: string | null;  // JSON 数组字符串，存储 base64 图片数据
   created_at: string;
 }
 
