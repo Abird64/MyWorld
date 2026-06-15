@@ -392,7 +392,7 @@ export function DaysList() {
                         color: item.color || COLOR_OPTIONS[0],
                       }}
                     >
-                      {milestoneLabel} · 还有{nextMilestone.remaining}天
+                      {milestoneLabel} · 还有{nextMilestone!.remaining}天
                     </div>
                   )}
                 </button>

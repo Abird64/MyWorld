@@ -338,7 +338,7 @@ function DailyView({ daily, appTheme }: {
                 </div>
                 {flash.sourceUrl && (
                   <button
-                    onClick={() => openUrl(flash.sourceUrl)}
+                    onClick={() => openUrl(flash.sourceUrl!)}
                     className="flex-shrink-0 mt-0.5"
                     style={{ color: appTheme.primary }}
                   >
@@ -444,7 +444,7 @@ function DailyItemRow({ item, index, isLast, appTheme }: {
             </span>
             {item.sourceUrl && (
               <button
-                onClick={() => openUrl(item.sourceUrl)}
+                onClick={() => openUrl(item.sourceUrl!)}
                 className="flex-shrink-0 mt-1"
                 style={{ color: appTheme.primary }}
               >
