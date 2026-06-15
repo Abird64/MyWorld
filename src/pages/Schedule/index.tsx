@@ -582,7 +582,7 @@ export function SchedulePage() {
         className="hidden"
       />
 
-      {viewMode !== 'countdown' && (
+      {viewMode !== 'days' && (
         <button
           onClick={handleCreateClick}
           className="fixed bottom-[72px] right-8 z-30 w-14 h-14 rounded-full text-white active:scale-95 transition-all flex items-center justify-center firefly-breath"

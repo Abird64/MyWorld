@@ -4,9 +4,9 @@ import { useSettingStore } from '@/stores/settingStore';
 import * as inspirationService from '@/services/inspirationService';
 import type { InspirationCategory } from '@/types/inspiration';
 import { DEFAULT_CATEGORIES } from '@/types/inspiration';
-import { AVAILABLE_ICONS, getCategoryIcon, CATEGORY_ICON_MAP } from './categoryIcons';
+import { getCategoryIcon, CATEGORY_ICON_MAP } from './categoryIcons';
 import {
-  Loader2, AlertCircle, Plus, X, Check, Pencil, Trash2, GripVertical,
+  AlertCircle, Plus, X, Check, Pencil, Trash2,
 } from 'lucide-react';
 import { listen } from '@tauri-apps/api/event';
 
@@ -39,7 +39,7 @@ interface SettingsSectionProps {
   onBack: () => void;
 }
 
-export function SettingsSection({ onBack }: SettingsSectionProps) {
+export function SettingsSection({ onBack: _onBack }: SettingsSectionProps) {
   const appTheme = useAppTheme();
   const txt = appTheme.ink;
   const txtMid = withAlpha(txt, 0.5);

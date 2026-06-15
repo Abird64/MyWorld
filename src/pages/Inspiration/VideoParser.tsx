@@ -14,7 +14,7 @@ interface VideoParserProps {
   onBack: () => void;
 }
 
-export function VideoParser({ onParsed, onBack }: VideoParserProps) {
+export function VideoParser({ onParsed, onBack: _onBack }: VideoParserProps) {
   const appTheme = useAppTheme();
   const txt = appTheme.ink;
   const txtMid = withAlpha(txt, 0.5);
