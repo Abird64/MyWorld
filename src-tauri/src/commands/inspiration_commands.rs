@@ -141,16 +141,24 @@ pub async fn fetch_bilibili_video_info(url: String, sessdata: Option<String>) ->
 pub async fn bilibili_open_login_window(app_handle: tauri::AppHandle) -> Result<(), String> {
     use tauri::WebviewWindowBuilder;
 
-    let window = WebviewWindowBuilder::new(
-        &app_handle,
-        "bilibili-login",
-        tauri::WebviewUrl::External("https://www.bilibili.com".parse().unwrap()),
-    )
-    .title("B 站登录")
-    .inner_size(480.0, 720.0)
-    .center()
-    .build()
-    .map_err(|e| format!("创建登录窗口失败: {}", e))?;
+    let window = {
+        let mut builder = WebviewWindowBuilder::new(
+            &app_handle,
+            "bilibili-login",
+            tauri::WebviewUrl::External("https://www.bilibili.com".parse().unwrap()),
+        )
+        .title("B 站登录")
+        .inner_size(480.0, 720.0);
+
+        #[cfg(not(target_os = "android"))]
+        {
+            builder = builder.center();
+        }
+
+        builder
+            .build()
+            .map_err(|e| format!("创建登录窗口失败: {}", e))?
+    };
 
     // 注入 JS 轮询 cookie，登录成功后通知主窗口
     let js_code = r#"
