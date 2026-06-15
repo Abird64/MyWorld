@@ -16,11 +16,12 @@ mod glow;
 mod pomodoro;
 mod guide;
 pub mod aihot;
+pub mod inspiration;
 
 /// 判断工具是否需要在 async 上下文中处理（如需要 HTTP 请求的工具）
 /// 这些工具不能在同步的 execute_tool 中执行，需要在 async 调用方特殊处理
 pub fn is_async_tool(name: &str) -> bool {
-    matches!(name, "search_ai_news")
+    matches!(name, "search_ai_news" | "parse_video")
 }
 
 /// 执行不需要数据库连接的同步工具
@@ -32,7 +33,7 @@ pub fn execute_tool_without_conn(name: &str, arguments: &str) -> Result<String, 
 
 /// 判断工具是否需要数据库连接
 pub fn needs_conn(name: &str) -> bool {
-    !matches!(name, "search_ai_news")
+    !matches!(name, "search_ai_news" | "parse_video")
 }
 
 /// 根据工具名和参数执行对应的数据库操作，返回结果描述文本
@@ -80,6 +81,8 @@ pub fn execute_tool(
         "delete_memory" => memory::execute_delete_memory(conn, arguments),
         // 倒数日 (1)
         "list_countdowns" => schedule::execute_list_countdowns(conn),
+        // 纪念日 (1)
+        "list_anniversaries" => schedule::execute_list_anniversaries(conn),
         // 习惯 (6)
         "list_habits" => habit::execute_list_habits(conn),
         "create_habit" => habit::execute_create_habit(conn, arguments),
@@ -104,8 +107,9 @@ pub fn execute_tool(
         // 专注 (2)
         "start_pomodoro" => pomodoro::execute_start_pomodoro(conn, arguments),
         "get_pomodoro_stats" => pomodoro::execute_get_pomodoro_stats(conn),
-        // AI 资讯 — 由 async 调用方通过 spawn_blocking 处理，不在此执行
+        // AI 资讯 / 灵感捕手 — 由 async 调用方处理，不在此执行
         "search_ai_news" => Err("search_ai_news 应由 async 上下文处理".to_string()),
+        "parse_video" => Err("parse_video 应由 async 上下文处理".to_string()),
         _ => Err(format!("未知工具: {}", name)),
     }
 }

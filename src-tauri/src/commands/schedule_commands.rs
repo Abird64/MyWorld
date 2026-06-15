@@ -157,6 +157,15 @@ pub fn list_countdowns(
     serde_json::to_value(countdowns).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn list_anniversaries(
+    state: State<'_, DbState>,
+) -> Result<serde_json::Value, String> {
+    let conn = state.conn.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+    let anniversaries = schedule_repo::list_anniversaries(&conn)?;
+    serde_json::to_value(anniversaries).map_err(|e| e.to_string())
+}
+
 #[derive(Deserialize)]
 pub struct IcsEvent {
     pub uid: String,

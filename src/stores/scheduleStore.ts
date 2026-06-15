@@ -6,6 +6,7 @@ import { triggerSync } from '@/stores/syncStore';
 interface ScheduleState {
   schedules: Schedule[];
   countdowns: Schedule[];
+  anniversaries: Schedule[];
   isLoading: boolean;
   error: string | null;
 
@@ -14,6 +15,7 @@ interface ScheduleState {
 
   fetchSchedules: (rangeStart: string, rangeEnd: string) => Promise<void>;
   fetchCountdowns: () => Promise<void>;
+  fetchAnniversaries: () => Promise<void>;
   createSchedule: (input: CreateScheduleInput) => Promise<Schedule>;
   updateSchedule: (id: string, input: UpdateScheduleInput) => Promise<Schedule>;
   deleteSchedule: (id: string) => Promise<void>;
@@ -22,6 +24,7 @@ interface ScheduleState {
 export const useScheduleStore = create<ScheduleState>((set, _get) => ({
   schedules: [],
   countdowns: [],
+  anniversaries: [],
   isLoading: false,
   error: null,
   rangeStart: '',
@@ -44,6 +47,15 @@ export const useScheduleStore = create<ScheduleState>((set, _get) => ({
     try {
       const countdowns = await scheduleService.listCountdowns();
       set({ countdowns });
+    } catch (e) {
+      set({ error: String(e) });
+    }
+  },
+
+  fetchAnniversaries: async () => {
+    try {
+      const anniversaries = await scheduleService.listAnniversaries();
+      set({ anniversaries });
     } catch (e) {
       set({ error: String(e) });
     }

@@ -21,6 +21,7 @@ export async function refreshAllStores() {
       const end = new Date(year, month, 0, 23, 59, 59).toISOString();
       store.fetchSchedules(start, end);
       store.fetchCountdowns();
+      store.fetchAnniversaries();
     }).catch((e: unknown) => console.error('[refreshAfterSync] scheduleStore', e)),
     import('@/stores/journalStore').then(m => m.useJournalStore.getState().fetchTimelineEntries(year, month)).catch((e: unknown) => console.error('[refreshAfterSync] journalStore', e)),
     import('@/stores/contactStore').then(m => m.useContactStore.getState().fetchContacts()).catch((e: unknown) => console.error('[refreshAfterSync] contactStore', e)),

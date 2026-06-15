@@ -25,7 +25,7 @@ export interface Schedule {
   source_id: string | null;
   category: string | null;
   calendar_id: string | null;
-  event_type: 'event' | 'countdown';
+  event_type: 'event' | 'countdown' | 'anniversary';
   exdates: string | null;
   created_at: string;
   updated_at: string;
@@ -46,7 +46,7 @@ export interface CreateScheduleInput {
   source_id?: string;
   category?: string;
   calendar_id?: string;
-  event_type?: 'event' | 'countdown';
+  event_type?: 'event' | 'countdown' | 'anniversary';
 }
 
 /** 更新日程的输入参数 */
@@ -62,7 +62,7 @@ export interface UpdateScheduleInput {
   location?: string;
   category?: string;
   calendar_id?: string;
-  event_type?: 'event' | 'countdown';
+  event_type?: 'event' | 'countdown' | 'anniversary';
 }
 
 /** 查询时间范围 */

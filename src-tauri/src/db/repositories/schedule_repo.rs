@@ -243,6 +243,26 @@ pub fn list_countdowns(conn: &Connection) -> Result<Vec<Schedule>, String> {
     Ok(results)
 }
 
+/// 查询所有纪念日，按 start_at 升序
+pub fn list_anniversaries(conn: &Connection) -> Result<Vec<Schedule>, String> {
+    let mut stmt = conn
+        .prepare(&format!(
+            "SELECT {} FROM schedules WHERE event_type = 'anniversary' AND deleted_at IS NULL ORDER BY start_at ASC",
+            SCHEDULE_COLUMNS
+        ))
+        .map_err(|e| format!("Failed to prepare list_anniversaries: {}", e))?;
+
+    let rows = stmt
+        .query_map([], schedule_from_row)
+        .map_err(|e| format!("Failed to query anniversaries: {}", e))?;
+
+    let mut results = Vec::new();
+    for row in rows {
+        results.push(row.map_err(|e| format!("Failed to read anniversary row: {}", e))?);
+    }
+    Ok(results)
+}
+
 /// 按时间范围查询日程（含 rrule 展开 + 任务合并）
 /// range_start 和 range_end 支持两种格式：
 ///   - YYYY-MM-DD（AI 工具传入）

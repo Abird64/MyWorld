@@ -71,3 +71,8 @@ export async function exportIcsEvents(calendarId?: string): Promise<string> {
 export async function listCountdowns(): Promise<Schedule[]> {
   return tauriInvoke<Schedule[]>('list_countdowns');
 }
+
+/** 查询所有纪念日 */
+export async function listAnniversaries(): Promise<Schedule[]> {
+  return tauriInvoke<Schedule[]>('list_anniversaries');
+}

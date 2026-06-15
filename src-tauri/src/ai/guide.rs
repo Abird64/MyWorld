@@ -107,10 +107,13 @@ const GUIDE_SCHEDULE: &str = r#"# 日程模块指南
 - list_schedules_in_range：传 start_date 和 end_date，一查到底不要拆分成多天
 - list_calendars：查看所有日历分类
 - list_countdowns：查看所有倒数日
+- list_anniversaries：查看所有纪念日
 
-## 倒数日
-- 创建：用 create_schedule 并设 event_type="countdown"，start_at 填目标日期
-- 查看：list_countdowns 返回所有倒数日及剩余天数
+## 日子（倒数日 & 纪念日）
+- 创建倒数日：用 create_schedule 并设 event_type="countdown"，start_at 填目标日期
+- 创建纪念日：用 create_schedule 并设 event_type="anniversary"，start_at 填纪念日期
+- 查看倒数日：list_countdowns 返回所有倒数日及剩余天数
+- 查看纪念日：list_anniversaries 返回所有纪念日及已过天数
 
 ## 修改/删除
 - update_schedule / delete_schedule：用返回结果中的 id 操作

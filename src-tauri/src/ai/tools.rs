@@ -76,6 +76,7 @@ pub fn get_tools(conn: &rusqlite::Connection) -> Vec<ToolDefinition> {
     if is_plugin_enabled(conn, "aihot") {
         tools.extend(tool_defs::aihot_definitions());
     }
+    tools.extend(tool_defs::inspiration_definitions());
     tools
 }
 
@@ -96,6 +97,7 @@ pub fn is_query_tool(name: &str) -> bool {
             | "search_memories"
             | "search_journals"
             | "list_countdowns"
+            | "list_anniversaries"
             | "list_habits"
             | "get_guide"
             | "get_glow_balance"
@@ -104,5 +106,6 @@ pub fn is_query_tool(name: &str) -> bool {
             | "list_glow_ledger"
             | "get_pomodoro_stats"
             | "search_ai_news"
+            | "parse_video"
     )
 }

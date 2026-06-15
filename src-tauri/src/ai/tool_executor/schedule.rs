@@ -295,3 +295,35 @@ pub fn execute_list_countdowns(conn: &Connection) -> Result<String, String> {
 
     Ok(result)
 }
+
+// ========== 纪念日 ==========
+
+pub fn execute_list_anniversaries(conn: &Connection) -> Result<String, String> {
+    let anniversaries = schedule_repo::list_anniversaries(conn)?;
+
+    if anniversaries.is_empty() {
+        return Ok("暂无纪念日。告诉用户可以创建一个纪念日来记录重要的日子。".to_string());
+    }
+
+    let today = Local::now().date_naive();
+    let mut result = format!("共有{}个纪念日：\n\n", anniversaries.len());
+
+    for (i, a) in anniversaries.iter().enumerate() {
+        let days_info = if let Ok(target) = NaiveDate::parse_from_str(&a.start_at[..10], "%Y-%m-%d") {
+            let diff = (today - target).num_days();
+            if diff > 0 {
+                format!("已过{}天", diff)
+            } else if diff == 0 {
+                "就是从今天开始的！".to_string()
+            } else {
+                format!("还有{}天到来（纪念日从未来开始）", -diff)
+            }
+        } else {
+            a.start_at[..10].to_string()
+        };
+
+        result.push_str(&format!("{}. {} — {} ({})\n", i + 1, a.title, &a.start_at[..10], days_info));
+    }
+
+    Ok(result)
+}

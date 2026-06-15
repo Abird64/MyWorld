@@ -9,7 +9,7 @@ import { HabitSummary } from '@/components/dashboard/HabitSummary';
 import { BirthdaySummary } from '@/components/dashboard/BirthdaySummary';
 import { SkillSummary } from '@/components/dashboard/SkillSummary';
 import { DiarySummary } from '@/components/dashboard/DiarySummary';
-import { CountdownSummary } from '@/components/dashboard/CountdownSummary';
+import { DaysSummary } from '@/components/dashboard/CountdownSummary';
 import { PomodoroCard } from '@/components/pomodoro/PomodoroCard';
 import { RecommendCard } from '@/components/dashboard/RecommendCard';
 import { useRecommendTask } from '@/hooks/useRecommendTask';
@@ -75,7 +75,7 @@ export function DashboardPage() {
           {/* 关注：生日 + 倒数日 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <BirthdaySummary />
-            <CountdownSummary />
+            <DaysSummary />
           </div>
         </div>
       </div>

@@ -55,7 +55,7 @@ const CORE_RULES: &str = r#"## 通用规则
 const CAPABILITIES_BASE: &str = r#"## 你的能力
 提灯有 9 个核心模块，你有以下工具可用：
 - **任务**：create_task / search_tasks / complete_task / update_task / delete_task
-- **日程**：create_schedule / list_schedules_in_range / list_calendars / update_schedule / delete_schedule / list_countdowns
+- **日程**：create_schedule / list_schedules_in_range / list_calendars / update_schedule / delete_schedule / list_countdowns / list_anniversaries
 - **日记**：save_journal / get_journal_by_date / search_journals / get_timeline / settle_diary
 - **人脉**：create_contact / search_contacts / list_contacts / update_contact / delete_contact
 - **习惯**：list_habits / create_habit / update_habit / delete_habit / check_habit / uncheck_habit（每种习惯创建自带XP奖励，每次打卡获得xp_per_check经验值）
@@ -94,6 +94,12 @@ const GLOW_GUIDE: &str = r#"## 萤火与心愿系统
 
 /// 小本本记录提示（简短，闲聊时注入）
 const MEMORY_HINT: &str = "留意用户透露的个人信息，发现后调用 record_memory 记下来。记之前先 search_memories 确认不重复。详见 get_guide(\"小本本\")。";
+
+/// 灵感捕手使用提示
+const INSPIRATION_HINT: &str = r#"## 灵感捕手（视频解析）
+当用户发送 B 站视频链接时（包含 bilibili.com 或 b23.tv），**必须先调用 parse_video 工具**获取视频字幕内容，然后基于字幕内容进行分析和回答。不要在没有字幕的情况下胡乱猜测视频内容。
+- 提取视频中的行动项、知识点、金句、资源等
+- 如果用户没有明确说明想要什么，可以先给出摘要，然后询问用户想要什么格式的输出"#;
 
 /// AI 资讯使用提示（强规则，必须遵守）
 const AIHOT_HINT: &str = r#"## AI 资讯（强制规则）
@@ -150,6 +156,8 @@ pub fn build_system_prompt(conn: &Connection, personality: &str, memories: &[mem
     prompt.push_str(&format_memories_section(memories));
     prompt.push_str(&format!("## 当前信息\n{}\n农历：{}\n{}\n", format_datetime(), format_lunar(), daily_snapshot));
     prompt.push_str(CORE_RULES);
+    prompt.push('\n');
+    prompt.push_str(INSPIRATION_HINT);
     prompt.push('\n');
     if aihot_enabled {
         prompt.push_str(AIHOT_HINT);
@@ -244,6 +252,10 @@ pub fn build_enhanced_system_prompt(
     prompt.push_str(CORE_RULES);
     prompt.push('\n');
 
+    // 灵感捕手规则（始终启用）
+    prompt.push_str(INSPIRATION_HINT);
+    prompt.push('\n');
+
     // AI 资讯强制规则（仅插件启用时）
     let aihot_enabled = is_plugin_enabled(conn, "aihot");
     if aihot_enabled {
@@ -271,6 +283,32 @@ pub fn build_enhanced_system_prompt(
     prompt
 }
 
+/// 计算纪念日的下一个整数里程碑天数
+/// 里程碑包括：整百（100,200...）、整年（365,730...）、特殊数字（520,1314,999）
+fn next_milestone(days_since: i64) -> Option<i64> {
+    if days_since < 0 {
+        return None;
+    }
+    let mut candidates: Vec<i64> = Vec::new();
+
+    // 整百
+    let next_hundred = ((days_since / 100) + 1) * 100;
+    candidates.push(next_hundred);
+
+    // 整年（365天）
+    let next_year = ((days_since / 365) + 1) * 365;
+    candidates.push(next_year);
+
+    // 特殊数字
+    for &special in &[520, 999, 1314] {
+        if special > days_since {
+            candidates.push(special);
+        }
+    }
+
+    candidates.into_iter().min()
+}
+
 /// 构建每日快照：今日日程、待办任务、习惯打卡、近期提醒
 fn build_daily_snapshot(conn: &Connection) -> String {
     let today = Local::now().format("%Y-%m-%d").to_string();
@@ -279,7 +317,7 @@ fn build_daily_snapshot(conn: &Connection) -> String {
     // ── 今日日程 ──
     if let Ok(schedules) = schedule_repo::list_schedules_in_range(conn, &today, &today) {
         let events: Vec<_> = schedules.iter()
-            .filter(|s| s.event_type != "countdown")
+            .filter(|s| s.event_type != "countdown" && s.event_type != "anniversary")
             .collect();
         if !events.is_empty() {
             let mut lines = String::from("### 今日日程\n");
@@ -357,6 +395,25 @@ fn build_daily_snapshot(conn: &Connection) -> String {
                 let diff = (target - now_date).num_days();
                 if diff >= 0 && diff <= 30 {
                     reminders.push(format!("- 倒数日：{}（还有{}天）", cd.title, diff));
+                }
+            }
+        }
+    }
+
+    // 纪念日（30天内整数里程碑）
+    if let Ok(anniversaries) = schedule_repo::list_anniversaries(conn) {
+        let now_date = chrono::Local::now().date_naive();
+        for a in &anniversaries {
+            if let Ok(target) = chrono::NaiveDate::parse_from_str(&a.start_at[..10], "%Y-%m-%d") {
+                let days_since = (now_date - target).num_days();
+                if days_since > 0 {
+                    // 计算下一个里程碑
+                    if let Some(milestone) = next_milestone(days_since) {
+                        let remaining = milestone - days_since;
+                        if remaining <= 30 && remaining >= 0 {
+                            reminders.push(format!("- 纪念日：{}（即将{}天，还有{}天）", a.title, milestone, remaining));
+                        }
+                    }
                 }
             }
         }

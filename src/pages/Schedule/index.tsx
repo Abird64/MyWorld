@@ -11,7 +11,7 @@ import { EventDetail } from '@/components/schedule/EventDetail';
 
 import { CalendarManagerModal } from '@/components/schedule/CalendarManagerModal';
 import { ImportDialog } from '@/components/schedule/ImportDialog';
-import { CountdownList } from '@/components/schedule/CountdownList';
+import { DaysList } from '@/components/schedule/CountdownList';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { parseIcs } from '@/utils/icsParser';
@@ -23,7 +23,7 @@ import { Plus, Upload, X, Settings, MoreHorizontal } from 'lucide-react';
 import type { Schedule, CreateScheduleInput, UpdateScheduleInput } from '@/types/schedule';
 import type { ParsedIcsEvent } from '@/utils/icsParser';
 
-type ViewMode = 'week' | 'month' | 'agenda' | 'day' | 'countdown';
+type ViewMode = 'week' | 'month' | 'agenda' | 'day' | 'days';
 
 /** 获取某天所在周的周一 */
 function getWeekMonday(date: Date): Date {
@@ -331,10 +331,10 @@ export function SchedulePage() {
               {/* 左侧：日期导航 */}
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={viewMode === 'agenda' || viewMode === 'countdown' ? undefined : viewMode === 'month' ? handlePrevMonth : viewMode === 'day' ? handlePrevDay : handlePrev}
-                  disabled={viewMode === 'agenda' || viewMode === 'countdown'}
+                  onClick={viewMode === 'agenda' || viewMode === 'days' ? undefined : viewMode === 'month' ? handlePrevMonth : viewMode === 'day' ? handlePrevDay : handlePrev}
+                  disabled={viewMode === 'agenda' || viewMode === 'days'}
                   className="w-8 h-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
-                  style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.3)}`, color: appTheme.ink, opacity: viewMode === 'agenda' || viewMode === 'countdown' ? 0.3 : 1 }}
+                  style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.3)}`, color: appTheme.ink, opacity: viewMode === 'agenda' || viewMode === 'days' ? 0.3 : 1 }}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                     <path d="M10 4L6 8L10 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -343,8 +343,8 @@ export function SchedulePage() {
                 <span className="text-sm font-light tracking-wider whitespace-nowrap select-none" style={{ color: appTheme.ink }}>
                   {viewMode === 'agenda'
                     ? '近期'
-                    : viewMode === 'countdown'
-                      ? '倒数日'
+                    : viewMode === 'days'
+                      ? '日子'
                       : viewMode === 'week'
                         ? formatWeekLabel(weekMonday)
                         : viewMode === 'month'
@@ -352,10 +352,10 @@ export function SchedulePage() {
                           : `${selectedDay.getMonth() + 1}月${selectedDay.getDate()}日`}
                 </span>
                 <button
-                  onClick={viewMode === 'agenda' || viewMode === 'countdown' ? undefined : viewMode === 'month' ? handleNextMonth : viewMode === 'day' ? handleNextDay : handleNext}
-                  disabled={viewMode === 'agenda' || viewMode === 'countdown'}
+                  onClick={viewMode === 'agenda' || viewMode === 'days' ? undefined : viewMode === 'month' ? handleNextMonth : viewMode === 'day' ? handleNextDay : handleNext}
+                  disabled={viewMode === 'agenda' || viewMode === 'days'}
                   className="w-8 h-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
-                  style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.3)}`, color: appTheme.ink, opacity: viewMode === 'agenda' || viewMode === 'countdown' ? 0.3 : 1 }}
+                  style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.3)}`, color: appTheme.ink, opacity: viewMode === 'agenda' || viewMode === 'days' ? 0.3 : 1 }}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                     <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -363,9 +363,9 @@ export function SchedulePage() {
                 </button>
                 <button
                   onClick={handleToday}
-                  disabled={viewMode === 'countdown'}
+                  disabled={viewMode === 'days'}
                   className="ml-1 px-3 py-1 rounded-full text-xs font-light transition-colors flex-shrink-0"
-                  style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.3)}`, color: appTheme.ink, opacity: viewMode === 'countdown' ? 0.3 : 1 }}
+                  style={{ backgroundColor: `${withAlpha(appTheme.primary, 0.3)}`, color: appTheme.ink, opacity: viewMode === 'days' ? 0.3 : 1 }}
                 >
                   今天
                 </button>
@@ -373,7 +373,7 @@ export function SchedulePage() {
 
               {/* 中间：视图切换 pills */}
               <div className="flex items-center gap-0.5 rounded-full p-0.5 flex-shrink-0" style={{ backgroundColor: `${withAlpha(appTheme.ink, 0.05)}` }}>
-                {(['day', 'week', 'month', 'agenda', 'countdown'] as const).map((mode) => (
+                {(['day', 'week', 'month', 'agenda', 'days'] as const).map((mode) => (
                   <button
                     key={mode}
                     onClick={() => setViewMode(mode)}
@@ -383,7 +383,7 @@ export function SchedulePage() {
                       color: viewMode === mode ? appTheme.ink : appTheme.inkMuted48,
                     }}
                   >
-                    {mode === 'day' ? '日' : mode === 'week' ? '周' : mode === 'month' ? '月' : mode === 'agenda' ? '近期' : '倒数日'}
+                    {mode === 'day' ? '日' : mode === 'week' ? '周' : mode === 'month' ? '月' : mode === 'agenda' ? '近期' : '日子'}
                   </button>
                 ))}
               </div>
@@ -523,8 +523,8 @@ export function SchedulePage() {
               onBack={handleBackFromDay}
               backLabel={previousView === 'month' ? '返回月视图' : '返回周视图'}
             />
-          ) : viewMode === 'countdown' ? (
-            <CountdownList />
+          ) : viewMode === 'days' ? (
+            <DaysList />
           ) : (
             <AgendaView
               schedules={filteredSchedules}

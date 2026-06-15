@@ -8,6 +8,7 @@ pub fn schedule_definitions() -> Vec<ToolDefinition> {
         update_schedule_definition(),
         delete_schedule_definition(),
         list_countdowns_definition(),
+        list_anniversaries_definition(),
     ]
 }
 
@@ -58,8 +59,8 @@ fn create_schedule_definition() -> ToolDefinition {
                     },
                     "event_type": {
                         "type": "string",
-                        "enum": ["event", "countdown"],
-                        "description": "事件类型：event=普通日程（默认），countdown=倒数日。倒数日的 start_at 填目标日期"
+                        "enum": ["event", "countdown", "anniversary"],
+                        "description": "事件类型：event=普通日程（默认），countdown=倒数日，anniversary=纪念日。倒数日和纪念日的 start_at 填目标日期"
                     }
                 }),
                 required: vec!["title".to_string(), "start_at".to_string()],
@@ -189,6 +190,21 @@ fn list_countdowns_definition() -> ToolDefinition {
         function: FunctionDef {
             name: "list_countdowns".to_string(),
             description: "查看所有倒数日。当用户问[有哪些倒数日/看看倒数/离什么还有多久]时调用。返回每个倒数日的标题、目标日期和剩余天数。".to_string(),
+            parameters: ToolParameters {
+                param_type: "object".to_string(),
+                properties: serde_json::json!({}),
+                required: vec![],
+            },
+        },
+    }
+}
+
+fn list_anniversaries_definition() -> ToolDefinition {
+    ToolDefinition {
+        tool_type: "function".to_string(),
+        function: FunctionDef {
+            name: "list_anniversaries".to_string(),
+            description: "查看所有纪念日。当用户问[有哪些纪念日/纪念什么日子/纪念日]时调用。返回每个纪念日的标题、日期和距今天数。".to_string(),
             parameters: ToolParameters {
                 param_type: "object".to_string(),
                 properties: serde_json::json!({}),
