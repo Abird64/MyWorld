@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Users, Settings, ChevronRight, Brain, Heart } from 'lucide-react';
+import { Users, Settings, ChevronRight, Brain, Heart, Lightbulb } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { usePluginStore } from '@/stores/pluginStore';
@@ -27,6 +27,7 @@ const builtinMenuGroups: { title: string; items: MenuItem[] }[] = [
       { id: 'meditation', label: '冥想', desc: '呼吸练习，平静心灵', icon: Brain, iconBg: '#e8f5ff', iconColor: '#4CAF76' },
       { id: 'wishes', label: '心愿', desc: '心愿夹与萤火奖券', icon: Heart, iconBg: '#fff0f5', iconColor: '#E8A87C' },
       { id: 'relations', label: '联系人', desc: '人脉管理与生日提醒', icon: Users, iconBg: '#f0f0ff', iconColor: '#5856d6' },
+      { id: 'inspiration', label: '灵感笔记', desc: '灵感笔记，视频解析', icon: Lightbulb, iconBg: '#fff8e1', iconColor: '#FF9800' },
     ],
   },
   {

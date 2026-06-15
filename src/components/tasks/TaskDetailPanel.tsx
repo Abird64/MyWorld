@@ -487,7 +487,7 @@ export function TaskDetailPanel({
     </div>
     {showDeleteConfirm && (
       <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onClick={() => setShowDeleteConfirm(false)}>
-        <div className="rounded-2xl p-6 mx-4 w-[320px]" style={{ backgroundColor: appTheme.canvas }} onClick={(e) => e.stopPropagation()}>
+        <div className="rounded-2xl p-6 mx-4 w-[90vw] sm:w-[320px]" style={{ backgroundColor: appTheme.canvas }} onClick={(e) => e.stopPropagation()}>
           <p className="text-base mb-6" style={{ color: txtDim }}>这个任务一旦删除，就不能回来了。确定吗？</p>
           <div className="flex gap-3">
             <button onClick={() => setShowDeleteConfirm(false)}

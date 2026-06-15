@@ -98,7 +98,7 @@ export function PomodoroTimer({ open, onClose }: PomodoroTimerProps) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
         <div
-          className="w-[320px] rounded-3xl p-8 flex flex-col items-center text-center"
+          className="w-[90vw] sm:w-[320px] rounded-3xl p-8 flex flex-col items-center text-center"
           style={{ backgroundColor: appTheme.canvas }}
           role="alertdialog"
           aria-modal="true"
@@ -209,7 +209,7 @@ function NormalView({ color, isFocus, isPaused, remaining, progress, elapsedSeco
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
       <div
-        className="relative w-[340px] rounded-3xl overflow-hidden"
+        className="relative w-[90vw] sm:w-[340px] rounded-3xl overflow-hidden"
         style={{ backgroundColor: appTheme.canvas }}
         role="dialog"
         aria-modal="true"
@@ -429,7 +429,7 @@ function ImmersiveView({ color, isFocus, isPaused, remaining, progress, elapsedS
 
       {/* 中央计时器 */}
       <div className="flex flex-col items-center">
-        <div className="relative w-[380px] h-[380px] flex items-center justify-center">
+        <div className="relative w-[80vw] h-[80vw] sm:w-[380px] sm:h-[380px] flex items-center justify-center">
           {/* 柔和光晕 */}
           <div
             className="absolute inset-0 rounded-full"

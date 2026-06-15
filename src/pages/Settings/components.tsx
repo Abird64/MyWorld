@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState, createElement } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { usePluginStore } from '@/stores/pluginStore';
@@ -110,8 +110,8 @@ export function InputRow({ label, value, onChange, styles, type = 'text', placeh
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-        style={{ backgroundColor: styles.inputBg, border: `1px solid ${styles.inputBorder}`, color: styles.text }}
+        className="w-full px-3 py-2 rounded-lg text-sm outline-none settings-input"
+        style={{ backgroundColor: styles.inputBg, border: `1px solid ${styles.inputBorder}`, color: styles.text, '--focus-color': styles.accent, '--focus-ring': styles.accentDim } as React.CSSProperties}
       />
     </div>
   );
@@ -176,11 +176,12 @@ export function SelectRow({ label, value, options, onChange, styles }: {
   );
 }
 
-/** 插件管理区块：列出所有已注册插件，支持启用/禁用 */
+/** 插件管理区块：列出所有已注册插件，支持启用/禁用 + 插件设置 */
 export function PluginSection({ styles }: { styles: SettingsStyles }) {
   const plugins = usePluginStore((s) => s.plugins);
   const settings = useSettingStore();
   const pluginList = Object.values(plugins);
+  const [expandedPlugin, setExpandedPlugin] = useState<string | null>(null);
 
   if (pluginList.length === 0) {
     return (
@@ -193,28 +194,50 @@ export function PluginSection({ styles }: { styles: SettingsStyles }) {
       {pluginList.map((p) => {
         const enabled = settings.get(`plugin.${p.id}.enabled`, 'true') !== 'false';
         const Icon = p.icon;
+        const hasSettings = !!p.settingsComponent;
+        const isExpanded = expandedPlugin === p.id;
         return (
-          <div
-            key={p.id}
-            className="flex items-center gap-3 p-3 rounded-xl"
-            style={{ backgroundColor: styles.overlay(0.04) }}
-          >
+          <div key={p.id}>
             <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: p.iconBg }}
+              className="flex items-center gap-3 p-3 rounded-xl"
+              style={{ backgroundColor: styles.overlay(0.04) }}
             >
-              <Icon size={18} style={{ color: p.iconColor }} />
+              <div
+                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: p.iconBg }}
+              >
+                <Icon size={18} style={{ color: p.iconColor }} />
+              </div>
+              <div
+                className={`flex-1 min-w-0 ${hasSettings ? 'cursor-pointer' : ''}`}
+                onClick={() => hasSettings && setExpandedPlugin(isExpanded ? null : p.id)}
+              >
+                <div className="text-[15px] font-medium" style={{ color: styles.text }}>{p.name}</div>
+                <div className="text-xs truncate" style={{ color: styles.textSub }}>{p.description}</div>
+              </div>
+              {hasSettings && (
+                <button
+                  onClick={() => setExpandedPlugin(isExpanded ? null : p.id)}
+                  className="p-1.5 rounded-lg transition-transform"
+                  style={{ color: styles.textSub, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                >
+                  <ChevronDown size={16} />
+                </button>
+              )}
+              <ToggleRow
+                label=""
+                checked={enabled}
+                onChange={(v) => settings.set(`plugin.${p.id}.enabled`, String(v))}
+                styles={styles}
+              />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[15px] font-medium" style={{ color: styles.text }}>{p.name}</div>
-              <div className="text-xs truncate" style={{ color: styles.textSub }}>{p.description}</div>
-            </div>
-            <ToggleRow
-              label=""
-              checked={enabled}
-              onChange={(v) => settings.set(`plugin.${p.id}.enabled`, String(v))}
-              styles={styles}
-            />
+            {hasSettings && isExpanded && enabled && (
+              <div className="mt-2 px-3">
+                <Suspense fallback={<div className="text-xs py-2" style={{ color: styles.textSub }}>加载中…</div>}>
+                  {createElement(p.settingsComponent!)}
+                </Suspense>
+              </div>
+            )}
           </div>
         );
       })}

@@ -127,7 +127,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
         .event-detail-input::placeholder { color: ${withAlpha(appTheme.ink, 0.3)}; }
       `}</style>
       <div
-        className="rounded-2xl p-6 w-[400px] max-h-[80vh] overflow-y-auto"
+        className="rounded-2xl p-6 w-[95vw] sm:w-[400px] max-h-[80vh] overflow-y-auto"
         style={{ backgroundColor: appTheme.canvas }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -349,7 +349,7 @@ export function EventDetail({ event, onUpdate, onDelete, onUpdateInstance, onDel
         {/* 删除确认 */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50">
-            <div className="rounded-2xl p-5 w-[300px]" style={{ backgroundColor: appTheme.canvas }}>
+            <div className="rounded-2xl p-5 w-[90vw] sm:w-[300px]" style={{ backgroundColor: appTheme.canvas }}>
               <h3 className="text-lg font-medium mb-3" style={{ color: appTheme.ink }}>确认删除</h3>
               <p className="text-sm mb-4" style={{ color: `${withAlpha(appTheme.ink, 0.7)}` }}>
                 确定要删除「{event.title}」吗？

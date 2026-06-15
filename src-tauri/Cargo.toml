@@ -1,6 +1,6 @@
 [package]
 name = "lantern"
-version = "2.5.0"
+version = "2.6.0"
 description = "提灯 - 拾级而上，提灯而行。A local-first AI-powered life management desktop app."
 authors = ["鹏子"]
 license = "MIT"
@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
 default = ["gui"]
-gui = ["dep:tauri", "dep:tauri-plugin-log"]
+gui = ["dep:tauri", "dep:tauri-plugin-log", "dep:tauri-plugin-opener"]
 
 [build-dependencies]
 tauri-build = { version = "2.6.2", features = [] }
@@ -25,6 +25,7 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.11.2", features = [], optional = true }
 tauri-plugin-log = { version = "2", optional = true }
+tauri-plugin-opener = { version = "2", optional = true }
 rusqlite = { version = "0.35", features = ["bundled"] }
 nanoid = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
@@ -39,3 +40,5 @@ sha2 = "0.10"
 hmac = "0.12"
 hex = "0.4"
 rand = "0.8"
+regex = "1"
+urlencoding = "2"

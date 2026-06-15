@@ -1044,7 +1044,7 @@ export function RelationsPage() {
       {/* 删除确认 */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onClick={() => setShowDeleteConfirm(false)}>
-          <div className="rounded-2xl p-6 mx-4 w-[320px]" style={{ backgroundColor: appTheme.canvas }} onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-2xl p-6 mx-4 w-[90vw] sm:w-[320px]" style={{ backgroundColor: appTheme.canvas }} onClick={(e) => e.stopPropagation()}>
             <p className="text-base mb-6" style={{ color: `${withAlpha(appTheme.ink, 0.7)}` }}>确定要删除 {selectedContact?.name} 吗？一旦删除，就不能回来了。</p>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteConfirm(false)}
@@ -1064,7 +1064,7 @@ export function RelationsPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-black/80 text-white px-6 py-3 rounded-2xl text-sm max-w-[500px]" role="alert" aria-live="polite">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-black/80 text-white px-6 py-3 rounded-2xl text-sm w-[95vw] max-w-[500px]" role="alert" aria-live="polite">
           {toast}
         </div>
       )}

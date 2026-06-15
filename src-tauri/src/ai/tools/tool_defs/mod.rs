@@ -9,6 +9,7 @@ mod glow;
 mod pomodoro;
 mod guide;
 mod aihot;
+mod inspiration;
 
 pub use task::task_definitions;
 pub use schedule::schedule_definitions;
@@ -21,3 +22,4 @@ pub use glow::glow_definitions;
 pub use pomodoro::pomodoro_definitions;
 pub use guide::guide_definitions;
 pub use aihot::aihot_definitions;
+pub use inspiration::inspiration_definitions;

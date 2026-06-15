@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/uiStore';
 import * as aihotService from '@/services/aihotService';
 import type { AihotItem, AihotDailyResponse } from '@/services/aihotService';
 import { RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 type Tab = 'selected' | 'daily';
 
@@ -336,15 +337,13 @@ function DailyView({ daily, appTheme }: {
                   )}
                 </div>
                 {flash.sourceUrl && (
-                  <a
-                    href={flash.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => openUrl(flash.sourceUrl)}
                     className="flex-shrink-0 mt-0.5"
                     style={{ color: appTheme.primary }}
                   >
                     <ExternalLink size={12} />
-                  </a>
+                  </button>
                 )}
               </div>
             ))}
@@ -376,15 +375,13 @@ function ItemRow({ item, index, isLast, appTheme }: {
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[15px] font-medium hover:underline line-clamp-2"
+            <button
+              onClick={() => openUrl(item.url)}
+              className="text-[15px] font-medium hover:underline line-clamp-2 text-left"
               style={{ color: appTheme.ink }}
             >
               {item.title}
-            </a>
+            </button>
             {item.score != null && (
               <span
                 className="text-xs font-medium px-1.5 py-0.5 rounded flex-shrink-0"
@@ -446,15 +443,13 @@ function DailyItemRow({ item, index, isLast, appTheme }: {
               {item.title}
             </span>
             {item.sourceUrl && (
-              <a
-                href={item.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => openUrl(item.sourceUrl)}
                 className="flex-shrink-0 mt-1"
                 style={{ color: appTheme.primary }}
               >
                 <ExternalLink size={12} />
-              </a>
+              </button>
             )}
           </div>
           {item.sourceName && (

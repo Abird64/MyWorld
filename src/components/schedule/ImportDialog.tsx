@@ -37,7 +37,7 @@ export function ImportDialog({ eventCount, onConfirm, onCancel }: ImportDialogPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="rounded-2xl p-6 w-[380px]" style={{ backgroundColor: appTheme.canvas }}>
+      <div className="rounded-2xl p-6 w-[95vw] sm:w-[380px]" style={{ backgroundColor: appTheme.canvas }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-light tracking-wider" style={{ color: appTheme.ink }}>导入日程</h3>
           <button onClick={onCancel} style={{ color: `${withAlpha(appTheme.ink, 0.4)}` }}>

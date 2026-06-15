@@ -56,7 +56,7 @@ export function MindfulStart({ open, onClose, taskTitle, taskDescription, taskId
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
       <div
-        className="relative w-[360px] max-h-[80vh] rounded-3xl overflow-hidden"
+        className="relative w-[90vw] sm:w-[360px] max-h-[80vh] rounded-3xl overflow-hidden"
         style={{ backgroundColor: appTheme.canvas }}
       >
         {/* 关闭按钮 */}

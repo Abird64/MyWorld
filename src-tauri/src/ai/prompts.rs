@@ -95,8 +95,8 @@ const GLOW_GUIDE: &str = r#"## 萤火与心愿系统
 /// 小本本记录提示（简短，闲聊时注入）
 const MEMORY_HINT: &str = "留意用户透露的个人信息，发现后调用 record_memory 记下来。记之前先 search_memories 确认不重复。详见 get_guide(\"小本本\")。";
 
-/// 灵感捕手使用提示
-const INSPIRATION_HINT: &str = r#"## 灵感捕手（视频解析）
+/// 灵感笔记使用提示
+const INSPIRATION_HINT: &str = r#"## 灵感笔记（视频解析）
 当用户发送 B 站视频链接时（包含 bilibili.com 或 b23.tv），**必须先调用 parse_video 工具**获取视频字幕内容，然后基于字幕内容进行分析和回答。不要在没有字幕的情况下胡乱猜测视频内容。
 - 提取视频中的行动项、知识点、金句、资源等
 - 如果用户没有明确说明想要什么，可以先给出摘要，然后询问用户想要什么格式的输出"#;

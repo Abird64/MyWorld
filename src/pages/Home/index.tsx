@@ -44,6 +44,8 @@ export function HomePage() {
   const s = h.rgba;
 
   const activeTab = useUIStore((s) => s.activeTab);
+  const chatContext = useUIStore((s) => s.chatContext);
+  const setChatContext = useUIStore((s) => s.setChatContext);
   const themeMode = useThemeStore((s) => s.mode);
   const t: PageTheme = {
     id: 'lantern', name: '提灯',
@@ -109,8 +111,21 @@ export function HomePage() {
   }, [activeTab]);
 
   const handleSend = async () => {
-    const text = input.trim();
+    let text = input.trim();
     if ((!text && pendingImages.length === 0) || isSending) return;
+
+    // 如果有引用上下文，拼接成带引用的消息
+    if (chatContext) {
+      const ctxBlock = [
+        `> 引用：${chatContext.label}`,
+        ...chatContext.content.split('\n').map((line) => `> ${line}`),
+        '',
+        text,
+      ].join('\n');
+      text = ctxBlock;
+      setChatContext(null);
+    }
+
     setInput('');
 
     let convId = currentConversation;
@@ -502,6 +517,8 @@ export function HomePage() {
               handleSend={handleSend}
               handleKeyDown={handleKeyDown}
               isMobile={isMobile}
+              chatContext={chatContext}
+              onClearChatContext={() => setChatContext(null)}
             />
           )}
         </div>

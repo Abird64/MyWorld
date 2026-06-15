@@ -3,7 +3,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { usePluginStore } from '@/stores/pluginStore';
 import { useSettingStore } from '@/stores/settingStore';
 import { usePomodoroStore } from '@/stores/pomodoroStore';
-import { aihotPlugin } from '@/plugins/aihot';
+import { allPlugins } from '@/plugins';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useKeyboardAware } from '@/hooks/useKeyboardAware';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
@@ -22,6 +22,7 @@ const DashboardPage = lazy(() => import('@/pages/Dashboard').then(m => ({ defaul
 const MemoriesPage = lazy(() => import('@/pages/Memories').then(m => ({ default: m.MemoriesPage })));
 const MeditationPage = lazy(() => import('@/pages/Meditation').then(m => ({ default: m.MeditationPage })));
 const WishesPage = lazy(() => import('@/pages/Wishes').then(m => ({ default: m.WishesPage })));
+const InspirationPage = lazy(() => import('@/pages/Inspiration').then(m => ({ default: m.InspirationPage })));
 const MinePage = lazy(() => import('@/pages/Mine').then(m => ({ default: m.MinePage })));
 
 import '@/styles/global.css';
@@ -46,7 +47,7 @@ function App() {
 
   // 注册插件 + 加载设置
   useEffect(() => {
-    registerPlugin(aihotPlugin);
+    allPlugins.forEach((p) => registerPlugin(p));
     loadSettings();
   }, [registerPlugin, loadSettings]);
 
@@ -64,22 +65,23 @@ function App() {
     return () => window.removeEventListener('pomodoro-open-timer', handler);
   }, []);
 
-  // Android 返回键：子页面内按返回键回到主页，而非退出应用
+  // Android 返回手势：通过 history API 让 WebView 历史栈有记录，
+  // 这样返回手势/返回键会触发 popstate 而非直接退出应用。
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    import('@tauri-apps/api/app').then(({ onBackButtonPress }) => {
-      onBackButtonPress((_payload) => {
-        if (activeSubPage) {
-          goBack();
-        } else {
-          // 在主页时，允许默认行为（最小化或退出）
-          // Tauri 默认会 minimize，这里不阻止
-        }
-      }).then((listener) => {
-        unlisten = listener.unregister;
-      });
-    });
-    return () => { unlisten?.(); };
+    if (activeSubPage) {
+      // 进入子页面时推入一条历史记录
+      window.history.pushState({ subPage: activeSubPage }, '');
+    }
+  }, [activeSubPage]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      if (activeSubPage) {
+        goBack();
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
   }, [activeSubPage, goBack]);
 
   const plugins = usePluginStore((s) => s.plugins);
@@ -96,11 +98,16 @@ function App() {
       case 'meditation': return <MeditationPage />;
       case 'wishes': return <WishesPage />;
       case 'settings': return <SettingsPage />;
+      case 'inspiration': return <InspirationPage />;
       default: break;
     }
-    // 插件页面
+    // 插件页面（需检查启用状态）
     if (activeSubPage && plugins[activeSubPage]) {
-      return createElement(plugins[activeSubPage].page);
+      const settings = useSettingStore.getState();
+      const enabled = settings.get(`plugin.${activeSubPage}.enabled`, 'true') !== 'false';
+      if (enabled) {
+        return createElement(plugins[activeSubPage].page);
+      }
     }
     return null;
   };

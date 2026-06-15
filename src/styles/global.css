@@ -46,6 +46,12 @@ input, textarea, [contenteditable="true"] {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* 设置页面输入框 focus 状态 */
+.settings-input:focus {
+  border-color: var(--focus-color, #4CAF76) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring, rgba(76, 175, 118, 0.15)) !important;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2) !important;
 }

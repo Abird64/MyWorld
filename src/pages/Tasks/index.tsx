@@ -458,7 +458,7 @@ export function TasksPage() {
       {/* 批量删除确认 */}
       {showBatchDeleteConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onClick={() => setShowBatchDeleteConfirm(false)}>
-          <div className="rounded-2xl p-6 mx-4 w-[320px]" style={{ backgroundColor: appTheme.canvas }} onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-2xl p-6 mx-4 w-[90vw] sm:w-[320px]" style={{ backgroundColor: appTheme.canvas }} onClick={(e) => e.stopPropagation()}>
             <p className="text-base mb-6" style={{ color: txtMid }}>确定要删除选中的 {selectedIds.size} 个任务吗？一旦删除，就不能回来了。</p>
             <div className="flex gap-3">
               <button onClick={() => setShowBatchDeleteConfirm(false)}
@@ -478,7 +478,7 @@ export function TasksPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl text-sm max-w-[500px]"
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl text-sm w-[95vw] max-w-[500px]"
           style={{ backgroundColor: appTheme.surfaceDark2, color: appTheme.ink }}>
           {toast}
         </div>

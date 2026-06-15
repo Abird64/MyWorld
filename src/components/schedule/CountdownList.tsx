@@ -78,7 +78,7 @@ function DaysForm({
       onClick={onCancel}
     >
       <div
-        className="w-[380px] rounded-2xl p-6 space-y-4"
+        className="w-[95vw] sm:w-[380px] rounded-2xl p-6 space-y-4"
         style={{ backgroundColor: appTheme.canvas }}
         onClick={(e) => e.stopPropagation()}
       >

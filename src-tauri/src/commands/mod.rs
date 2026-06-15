@@ -7,6 +7,7 @@ pub mod contact_commands;
 pub mod favorite_commands;
 pub mod glow_ledger_commands;
 pub mod habit_commands;
+pub mod inspiration_commands;
 pub mod journal_commands;
 pub mod memory_commands;
 pub mod pomodoro_commands;

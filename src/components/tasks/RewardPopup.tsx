@@ -30,7 +30,7 @@ export function RewardPopup({ result, onClose, title = '任务完成', showXp = 
       onClick={onClose}
     >
       <div
-        className="rounded-2xl p-6 w-[280px] animate-in"
+        className="rounded-2xl p-6 w-[85vw] sm:w-[280px] animate-in"
         style={{ backgroundColor: appTheme.canvas }}
         onClick={(e) => e.stopPropagation()}
       >

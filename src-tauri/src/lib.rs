@@ -32,6 +32,7 @@ pub fn run() {
 
             Ok(())
         })
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             commands::task_commands::create_task,
             commands::task_commands::get_task,
@@ -155,6 +156,12 @@ pub fn run() {
             commands::aihot_commands::fetch_aihot_daily,
             commands::aihot_commands::fetch_aihot_daily_by_date,
             commands::aihot_commands::fetch_aihot_dailies,
+            commands::inspiration_commands::fetch_bilibili_video_info,
+            commands::inspiration_commands::fetch_bilibili_subtitle,
+            commands::inspiration_commands::bilibili_qrcode_url,
+            commands::inspiration_commands::bilibili_poll_qrcode,
+            commands::inspiration_commands::bilibili_open_login_window,
+            commands::inspiration_commands::bilibili_login_callback,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

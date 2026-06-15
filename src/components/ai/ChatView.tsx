@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Copy, StopCircle, Check, Star, ArrowUp, ImagePlus, X, Loader2 } from 'lucide-react';
+import { Copy, StopCircle, Check, Star, ArrowUp, ImagePlus, X, Loader2, Lightbulb, Quote } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { compressImageForApi } from '@/utils/imageCompress';
 import * as aiService from '@/services/aiService';
@@ -11,6 +11,8 @@ import { PromptPouch } from '@/components/ai/PromptPouch';
 import { useAiStore } from '@/stores/aiStore';
 import { useAppTheme, withAlpha } from '@/stores/themeStore';
 import { useFavoriteStore } from '@/stores/favoriteStore';
+import { useUIStore } from '@/stores/uiStore';
+import { useInspirationStore } from '@/stores/inspirationStore';
 import { parseToolCalls } from '@/utils/aiParsers';
 import { BUILTIN_PROMPTS } from '@/utils/builtinPrompts';
 import type { PromptTemplate } from '@/utils/builtinPrompts';
@@ -93,6 +95,12 @@ async function copyText(text: string | null) {
   }
 }
 
+export interface ChatContext {
+  label: string;
+  content: string;
+  sourceUrl?: string;
+}
+
 interface ChatViewProps {
   s: (o: number) => string;
   t: PageTheme;
@@ -103,6 +111,9 @@ interface ChatViewProps {
   handleSend: () => Promise<void>;
   handleKeyDown: (e: KeyboardEvent) => void;
   isMobile?: boolean;
+  /** 引用上下文（从其他页面传入） */
+  chatContext?: ChatContext | null;
+  onClearChatContext?: () => void;
 }
 
 export function ChatView({
@@ -115,9 +126,12 @@ export function ChatView({
   handleSend,
   handleKeyDown,
   isMobile = false,
+  chatContext,
+  onClearChatContext,
 }: ChatViewProps) {
   const appTheme = useAppTheme();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [savedNoteId, setSavedNoteId] = useState<string | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const emptyStateRef = useRef<HTMLDivElement>(null);
@@ -153,7 +167,6 @@ export function ChatView({
     stopGeneration,
     addPendingImages,
     removePendingImage,
-    clearPendingImages,
     executeToolCalls,
     executeSingleToolCall,
     cancelToolCalls,
@@ -334,7 +347,7 @@ export function ChatView({
                         >
                           <button
                             onClick={() => handleCopy(msg.id, msg.content)}
-                            className="flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] min-h-[44px]"
+                            className="w-7 h-7 flex items-center justify-center p-1 rounded-lg transition-colors"
                             style={{ color: s(0.25) }}
                             onMouseEnter={(e) => {
                               if (!isMobile) {
@@ -352,9 +365,9 @@ export function ChatView({
                             aria-label="复制消息"
                           >
                             {copiedId === msg.id ? (
-                              <Check size={14} style={{ color: t.accent }} />
+                              <Check size={13} style={{ color: t.accent }} />
                             ) : (
-                              <Copy size={14} />
+                              <Copy size={13} />
                             )}
                           </button>
                           <button
@@ -369,7 +382,7 @@ export function ChatView({
                                 title,
                               );
                             }}
-                            className="flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] min-h-[44px]"
+                            className="w-7 h-7 flex items-center justify-center p-1 rounded-lg transition-colors"
                             style={{
                               color: isFavorited(msg.id)
                                 ? CREATIVITY_COLOR
@@ -396,11 +409,84 @@ export function ChatView({
                             aria-label={isFavorited(msg.id) ? '取消收藏' : '收藏'}
                           >
                             <Star
-                              size={14}
+                              size={13}
                               fill={
                                 isFavorited(msg.id) ? CREATIVITY_COLOR : 'none'
                               }
                             />
+                          </button>
+                          {/* 保存到笔记 — 仅 AI 消息 */}
+                          {msg.role === 'assistant' && (
+                            <button
+                              onClick={() => {
+                                const lines = (msg.content || '').trim().split('\n');
+                                const title = lines[0].replace(/^#+\s*/, '').slice(0, 50) || 'AI 对话笔记';
+                                useInspirationStore.getState().addNote({
+                                  title,
+                                  content: msg.content || '',
+                                  categoryId: 'zhishi',
+                                  tags: ['AI 对话'],
+                                  sourceUrl: undefined,
+                                  sourceTitle: undefined,
+                                  pinned: false,
+                                });
+                                setSavedNoteId(msg.id);
+                                setTimeout(() => setSavedNoteId(null), 1500);
+                              }}
+                              className="w-7 h-7 flex items-center justify-center p-1 rounded-lg transition-colors"
+                              style={{ color: savedNoteId === msg.id ? t.accent : s(0.25) }}
+                              onMouseEnter={(e) => {
+                                if (!isMobile) {
+                                  e.currentTarget.style.color = savedNoteId === msg.id ? t.accent : '#FF9800';
+                                  e.currentTarget.style.backgroundColor = s(0.08);
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isMobile) {
+                                  e.currentTarget.style.color = savedNoteId === msg.id ? t.accent : s(0.25);
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }
+                              }}
+                              title="保存到灵感笔记"
+                              aria-label="保存到灵感笔记"
+                            >
+                              {savedNoteId === msg.id ? (
+                                <Check size={13} style={{ color: t.accent }} />
+                              ) : (
+                                <Lightbulb size={13} />
+                              )}
+                            </button>
+                          )}
+                          {/* 引用此消息 */}
+                          <button
+                            onClick={() => {
+                              if (!msg.content) return;
+                              const label = msg.role === 'user'
+                                ? `💬 ${msg.content.slice(0, 30)}${msg.content.length > 30 ? '...' : ''}`
+                                : `🤖 ${msg.content.slice(0, 30)}${msg.content.length > 30 ? '...' : ''}`;
+                              useUIStore.getState().setChatContext({
+                                label,
+                                content: msg.content,
+                              });
+                            }}
+                            className="w-7 h-7 flex items-center justify-center p-1 rounded-lg transition-colors"
+                            style={{ color: s(0.25) }}
+                            onMouseEnter={(e) => {
+                              if (!isMobile) {
+                                e.currentTarget.style.color = s(0.6);
+                                e.currentTarget.style.backgroundColor = s(0.08);
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isMobile) {
+                                e.currentTarget.style.color = s(0.25);
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }
+                            }}
+                            title="引用此消息"
+                            aria-label="引用此消息"
+                          >
+                            <Quote size={13} />
                           </button>
                         </div>
                       )}
@@ -549,6 +635,49 @@ export function ChatView({
             }}
           />
         </div>
+
+        {/* ── 引用上下文芯片（膏药风格）— 在输入框外面，不受磨砂玻璃影响 ── */}
+        {chatContext && (
+          <div className="max-w-[640px] mx-auto px-3 pb-2">
+            <div
+              className="flex items-start gap-2 px-3 py-2 rounded-xl"
+              style={{
+                backgroundColor: withAlpha(appTheme.ink, 0.05),
+                border: `1px solid ${withAlpha(appTheme.ink, 0.08)}`,
+              }}
+            >
+              <Quote size={14} className="flex-shrink-0 mt-0.5" style={{ color: withAlpha(appTheme.ink, 0.3) }} />
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-medium" style={{ color: withAlpha(appTheme.ink, 0.5) }}>
+                  {chatContext.label}
+                </span>
+                <p
+                  className="text-xs line-clamp-2 mt-0.5 leading-relaxed"
+                  style={{ color: withAlpha(appTheme.ink, 0.35) }}
+                >
+                  {chatContext.content.slice(0, 300)}
+                </p>
+              </div>
+              <button
+                onClick={() => onClearChatContext?.()}
+                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full transition-colors"
+                style={{ color: withAlpha(appTheme.ink, 0.4) }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = withAlpha(appTheme.ink, 0.1);
+                  e.currentTarget.style.color = withAlpha(appTheme.ink, 0.7);
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = withAlpha(appTheme.ink, 0.4);
+                }}
+                aria-label="清除引用"
+                title="取消引用"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          </div>
+        )}
 
         <div
           className="relative max-w-[640px] mx-auto rounded-3xl transition-shadow duration-300 group"

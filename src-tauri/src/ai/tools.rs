@@ -76,7 +76,9 @@ pub fn get_tools(conn: &rusqlite::Connection) -> Vec<ToolDefinition> {
     if is_plugin_enabled(conn, "aihot") {
         tools.extend(tool_defs::aihot_definitions());
     }
-    tools.extend(tool_defs::inspiration_definitions());
+    if is_plugin_enabled(conn, "inspiration") {
+        tools.extend(tool_defs::inspiration_definitions());
+    }
     tools
 }
 

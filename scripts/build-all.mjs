@@ -20,10 +20,10 @@ mkdirSync(outDir, { recursive: true });
 
 function findInstaller() {
   const candidates = [
-    "提灯_2.4.7_x64-setup.exe",
-    "Lantern_2.4.7_x64-setup.exe",
-    "lantern_2.4.7_x64-setup.exe",
-    "提灯_2.4.7_x64_en-US.msi",
+    "提灯_2.5.0_x64-setup.exe",
+    "Lantern_2.5.0_x64-setup.exe",
+    "lantern_2.5.0_x64-setup.exe",
+    "提灯_2.5.0_x64_en-US.msi",
   ];
   for (const name of candidates) {
     const full = join(bundleDir, name);
@@ -50,12 +50,12 @@ function saveBuild(label) {
   const ext = extname(found);
 
   // Rename in NSIS dir so next build doesn't overwrite it
-  const nsisRenamed = join(bundleDir, `提灯_2.4.7_x64-${label}-setup${ext}`);
+  const nsisRenamed = join(bundleDir, `提灯_2.5.0_x64-${label}-setup${ext}`);
   renameSync(found, nsisRenamed);
   console.log(`  NSIS: ${nsisRenamed}`);
 
   // Copy to dist-installer
-  const dest = join(outDir, `Lantern_2.4.7_${label}${ext}`);
+  const dest = join(outDir, `Lantern_2.5.0_${label}${ext}`);
   copyFileSync(nsisRenamed, dest);
   console.log(`  -> ${dest}`);
   return true;

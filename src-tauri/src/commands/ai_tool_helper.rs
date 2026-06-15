@@ -1,16 +1,22 @@
 use serde_json::Value;
 use crate::ai::client;
 use crate::ai::tool_executor::aihot;
+use crate::ai::tool_executor::inspiration;
 
 /// 异步执行需要 HTTP 请求的工具（如 search_ai_news）
 /// 使用 spawn_blocking 在独立线程池中执行阻塞 I/O，避免阻塞 tokio 运行时
-pub async fn execute_async_tool(name: &str, arguments: &str) -> Result<String, String> {
+///
+/// `sessdata` 是 B 站登录 cookie，用于获取 AI 字幕
+pub async fn execute_async_tool(name: &str, arguments: &str, sessdata: Option<String>) -> Result<String, String> {
     match name {
         "search_ai_news" => {
             let args = arguments.to_string();
             tokio::task::spawn_blocking(move || aihot::execute_search_ai_news_sync(&args))
                 .await
                 .map_err(|e| format!("任务执行失败: {}", e))?
+        }
+        "parse_video" => {
+            inspiration::execute_parse_video(arguments, sessdata).await
         }
         _ => Err(format!("{} 不是异步工具", name)),
     }

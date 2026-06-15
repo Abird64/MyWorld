@@ -372,7 +372,16 @@ pub async fn send_message(
             let tool_args = &tc.function.arguments;
 
             let result = if tool_executor::is_async_tool(tool_name) {
-                execute_async_tool(tool_name, tool_args).await.unwrap_or_else(|e| e)
+                // 读取 B 站 SESSDATA（需要在锁内完成）
+                let sessdata = {
+                    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+                    setting_repo::get_setting(&conn, "inspiration.bilibili_sessdata")
+                        .ok()
+                        .flatten()
+                        .map(|s| s.value)
+                        .filter(|s| !s.is_empty())
+                };
+                execute_async_tool(tool_name, tool_args, sessdata).await.unwrap_or_else(|e| e)
             } else {
                 let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
                 tool_executor::execute_tool(
@@ -546,7 +555,16 @@ pub async fn execute_tool_calls(
             let tool_name = &tc.function.name;
             let tool_args = &tc.function.arguments;
             let result = if tool_executor::is_async_tool(tool_name) {
-                execute_async_tool(tool_name, tool_args).await.unwrap_or_else(|e| e)
+                // 读取 B 站 SESSDATA（需要在锁内完成）
+                let sessdata = {
+                    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+                    setting_repo::get_setting(&conn, "inspiration.bilibili_sessdata")
+                        .ok()
+                        .flatten()
+                        .map(|s| s.value)
+                        .filter(|s| !s.is_empty())
+                };
+                execute_async_tool(tool_name, tool_args, sessdata).await.unwrap_or_else(|e| e)
             } else {
                 let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
                 tool_executor::execute_tool(&mut *conn, Some(&app_data.dir.clone()), tool_name, tool_args)
@@ -734,7 +752,16 @@ pub async fn execute_single_tool_call(
 
     // 执行工具（不持有 DB 锁）
     let result = if tool_executor::is_async_tool(&tool_name) {
-        execute_async_tool(&tool_name, &tool_args_owned).await.unwrap_or_else(|e| e)
+        // 读取 B 站 SESSDATA（需要在锁内完成）
+        let sessdata = {
+            let conn = state.conn.lock().map_err(|e| e.to_string())?;
+            setting_repo::get_setting(&conn, "inspiration.bilibili_sessdata")
+                .ok()
+                .flatten()
+                .map(|s| s.value)
+                .filter(|s| !s.is_empty())
+        };
+        execute_async_tool(&tool_name, &tool_args_owned, sessdata).await.unwrap_or_else(|e| e)
     } else {
         let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
         tool_executor::execute_tool(&mut *conn, Some(&app_data.dir.clone()), &tool_name, &tool_args_owned)

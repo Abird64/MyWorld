@@ -161,7 +161,24 @@ fn try_write_file(path: &Path, content: &str) -> Result<(), String> {
 }
 
 /// 从完整路径中提取 journals/ 相对路径部分
+///
+/// 在 Android 上，DB 中可能存着 Windows 风格路径（含 `\`），
+/// Unix 不把 `\` 当分隔符，所以先标准化再解析。
 fn extract_journals_relative(path: &Path) -> Option<std::path::PathBuf> {
+    // 先尝试直接解析
+    if let Some(rel) = find_journals_in_components(path) {
+        return Some(rel);
+    }
+
+    // 如果直接解析失败，将反斜杠替换为正斜杠后重试
+    // （处理从 Windows 同步过来的路径）
+    let normalized = std::path::PathBuf::from(
+        path.to_string_lossy().replace('\\', "/")
+    );
+    find_journals_in_components(&normalized)
+}
+
+fn find_journals_in_components(path: &Path) -> Option<std::path::PathBuf> {
     let components: Vec<_> = path.components().collect();
     let journals_idx = components.iter().position(|c| {
         c.as_os_str() == "journals"
